@@ -1,0 +1,216 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Cormorant Garamond", "Times New Roman", serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-navy: var(--navy);
+  --color-navy-foreground: var(--navy-foreground);
+  --color-profit: var(--profit);
+  --color-loss: var(--loss);
+  --color-mint: var(--mint);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+}
+
+:root {
+  --background: #f4f7fa;
+  --foreground: #0e2744;
+  --card: #ffffff;
+  --card-foreground: #0e2744;
+  --muted: #e8eef4;
+  --muted-foreground: #5b6b7c;
+  --border: color-mix(in oklab, #0e2744 12%, transparent);
+  --ring: #1e6bff;
+  --primary: #1e6bff;
+  --primary-foreground: #ffffff;
+  --navy: #0e2744;
+  --navy-foreground: #f4f7fa;
+  --profit: #1a7a4c;
+  --loss: #c81e1e;
+  --mint: #e7f3ec;
+  --paper: #ffffff;
+  --ink: #142033;
+  --hero-wash: #eef3f7;
+  --shadow: 0 18px 40px -24px rgb(14 39 68 / 0.35);
+  --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-quick: 150ms;
+  --motion-fast: 250ms;
+  --motion-slow: 400ms;
+  --motion-emphasis: 500ms;
+  --motion-y-base: 8px;
+  --motion-scale-modal: 0.96;
+}
+
+.dark {
+  --background: #07111c;
+  --foreground: #eef3f8;
+  --card: #0d1c2c;
+  --card-foreground: #eef3f8;
+  --muted: #132536;
+  --muted-foreground: #9aabbd;
+  --border: color-mix(in oklab, #eef3f8 12%, transparent);
+  --ring: #4d8dff;
+  --primary: #3d7fff;
+  --primary-foreground: #07111c;
+  --navy: #10263c;
+  --navy-foreground: #eef3f8;
+  --profit: #3dba74;
+  --loss: #ef4d4d;
+  --mint: #123226;
+  --paper: #0d1c2c;
+  --ink: #eef3f8;
+  --hero-wash: #0a1826;
+  --shadow: 0 18px 40px -20px rgb(0 0 0 / 0.55);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.03em;
+    line-height: 1.12;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 28%, transparent);
+  }
+}
+
+.rise {
+  animation: rise var(--motion-emphasis) var(--ease-smooth-out) both;
+}
+.rise-2 {
+  animation-delay: 80ms;
+}
+.rise-3 {
+  animation-delay: 140ms;
+}
+.rise-4 {
+  animation-delay: 200ms;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes candle-grow {
+  from {
+    transform: scaleY(0.35);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.candle {
+  transform-origin: bottom;
+  animation: candle-grow 2.8s var(--ease-smooth-out) infinite alternate;
+}
+
+.marquee {
+  display: flex;
+  gap: 2rem;
+  width: max-content;
+  animation: marquee 42s linear infinite;
+}
+.marquee:hover {
+  animation-play-state: paused;
+}
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.book-3d {
+  transform: perspective(900px) rotateY(-8deg);
+  transform-origin: left center;
+  transition:
+    transform var(--motion-fast) var(--ease-smooth-out),
+    box-shadow var(--motion-fast) var(--ease-smooth-out);
+  box-shadow:
+    8px 12px 28px -16px rgb(14 39 68 / 0.45),
+    1px 0 0 color-mix(in oklab, var(--navy) 18%, transparent),
+    3px 0 0 color-mix(in oklab, var(--navy) 8%, white);
+}
+.book-3d:hover {
+  transform: perspective(900px) rotateY(-2deg) translateY(-4px);
+}
+
+.watermark {
+  pointer-events: none;
+  user-select: none;
+  background-image: repeating-linear-gradient(
+    -32deg,
+    transparent 0 46px,
+    color-mix(in oklab, var(--navy) 7%, transparent) 46px 47px
+  );
+}
+
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.page-flip {
+  transform-style: preserve-3d;
+  transition: transform 520ms var(--ease-smooth-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .candle,
+  .marquee,
+  .page-flip,
+  .book-3d {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}

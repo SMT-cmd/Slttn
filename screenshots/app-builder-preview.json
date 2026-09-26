@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "",
+      "hasCanvas": false,
+      "bodyTextLen": 3656,
+      "bodyTextHash": "9db962d84dbf7f2bb84bc9283314eb7d24693841953699638e77616480084a05",
+      "bodyTextPrefix": "SLT Trade HubProfitability is the Culture LibraryCommunityPricin",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "SLT Trade Hub — The Trading Library",
+      "hasCanvas": false,
+      "bodyTextLen": 3596,
+      "bodyTextHash": "0e0bd889865eae76fefe8a1aaca6c479112df4842461caa190da893364981883",
+      "bodyTextPrefix": "SLT Trade Hub A COMPLETE TRADING LIBRARY Become the trader who s",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}
