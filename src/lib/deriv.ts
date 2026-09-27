@@ -1,70 +1,80 @@
-const DERIV_PARTNER_CHECK_URL = "https://api.deriv.com/partners/client-tags/check";
-const DERIV_AUTHORIZE_URL = "https://oauth.deriv.com/oauth2/authorize";
+const DERIV_API_BASE = "https://api.derivws.com";
 
-export type DerivTagCheckResult = {
-  isTagged: boolean;
-  raw: unknown;
+export const DERIV_PROVIDER_ID = "grok-deriv";
+
+type DerivCheckResponse = {
+  data?: Array<{
+    client_id?: string;
+    clientId?: string;
+    is_tagged?: boolean;
+    isTagged?: boolean;
+  }>;
+  results?: Array<{
+    client_id?: string;
+    clientId?: string;
+    is_tagged?: boolean;
+    isTagged?: boolean;
+  }>;
+  tagged_count?: number;
+  checked_count?: number;
 };
 
-function readServerEnv(name: "DERIV_APP_ID" | "DERIV_API_TOKEN" | "DERIV_PARTNER_TAG") {
+function readEnv(name: "DERIV_PARTNER_TOKEN" | "DERIV_API_TOKEN" | "DERIV_APP_ID") {
   const value = typeof process !== "undefined" ? process.env[name]?.trim() : undefined;
-  return value || undefined;
+  return value ? value : undefined;
 }
 
-export function buildDerivAuthorizeUrl(state: string, redirectUri: string) {
-  const appId = readServerEnv("DERIV_APP_ID");
-  if (!appId) {
-    throw new Error("DERIV_APP_ID is not configured.");
-  }
-  const url = new URL(DERIV_AUTHORIZE_URL);
-  url.searchParams.set("app_id", appId);
-  url.searchParams.set("redirect_uri", redirectUri);
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("state", state);
-  return url.toString();
+export function getDerivPartnerToken() {
+  return readEnv("DERIV_PARTNER_TOKEN") ?? readEnv("DERIV_API_TOKEN");
 }
 
-export async function checkDerivPartnerTag(crNumber: string): Promise<DerivTagCheckResult> {
-  const token = readServerEnv("DERIV_API_TOKEN");
-  const appId = readServerEnv("DERIV_APP_ID");
-  const partnerTag = readServerEnv("DERIV_PARTNER_TAG");
+export function getDerivAppId() {
+  return readEnv("DERIV_APP_ID");
+}
 
-  if (!token || !appId) {
-    return { isTagged: false, raw: { reason: "missing_deriv_credentials" } };
+export function canCheckDerivTags() {
+  return Boolean(getDerivPartnerToken() && getDerivAppId());
+}
+
+export async function checkDerivClientTags(clientIds: string[]) {
+  const token = getDerivPartnerToken();
+  const appId = getDerivAppId();
+  if (!token || !appId || clientIds.length === 0) {
+    return new Map<string, boolean>();
   }
 
-  const payload = {
-    app_id: appId,
-    cr: crNumber,
-    client_id: crNumber,
-    partner_shortcode: partnerTag,
-    tag: partnerTag,
-  };
+  const uniqueClientIds = [...new Set(clientIds.map((value) => value.trim()).filter(Boolean))].slice(
+    0,
+    100,
+  );
+  if (uniqueClientIds.length === 0) {
+    return new Map<string, boolean>();
+  }
 
-  const response = await fetch(DERIV_PARTNER_CHECK_URL, {
+  const response = await fetch(`${DERIV_API_BASE}/partners/client-tags/check`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
+      "Deriv-App-ID": appId,
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ client_ids: uniqueClientIds }),
   });
 
-  const raw = (await response.json().catch(() => null)) as Record<string, unknown> | null;
-
   if (!response.ok) {
-    throw new Error(
-      typeof raw?.error === "string"
-        ? raw.error
-        : "Deriv partnership check failed.",
-    );
+    const text = await response.text();
+    throw new Error(text || "Deriv tag check failed.");
   }
 
-  const isTagged =
-    raw?.tagged === true ||
-    raw?.is_tagged === true ||
-    raw?.status === "tagged" ||
-    raw?.has_partner_tag === true;
+  const payload = (await response.json()) as DerivCheckResponse;
+  const rows = payload.data ?? payload.results ?? [];
+  const tagged = new Map<string, boolean>();
 
-  return { isTagged, raw };
+  for (const row of rows) {
+    const clientId = row.client_id ?? row.clientId;
+    if (!clientId) continue;
+    tagged.set(clientId, Boolean(row.is_tagged ?? row.isTagged));
+  }
+
+  return tagged;
 }
