@@ -5,6 +5,7 @@ import {
   getCatalogBookBySlug,
   getCatalogBookPages,
   listCatalogBooks,
+  normalizeCatalogBook,
   onlineCents,
   type CatalogBook,
   type CatalogPage,
@@ -20,6 +21,24 @@ import { getSupabaseAdmin } from "@/lib/supabase";
 
 type SupabaseAdmin = ReturnType<typeof getSupabaseAdmin>;
 type LaunchModeValue = "prelaunch" | "launch" | "public";
+const BOOK_SELECT =
+  "id, slug, title, subtitle, category, size, launch_mode, cover_url, blurb, published, sort_order, created_at, updated_at";
+
+type CatalogBookQueryRow = {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle: string | null;
+  category: string;
+  size: string | null;
+  launch_mode: string | null;
+  cover_url: string | null;
+  blurb: string | null;
+  published: boolean | null;
+  sort_order: number | null;
+  created_at: string;
+  updated_at: string;
+};
 
 type AuthUserRow = {
   id: string;
@@ -438,6 +457,13 @@ async function loadBooksWithPages(includeUnpublished = false) {
     }),
   );
   return rows.sort((left: BookRow, right: BookRow) => left.sort_order - right.sort_order);
+}
+
+async function getAdminBookById(db: SupabaseAdmin, id: string) {
+  const row = assertSupabase(
+    await db.from("books").select(BOOK_SELECT).eq("id", id).limit(1).single(),
+  ) as CatalogBookQueryRow;
+  return normalizeCatalogBook(row);
 }
 
 async function accessForBook(db: SupabaseAdmin, profile: Profile, book: BookRow) {
@@ -1027,7 +1053,9 @@ export const readerPayload = createServerFn({ method: "GET" })
     if (!book) throw new Error("That book is not in the library.");
     const pages = book.pages ?? [];
     const access = await accessForBook(db, profile, book);
-    const watermark = `${profile.full_name || profile.email || "Reader"} · ${profile.deriv_cr || profile.email || context.userId}`;
+    const watermarkName = profile.full_name?.trim() || profile.email?.trim() || "Reader";
+    const watermarkIdentity = profile.deriv_cr?.trim() || profile.email?.trim() || context.userId;
+    const watermark = `${watermarkName} · ${watermarkIdentity}`;
     return {
       book,
       profile,
@@ -1228,11 +1256,12 @@ export const adminCreateBook = createServerFn({ method: "POST" })
           published: data.published,
           sort_order: requireNumber(sortRows?.[0]?.sort_order) + 1,
         })
-        .select("id, slug, title, subtitle, category, size, launch_mode, cover_url, blurb, published, sort_order, created_at, updated_at")
+        .select("id")
         .limit(1)
         .single(),
-    ) as CatalogBook;
-    return toBookRow(inserted, 0, []);
+    ) as { id: string };
+    const book = await getAdminBookById(db, inserted.id);
+    return toBookRow(book, 0, []);
   });
 
 export const adminUpdateBook = createServerFn({ method: "POST" })
@@ -1279,12 +1308,13 @@ export const adminUpdateBook = createServerFn({ method: "POST" })
         .from("books")
         .update(updates)
         .eq("id", data.id)
-        .select("id, slug, title, subtitle, category, size, launch_mode, cover_url, blurb, published, sort_order, created_at, updated_at")
+        .select("id")
         .limit(1)
         .single(),
-    ) as CatalogBook;
-    const pages = await getCatalogBookPages(updated.id);
-    return toBookRow(updated, pages.length, pages);
+    ) as { id: string };
+    const book = await getAdminBookById(db, updated.id);
+    const pages = await getCatalogBookPages(book.id);
+    return toBookRow(book, pages.length, pages);
   });
 
 export const adminDeleteBook = createServerFn({ method: "POST" })
@@ -1293,6 +1323,9 @@ export const adminDeleteBook = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const db = getSupabaseAdmin();
     await requireAdmin(db, context.userId);
+    assertSupabase(await db.from("reading_logs").delete().eq("book_id", data.id));
+    assertSupabase(await db.from("purchases").delete().eq("book_id", data.id));
+    assertSupabase(await db.from("coupons").delete().eq("book_id", data.id));
     assertSupabase(await db.from("book_pages").delete().eq("book_id", data.id));
     assertSupabase(await db.from("books").delete().eq("id", data.id));
     return { ok: true };

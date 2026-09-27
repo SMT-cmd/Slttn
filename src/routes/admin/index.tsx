@@ -113,6 +113,28 @@ function normalizeSettings(settings: Record<string, string>): SettingsForm {
   };
 }
 
+function normalizeCommunityLinksInput(value: string) {
+  const parsed = JSON.parse(value) as unknown;
+  if (!Array.isArray(parsed)) {
+    throw new Error("Community links must be a JSON array.");
+  }
+  const cleaned = parsed.map((item) => {
+    if (
+      !item ||
+      typeof item !== "object" ||
+      typeof (item as { label?: unknown }).label !== "string" ||
+      typeof (item as { url?: unknown }).url !== "string"
+    ) {
+      throw new Error('Each community link must include string "label" and "url" fields.');
+    }
+    return {
+      label: (item as { label: string }).label.trim(),
+      url: (item as { url: string }).url.trim(),
+    };
+  });
+  return JSON.stringify(cleaned, null, 2);
+}
+
 function TabButton({
   active,
   label,
@@ -248,15 +270,19 @@ function HomePanel() {
         className="xl:col-span-4 rounded-xl border border-border bg-card p-5"
         onSubmit={async (event) => {
           event.preventDefault();
+          let communityLinks = form.community_links;
           const saves: Array<[string, string]> = [
             ["global_prelaunch", String(form.global_prelaunch)],
             ["partner_code", form.partner_code],
             ["support_email", form.support_email],
             ["telegram_url", form.telegram_url],
             ["whatsapp_url", form.whatsapp_url],
-            ["community_links", form.community_links],
+            ["community_links", communityLinks],
           ];
           try {
+            communityLinks = normalizeCommunityLinksInput(form.community_links);
+            saves[saves.length - 1] = ["community_links", communityLinks];
+            setForm((current) => (current ? { ...current, community_links: communityLinks } : current));
             await Promise.all(
               saves.map(([key, value]) => adminSaveSetting({ data: { key, value } })),
             );
@@ -507,18 +533,22 @@ function BookEditor({ book, onReload }: { book: BookRow; onReload: () => Promise
     const index = pages.findIndex((page) => page.id === pageId);
     const nextIndex = index + direction;
     if (index < 0 || nextIndex < 0 || nextIndex >= pages.length) return;
+    const previousPages = [...pages];
     const nextPages = [...pages];
     const [moved] = nextPages.splice(index, 1);
     nextPages.splice(nextIndex, 0, moved);
     setPages(nextPages);
+    setBusy(true);
     try {
       const refreshed = await adminReorderBookPages({
         data: { bookId: draft.id, pageIds: nextPages.map((page) => page.id) },
       });
       setPages(refreshed);
     } catch (error) {
-      setPages(book.pages ?? []);
+      setPages(previousPages);
       toast.error(error instanceof Error ? error.message : "Could not reorder pages.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -527,7 +557,7 @@ function BookEditor({ book, onReload }: { book: BookRow; onReload: () => Promise
       <div className="grid gap-5 lg:grid-cols-[220px_1fr]">
         <div>
           <img
-            src={draft.cover_url}
+            src={draft.cover_url || "/brand/trading-library-powered.png"}
             alt={draft.title}
             className="h-72 w-full rounded-xl object-cover shadow-[var(--shadow)]"
           />
@@ -600,6 +630,7 @@ function BookEditor({ book, onReload }: { book: BookRow; onReload: () => Promise
             </Button>
             <Button
               variant="outline"
+              disabled={busy}
               onClick={() =>
                 setDraft((current) => ({
                   ...current,
@@ -611,12 +642,14 @@ function BookEditor({ book, onReload }: { book: BookRow; onReload: () => Promise
             </Button>
             <Button
               variant={draft.published ? "outline" : "profit"}
+              disabled={busy}
               onClick={() => setDraft((current) => ({ ...current, published: !current.published }))}
             >
               {draft.published ? "Mark unpublished" : "Publish"}
             </Button>
             <Button
               variant="loss"
+              disabled={busy}
               onClick={async () => {
                 if (!window.confirm(`Delete ${draft.title}?`)) return;
                 try {
@@ -656,13 +689,13 @@ function BookEditor({ book, onReload }: { book: BookRow; onReload: () => Promise
                   />
                   <p className="mt-2 text-sm font-medium">Page {page.page_number}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <Button size="sm" variant="outline" disabled={index === 0} onClick={() => movePage(page.id, -1)}>
+                    <Button size="sm" variant="outline" disabled={busy || index === 0} onClick={() => movePage(page.id, -1)}>
                       Move up
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      disabled={index === pages.length - 1}
+                      disabled={busy || index === pages.length - 1}
                       onClick={() => movePage(page.id, 1)}
                     >
                       Move down
@@ -670,7 +703,9 @@ function BookEditor({ book, onReload }: { book: BookRow; onReload: () => Promise
                     <Button
                       size="sm"
                       variant="loss"
+                      disabled={busy}
                       onClick={async () => {
+                        setBusy(true);
                         try {
                           const nextPages = await adminDeleteBookPage({
                             data: { pageId: page.id, bookId: draft.id },
@@ -680,6 +715,8 @@ function BookEditor({ book, onReload }: { book: BookRow; onReload: () => Promise
                           toast.success("Page removed.");
                         } catch (error) {
                           toast.error(error instanceof Error ? error.message : "Could not remove the page.");
+                        } finally {
+                          setBusy(false);
                         }
                       }}
                     >
@@ -773,8 +810,8 @@ function CouponsPanel() {
   const [bookId, setBookId] = useState("");
 
   const reload = async () => {
-        const [couponRows, bookRows] = await Promise.all([adminCoupons(), adminBooks()]);
-        setRows(couponRows ?? []);
+    const [couponRows, bookRows] = await Promise.all([adminCoupons(), adminBooks()]);
+    setRows(couponRows ?? []);
     setBooks(bookRows);
   };
 

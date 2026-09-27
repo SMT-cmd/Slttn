@@ -44,7 +44,7 @@ function Login() {
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 lg:grid-cols-2">
         <div>
           <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">Sign in</p>
-          <h1 className="mt-3 font-display text-5xl">Come in through the front door.</h1>
+          <h1 className="mt-3 font-display text-5xl">Login with Deriv first.</h1>
           <p className="mt-4 max-w-md text-muted-foreground">
             Use Deriv first if that is your main trading account. We check the partnership
             tag after sign-in, keep Google and email/password available, and you can still
@@ -63,6 +63,9 @@ function Login() {
                 <div className="rounded-xl border border-profit/30 bg-profit/6 p-4">
                   <p className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
                     Primary option
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-foreground">
+                    Recommended for tagged-partner access
                   </p>
                   <Button
                     type="button"
@@ -85,7 +88,7 @@ function Login() {
                   <Button
                     key={p.providerId}
                     type="button"
-                    variant={p.providerId === "grok-google" ? "navy" : "outline"}
+                    variant="outline"
                     className="w-full"
                     onClick={() => signIn(p.providerId, { callbackURL: "/account" })}
                   >
@@ -100,7 +103,7 @@ function Login() {
 
           <div className="my-6 flex items-center gap-3 text-xs tracking-[0.16em] text-muted-foreground uppercase">
             <span className="h-px flex-1 bg-border" />
-            Email
+            Email or password
             <span className="h-px flex-1 bg-border" />
           </div>
 
