@@ -1,0 +1,1 @@
+import{i as e,t}from"./react-DB-4Zxce.js";import{p as n}from"./createLucideIcon-s1gL_fKR.js";import{u as r}from"./dist-Dd8BRMbF.js";var i=e(t(),1),a=n(),o=(0,i.forwardRef)(({className:e,...t},n)=>(0,a.jsx)(`label`,{ref:n,className:r(`text-sm font-medium text-foreground`,e),...t}));o.displayName=`Label`;export{o as t};

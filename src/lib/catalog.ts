@@ -51,19 +51,6 @@ type CatalogPageRecord = {
   created_at: string;
 };
 
-const TEMPORARY_COVERS: Record<string, string> = {
-  "synthetic-indices": "/covers/synthetic-indices-101.png",
-  "risk-lot-size": "/covers/risk-lot-size.jpg",
-  "supply-demand": "/covers/supply-demand.jpg",
-  "chart-patterns": "/covers/chart-patterns.jpg",
-  "trading-psychology": "/covers/trading-psychology.jpg",
-  "boom-crash": "/covers/boom-crash.jpg",
-  "volatility-mastery": "/covers/volatility-mastery.jpg",
-  "step-index": "/covers/step-index.jpg",
-  "jump-indices": "/covers/jump-indices.jpg",
-  "trading-bible": "/covers/trading-bible.jpg",
-};
-
 function safeSize(size: string | null | undefined): BookSize {
   return size === "short" || size === "medium" || size === "full" ? size : "medium";
 }
@@ -73,8 +60,8 @@ function safeLaunchMode(mode: string | null | undefined): CatalogLaunchMode {
 }
 
 export function defaultCoverFor(slug: string) {
-  const hit = Object.entries(TEMPORARY_COVERS).find(([key]) => slug.includes(key));
-  return hit?.[1] ?? "/brand/trading-library-powered.png";
+  void slug;
+  return "/brand/trading-library-powered.png";
 }
 
 export function normalizeCatalogBook(row: CatalogBookRecord): CatalogBook {
@@ -125,7 +112,8 @@ export async function listCatalogBooks(includeUnpublished = false) {
   }
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => normalizeCatalogBook(row as CatalogBookRecord));
+  const rows = (data ?? []) as CatalogBookRecord[];
+  return rows.map((row) => normalizeCatalogBook(row));
 }
 
 export async function getCatalogBookBySlug(slug: string, includeUnpublished = false) {
@@ -152,7 +140,8 @@ export async function getCatalogBookPages(bookId: string) {
     .eq("book_id", bookId)
     .order("page_number", { ascending: true });
   if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => normalizeCatalogPage(row as CatalogPageRecord));
+  const rows = (data ?? []) as CatalogPageRecord[];
+  return rows.map((row) => normalizeCatalogPage(row));
 }
 
 export async function getCatalogSnapshot(includeUnpublished = false) {

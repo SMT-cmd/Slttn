@@ -29,13 +29,14 @@ function BookPage() {
     );
   }
   const online = book.online_price_cents / 100;
-  const launched = book.launch_mode === "launch";
+  const launched = book.launch_mode !== "prelaunch";
   const dl =
     launched
       ? book.download_public_cents / 100
       : book.download_prelaunch_cents / 100;
 
   function goRead() {
+    if (!book) return;
     if (!user) {
       navigate({ to: "/login" });
       return;
