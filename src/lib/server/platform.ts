@@ -19,7 +19,7 @@ import { PRICING, SITE } from "@/lib/site";
 import { getSupabaseAdmin } from "@/lib/supabase";
 
 type SupabaseAdmin = ReturnType<typeof getSupabaseAdmin>;
-type LaunchModeValue = "prelaunch" | "public" | "launch";
+type LaunchModeValue = "prelaunch" | "launch";
 
 type AuthUserRow = {
   id: string;
@@ -158,14 +158,12 @@ const DEFAULT_SETTINGS: Record<string, string> = {
 };
 
 function normalizeLaunchMode(mode: string | null | undefined): LaunchModeValue {
-  if (mode === "launch") return "launch";
-  if (mode === "public") return "public";
+  if (mode === "launch" || mode === "public") return "launch";
   return "prelaunch";
 }
 
 function uiLaunchMode(mode: string | null | undefined): LaunchModeValue {
-  const normalized = normalizeLaunchMode(mode);
-  return normalized === "launch" ? "public" : normalized;
+  return normalizeLaunchMode(mode);
 }
 
 function slugify(value: string) {
@@ -353,6 +351,7 @@ async function syncDerivFromOAuth(db: SupabaseAdmin, profile: ProfileRecord) {
   }
 
   if (
+    profile.deriv_cr !== linked.accountId ||
     profile.deriv_client_id !== linked.accountId ||
     tagged !== Boolean(profile.is_tagged ?? profile.deriv_tagged)
   ) {
@@ -360,6 +359,7 @@ async function syncDerivFromOAuth(db: SupabaseAdmin, profile: ProfileRecord) {
       await db
         .from("profiles")
         .update({
+          deriv_cr: linked.accountId,
           deriv_client_id: linked.accountId,
           deriv_linked_at: profile.deriv_linked_at ?? new Date().toISOString(),
           deriv_tagged: tagged,
@@ -441,6 +441,7 @@ async function loadBooksWithPages(includeUnpublished = false) {
 }
 
 async function accessForBook(db: SupabaseAdmin, profile: Profile, book: BookRow) {
+  await refreshPendingPurchases(db, profile.user_id);
   if (profile.banned) return { canRead: false, canDownload: false, via: "none" as const };
   if (profile.role === "admin") return { canRead: true, canDownload: true, via: "admin" as const };
 
@@ -601,6 +602,93 @@ async function createPaystackCheckout({
   };
 }
 
+async function verifyStripeCheckout(reference: string) {
+  const secret = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!secret || !reference) return false;
+
+  const response = await fetch(`https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(reference)}`, {
+    headers: { Authorization: `Bearer ${secret}` },
+  });
+  if (!response.ok) return false;
+
+  const payload = (await response.json()) as {
+    status?: string;
+    payment_status?: string;
+  };
+  return payload.status === "complete" || payload.payment_status === "paid";
+}
+
+async function verifyPaystackCheckout(reference: string) {
+  const secret = process.env.PAYSTACK_SECRET_KEY?.trim();
+  if (!secret || !reference) return false;
+
+  const response = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+    headers: { Authorization: `Bearer ${secret}` },
+  });
+  if (!response.ok) return false;
+
+  const payload = (await response.json()) as {
+    data?: { status?: string };
+  };
+  return payload.data?.status === "success";
+}
+
+async function ensureSubscriptionForPurchase(
+  db: SupabaseAdmin,
+  purchase: Pick<PurchaseRecord, "id" | "user_id" | "kind" | "reference">,
+) {
+  if (purchase.kind !== "sub3" && purchase.kind !== "sub6" && purchase.kind !== "subscription") return;
+
+  const existing = assertSupabase(
+    await db
+      .from("subscriptions")
+      .select("id")
+      .eq("user_id", purchase.user_id)
+      .eq("status", "active")
+      .order("expires_at", { ascending: false })
+      .limit(1),
+  ) as Array<{ id: string }> | null;
+  if (existing?.[0]) return;
+
+  const plan = purchase.kind === "sub6" ? "sub6" : "sub3";
+  const days = plan === "sub6" ? 180 : 90;
+  assertSupabase(
+    await db.from("subscriptions").insert({
+      user_id: purchase.user_id,
+      plan,
+      status: "active",
+      expires_at: new Date(Date.now() + days * 86400000).toISOString(),
+    }),
+  );
+}
+
+async function refreshPendingPurchases(db: SupabaseAdmin, userId: string) {
+  const pending = assertSupabase(
+    await db
+      .from("purchases")
+      .select("id, user_id, book_id, kind, amount_cents, provider, status, reference, gateway_url, created_at")
+      .eq("user_id", userId)
+      .eq("status", "pending")
+      .in("provider", ["stripe", "paystack"])
+      .order("created_at", { ascending: false })
+      .limit(20),
+  ) as PurchaseRecord[] | null;
+
+  for (const purchase of pending ?? []) {
+    if (!purchase.reference) continue;
+    const paid =
+      purchase.provider === "stripe"
+        ? await verifyStripeCheckout(purchase.reference)
+        : await verifyPaystackCheckout(purchase.reference);
+    if (!paid) continue;
+
+    assertSupabase(
+      await db.from("purchases").update({ status: "paid" }).eq("id", purchase.id),
+    );
+    await ensureSubscriptionForPurchase(db, purchase);
+  }
+}
+
 export const listBooks = createServerFn({ method: "GET" }).handler(async () => {
   return loadBooksWithPages(false);
 });
@@ -615,6 +703,7 @@ export const getMe = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const db = getSupabaseAdmin();
+    await refreshPendingPurchases(db, context.userId);
     return ensureProfile(db, context.userId);
   });
 
@@ -804,10 +893,8 @@ export const startCheckout = createServerFn({ method: "POST" })
     if (data.kind === "coupon5") amount = Math.round(PRICING.taggedCouponPublic * 100);
     else if (data.kind === "sub3") {
       amount = Math.round(PRICING.subQuarterly * 100);
-      purchaseKind = "subscription";
     } else if (data.kind === "sub6") {
       amount = Math.round(PRICING.subBiannual * 100);
-      purchaseKind = "subscription";
     } else {
       if (!data.bookSlug) throw new Error("Choose a book first.");
       book = await getPublicBook(data.bookSlug);
@@ -859,7 +946,7 @@ export const startCheckout = createServerFn({ method: "POST" })
     };
     const email = profile.email ?? (await getAuthUser(db, context.userId)).email ?? "";
     const description =
-      purchaseKind === "subscription"
+      data.kind === "sub3" || data.kind === "sub6"
         ? data.kind === "sub6"
           ? "SLT Trade Hub · 6-Month Library Access"
           : "SLT Trade Hub · 3-Month Library Access"
@@ -970,6 +1057,7 @@ export const myLibrary = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const db = getSupabaseAdmin();
+    await refreshPendingPurchases(db, context.userId);
     const profile = await ensureProfile(db, context.userId);
     const coupons = assertSupabase(
       await db
@@ -1124,7 +1212,7 @@ export const adminCreateBook = createServerFn({ method: "POST" })
           subtitle: data.subtitle.trim(),
           category: data.category.trim(),
           size: data.size,
-          launch_mode: data.launch_mode === "launch" ? "public" : data.launch_mode,
+          launch_mode: normalizeLaunchMode(data.launch_mode),
           cover_url: "/brand/trading-library-powered.png",
           blurb: data.blurb.trim(),
           published: data.published,
@@ -1169,7 +1257,7 @@ export const adminUpdateBook = createServerFn({ method: "POST" })
     if (data.category !== undefined) updates.category = data.category.trim();
     if (data.size !== undefined) updates.size = data.size;
     if (data.launch_mode !== undefined) {
-      updates.launch_mode = data.launch_mode === "launch" ? "public" : data.launch_mode;
+      updates.launch_mode = normalizeLaunchMode(data.launch_mode);
     }
     if (data.published !== undefined) updates.published = data.published;
     if (data.archived !== undefined) updates.published = !data.archived;
@@ -1265,9 +1353,9 @@ export const adminDeleteBookPage = createServerFn({ method: "POST" })
     assertSupabase(await db.from("book_pages").delete().eq("id", data.pageId));
     const pages = await getCatalogBookPages(data.bookId);
     await Promise.all(
-      pages.map((page, index) =>
+      pages.map(async (page, index) =>
         assertSupabase(
-          db.from("book_pages").update({ page_number: index + 1 }).eq("id", page.id),
+          await db.from("book_pages").update({ page_number: index + 1 }).eq("id", page.id),
         ),
       ),
     );
@@ -1286,9 +1374,9 @@ export const adminReorderBookPages = createServerFn({ method: "POST" })
     const db = getSupabaseAdmin();
     await requireAdmin(db, context.userId);
     await Promise.all(
-      data.pageIds.map((pageId, index) =>
+      data.pageIds.map(async (pageId, index) =>
         assertSupabase(
-          db
+          await db
             .from("book_pages")
             .update({ page_number: index + 1 })
             .eq("id", pageId)

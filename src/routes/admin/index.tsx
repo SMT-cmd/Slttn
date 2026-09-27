@@ -1,23 +1,30 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type Dispatch, type SetStateAction } from "react";
 import { toast } from "sonner";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import {
   adminBooks,
   adminCoupons,
+  adminCreateBook,
+  adminCreateBookPages,
   adminCreateCoupon,
+  adminDeleteBook,
+  adminDeleteBookPage,
   adminLogs,
   adminOverview,
+  adminReorderBookPages,
   adminSales,
+  adminSaveBookCover,
   adminSaveSetting,
   adminSetBan,
   adminSetTagged,
+  adminSignCloudinaryUpload,
   adminUpdateBook,
   adminUsers,
   getMe,
+  type BookPageRow,
   type BookRow,
-  type Profile,
 } from "@/lib/server/platform";
 import { Shell } from "@/components/layout/shell";
 import { Button } from "@/components/ui/button";
@@ -26,15 +33,142 @@ import { formatMoney } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/")({ component: Admin });
 
+type TabKey = "home" | "books" | "users" | "coupons" | "sales";
+type OverviewData = Awaited<ReturnType<typeof adminOverview>>;
+type UsersData = Awaited<ReturnType<typeof adminUsers>>;
+type CouponsData = Awaited<ReturnType<typeof adminCoupons>>;
+type SalesData = Awaited<ReturnType<typeof adminSales>>;
+type LogsData = Awaited<ReturnType<typeof adminLogs>>;
+type SignedUpload = Awaited<ReturnType<typeof adminSignCloudinaryUpload>>;
+
+type SettingsForm = {
+  global_prelaunch: boolean;
+  partner_code: string;
+  support_email: string;
+  telegram_url: string;
+  whatsapp_url: string;
+  community_links: string;
+};
+
+type BookDraft = {
+  id: string;
+  title: string;
+  subtitle: string;
+  slug: string;
+  category: string;
+  size: "short" | "medium" | "full";
+  launch_mode: "prelaunch" | "launch";
+  blurb: string;
+  published: boolean;
+  sort_order: number;
+  cover_url: string;
+};
+
+type NewBookForm = {
+  title: string;
+  subtitle: string;
+  slug: string;
+  category: string;
+  size: "short" | "medium" | "full";
+  launch_mode: "prelaunch" | "launch";
+  blurb: string;
+  published: boolean;
+};
+
+const EMPTY_BOOK: NewBookForm = {
+  title: "",
+  subtitle: "",
+  slug: "",
+  category: "Synthetic Indices",
+  size: "medium",
+  launch_mode: "prelaunch",
+  blurb: "",
+  published: true,
+};
+
+function createBookDraft(book: BookRow): BookDraft {
+  return {
+    id: book.id,
+    title: book.title,
+    subtitle: book.subtitle,
+    slug: book.slug,
+    category: book.category,
+    size: book.size as "short" | "medium" | "full",
+    launch_mode: book.launch_mode === "launch" ? "launch" : "prelaunch",
+    blurb: book.description,
+    published: book.published,
+    sort_order: book.sort_order,
+    cover_url: book.cover_url,
+  };
+}
+
+function normalizeSettings(settings: Record<string, string>): SettingsForm {
+  return {
+    global_prelaunch: settings.global_prelaunch !== "false",
+    partner_code: settings.partner_code ?? "",
+    support_email: settings.support_email ?? "",
+    telegram_url: settings.telegram_url ?? "",
+    whatsapp_url: settings.whatsapp_url ?? "",
+    community_links: settings.community_links ?? "[]",
+  };
+}
+
+function TabButton({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`h-10 rounded-md px-4 text-sm capitalize ${
+        active ? "bg-navy text-navy-foreground" : "bg-muted"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+async function uploadFile(file: File, signed: SignedUpload) {
+  const body = new FormData();
+  body.set("file", file);
+  body.set("api_key", signed.apiKey);
+  body.set("folder", signed.folder);
+  body.set("public_id", signed.publicId);
+  body.set("resource_type", signed.resourceType);
+  body.set("signature", signed.signature);
+  body.set("tags", signed.tags);
+  body.set("timestamp", String(signed.timestamp));
+
+  const response = await fetch(signed.uploadUrl, {
+    method: "POST",
+    body,
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Cloudinary upload failed.");
+  }
+
+  const payload = (await response.json()) as { secure_url?: string };
+  if (!payload.secure_url) throw new Error("Cloudinary did not return a secure image URL.");
+  return payload.secure_url;
+}
+
 function Admin() {
   const { user, isPending } = useCurrentUserState();
-  const [tab, setTab] = useState<"home" | "books" | "users" | "coupons" | "sales">("home");
+  const [tab, setTab] = useState<TabKey>("home");
   const [allowed, setAllowed] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (isPending || !user) return;
     getMe()
-      .then((p) => setAllowed(p.role === "admin"))
+      .then((profile) => setAllowed(profile.role === "admin"))
       .catch(() => setAllowed(false));
   }, [isPending, user]);
 
@@ -61,166 +195,566 @@ function Admin() {
       <div className="mx-auto max-w-6xl px-4 py-12">
         <h1 className="font-display text-5xl">Admin</h1>
         <div className="mt-6 flex flex-wrap gap-2">
-          {(["home", "books", "users", "coupons", "sales"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={`h-10 rounded-md px-4 text-sm capitalize ${tab === t ? "bg-navy text-navy-foreground" : "bg-muted"}`}
-            >
-              {t}
-            </button>
-          ))}
+          <TabButton active={tab === "home"} label="home" onClick={() => setTab("home")} />
+          <TabButton active={tab === "books"} label="books" onClick={() => setTab("books")} />
+          <TabButton active={tab === "users"} label="users" onClick={() => setTab("users")} />
+          <TabButton active={tab === "coupons"} label="coupons" onClick={() => setTab("coupons")} />
+          <TabButton active={tab === "sales"} label="sales" onClick={() => setTab("sales")} />
         </div>
         <div className="mt-8">
-          {tab === "home" ? <Home /> : null}
-          {tab === "books" ? <Books /> : null}
-          {tab === "users" ? <Users /> : null}
-          {tab === "coupons" ? <Coupons /> : null}
-          {tab === "sales" ? <Sales /> : null}
+          {tab === "home" ? <HomePanel /> : null}
+          {tab === "books" ? <BooksPanel /> : null}
+          {tab === "users" ? <UsersPanel /> : null}
+          {tab === "coupons" ? <CouponsPanel /> : null}
+          {tab === "sales" ? <SalesPanel /> : null}
         </div>
       </div>
     </Shell>
   );
 }
 
-function Home() {
-  const [data, setData] = useState<Awaited<ReturnType<typeof adminOverview>> | null>(null);
+function HomePanel() {
+  const [data, setData] = useState<OverviewData | null>(null);
+  const [form, setForm] = useState<SettingsForm | null>(null);
+
   useEffect(() => {
-    adminOverview().then(setData).catch((e) => toast.error(String(e)));
+    adminOverview()
+      .then((payload) => {
+        setData(payload);
+        setForm(normalizeSettings(payload.settings));
+      })
+      .catch((error: unknown) =>
+        toast.error(error instanceof Error ? error.message : "Could not load admin overview."),
+      );
   }, []);
-  if (!data) return <p>Loading…</p>;
+
+  if (!data || !form) return <p>Loading…</p>;
+
   return (
-    <div className="grid gap-4 sm:grid-cols-4">
+    <div className="grid gap-4 xl:grid-cols-4">
       {[
         ["Readers", data.users],
         ["Tagged", data.tagged],
         ["Titles", data.books],
         ["Sales", formatMoney(data.salesCents / 100)],
-      ].map(([k, v]) => (
-        <div key={String(k)} className="rounded-xl border border-border bg-card p-5">
-          <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">{k}</p>
-          <p className="mt-2 font-display text-3xl">{v}</p>
+      ].map(([label, value]) => (
+        <div key={String(label)} className="rounded-xl border border-border bg-card p-5">
+          <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">{label}</p>
+          <p className="mt-2 font-display text-3xl">{value}</p>
         </div>
       ))}
+
       <form
-        className="sm:col-span-4 rounded-xl border border-border bg-card p-5"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          const fd = new FormData(e.currentTarget);
-          await adminSaveSetting({
-            data: { key: "global_prelaunch", value: String(fd.get("pre") === "on") },
-          });
-          toast.success("Saved.");
+        className="xl:col-span-4 rounded-xl border border-border bg-card p-5"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          const saves: Array<[string, string]> = [
+            ["global_prelaunch", String(form.global_prelaunch)],
+            ["partner_code", form.partner_code],
+            ["support_email", form.support_email],
+            ["telegram_url", form.telegram_url],
+            ["whatsapp_url", form.whatsapp_url],
+            ["community_links", form.community_links],
+          ];
+          try {
+            await Promise.all(
+              saves.map(([key, value]) => adminSaveSetting({ data: { key, value } })),
+            );
+            toast.success("Settings saved.");
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Could not save settings.");
+          }
         }}
       >
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="pre" defaultChecked /> Global pre-launch (free tagged coupons)
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="rounded-lg border border-border bg-background p-4 text-sm">
+            <span className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={form.global_prelaunch}
+                onChange={(event) =>
+                  setForm((current) =>
+                    current ? { ...current, global_prelaunch: event.target.checked } : current,
+                  )
+                }
+              />
+              Global pre-launch coupon mode
+            </span>
+          </label>
+          <Field
+            label="Partner code"
+            value={form.partner_code}
+            onChange={(value) => setForm((current) => (current ? { ...current, partner_code: value } : current))}
+          />
+          <Field
+            label="Support email"
+            value={form.support_email}
+            onChange={(value) => setForm((current) => (current ? { ...current, support_email: value } : current))}
+          />
+          <Field
+            label="Telegram link"
+            value={form.telegram_url}
+            onChange={(value) => setForm((current) => (current ? { ...current, telegram_url: value } : current))}
+          />
+          <Field
+            label="WhatsApp link"
+            value={form.whatsapp_url}
+            onChange={(value) => setForm((current) => (current ? { ...current, whatsapp_url: value } : current))}
+          />
+        </div>
+        <label className="mt-4 block text-sm">
+          <span className="mb-2 block text-muted-foreground">Community links JSON</span>
+          <textarea
+            value={form.community_links}
+            onChange={(event) =>
+              setForm((current) => (current ? { ...current, community_links: event.target.value } : current))
+            }
+            className="min-h-40 w-full rounded-md border border-border bg-background px-3 py-2"
+          />
         </label>
-        <Button type="submit" size="sm" className="mt-3" variant="navy">
-          Save setting
+        <Button type="submit" variant="navy" className="mt-4">
+          Save settings
         </Button>
       </form>
     </div>
   );
 }
 
-function Books() {
+function BooksPanel() {
   const [rows, setRows] = useState<BookRow[]>([]);
-  const load = () => adminBooks().then(setRows);
+  const [newBook, setNewBook] = useState<NewBookForm>(EMPTY_BOOK);
+
+  const reload = async () => {
+    const books = await adminBooks();
+    setRows(books);
+  };
+
   useEffect(() => {
-    load().catch((e) => toast.error(String(e)));
+    reload().catch((error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Could not load books."),
+    );
   }, []);
+
   return (
-    <div className="space-y-4">
-      {rows.map((b) => (
-        <div key={b.id} className="rounded-xl border border-border bg-card p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="font-medium">
-              {b.title} {b.subtitle}
-            </p>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={async () => {
-                  await adminUpdateBook({
-                    data: {
-                      id: b.id,
-                      launch_mode: b.launch_mode === "prelaunch" ? "public" : "prelaunch",
-                    },
-                  });
-                  load();
-                }}
-              >
-                {b.launch_mode === "prelaunch" ? "Switch to public" : "Switch to pre-launch"}
-              </Button>
-              <Button
-                size="sm"
-                variant="loss"
-                onClick={async () => {
-                  await adminUpdateBook({ data: { id: b.id, archived: true } });
-                  load();
-                }}
-              >
-                Archive
-              </Button>
-            </div>
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {b.category} · {formatMoney(b.online_price_cents / 100)} online · {b.launch_mode}
-          </p>
+    <div className="space-y-6">
+      <form
+        className="rounded-xl border border-border bg-card p-5"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          try {
+            await adminCreateBook({ data: newBook });
+            setNewBook(EMPTY_BOOK);
+            await reload();
+            toast.success("Book created.");
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Could not create the book.");
+          }
+        }}
+      >
+        <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">Create book</p>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <Field
+            label="Title"
+            value={newBook.title}
+            onChange={(value) => setNewBook((current) => ({ ...current, title: value }))}
+          />
+          <Field
+            label="Subtitle"
+            value={newBook.subtitle}
+            onChange={(value) => setNewBook((current) => ({ ...current, subtitle: value }))}
+          />
+          <Field
+            label="Slug"
+            value={newBook.slug}
+            onChange={(value) => setNewBook((current) => ({ ...current, slug: value }))}
+          />
+          <Field
+            label="Category"
+            value={newBook.category}
+            onChange={(value) => setNewBook((current) => ({ ...current, category: value }))}
+          />
+          <SelectField
+            label="Size"
+            value={newBook.size}
+            options={["short", "medium", "full"]}
+            onChange={(value) =>
+              setNewBook((current) => ({ ...current, size: value as NewBookForm["size"] }))
+            }
+          />
+          <SelectField
+            label="Launch mode"
+            value={newBook.launch_mode}
+            options={["prelaunch", "launch"]}
+            onChange={(value) =>
+              setNewBook((current) => ({ ...current, launch_mode: value as NewBookForm["launch_mode"] }))
+            }
+          />
         </div>
+        <label className="mt-4 block text-sm">
+          <span className="mb-2 block text-muted-foreground">Blurb</span>
+          <textarea
+            value={newBook.blurb}
+            onChange={(event) => setNewBook((current) => ({ ...current, blurb: event.target.value }))}
+            className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2"
+          />
+        </label>
+        <label className="mt-4 flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={newBook.published}
+            onChange={(event) => setNewBook((current) => ({ ...current, published: event.target.checked }))}
+          />
+          Published
+        </label>
+        <Button type="submit" variant="navy" className="mt-4">
+          Create book
+        </Button>
+      </form>
+
+      {rows.map((book) => (
+        <BookEditor key={book.id} book={book} onReload={reload} />
       ))}
     </div>
   );
 }
 
-function Users() {
-  const [rows, setRows] = useState<(Profile & { created_at: string })[]>([]);
-  const load = () => adminUsers().then(setRows);
+function BookEditor({ book, onReload }: { book: BookRow; onReload: () => Promise<void> }) {
+  const [draft, setDraft] = useState<BookDraft>(() => createBookDraft(book));
+  const [pages, setPages] = useState<BookPageRow[]>(book.pages ?? []);
+  const [busy, setBusy] = useState(false);
+
   useEffect(() => {
-    load().catch((e) => toast.error(String(e)));
-  }, []);
+    setDraft(createBookDraft(book));
+    setPages(book.pages ?? []);
+  }, [book]);
+
+  const reorderedPageIds = useMemo(() => pages.map((page) => page.id), [pages]);
+
+  async function saveBook() {
+    setBusy(true);
+    try {
+      await adminUpdateBook({
+        data: {
+          id: draft.id,
+          title: draft.title,
+          subtitle: draft.subtitle,
+          slug: draft.slug,
+          category: draft.category,
+          size: draft.size,
+          launch_mode: draft.launch_mode,
+          blurb: draft.blurb,
+          published: draft.published,
+          sort_order: draft.sort_order,
+          cover_url: draft.cover_url,
+        },
+      });
+      await onReload();
+      toast.success(`Saved ${draft.title}.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save the book.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleCoverUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    try {
+      const signed = await adminSignCloudinaryUpload({
+        data: { kind: "cover", bookSlug: draft.slug || draft.title, fileName: file.name },
+      });
+      const coverUrl = await uploadFile(file, signed);
+      await adminSaveBookCover({ data: { id: draft.id, coverUrl } });
+      setDraft((current) => ({ ...current, cover_url: coverUrl }));
+      await onReload();
+      toast.success("Cover updated.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Cover upload failed.");
+    } finally {
+      event.target.value = "";
+      setBusy(false);
+    }
+  }
+
+  async function handlePageUpload(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) return;
+    setBusy(true);
+    try {
+      const urls = await Promise.all(
+        files.map(async (file) => {
+          const signed = await adminSignCloudinaryUpload({
+            data: { kind: "page", bookSlug: draft.slug || draft.title, fileName: file.name },
+          });
+          return uploadFile(file, signed);
+        }),
+      );
+      const nextPages = await adminCreateBookPages({ data: { bookId: draft.id, imageUrls: urls } });
+      setPages(nextPages);
+      await onReload();
+      toast.success(`${files.length} page image${files.length > 1 ? "s" : ""} uploaded.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Page upload failed.");
+    } finally {
+      event.target.value = "";
+      setBusy(false);
+    }
+  }
+
+  async function movePage(pageId: string, direction: -1 | 1) {
+    const index = pages.findIndex((page) => page.id === pageId);
+    const nextIndex = index + direction;
+    if (index < 0 || nextIndex < 0 || nextIndex >= pages.length) return;
+    const nextPages = [...pages];
+    const [moved] = nextPages.splice(index, 1);
+    nextPages.splice(nextIndex, 0, moved);
+    setPages(nextPages);
+    try {
+      const refreshed = await adminReorderBookPages({
+        data: { bookId: draft.id, pageIds: nextPages.map((page) => page.id) },
+      });
+      setPages(refreshed);
+    } catch (error) {
+      setPages(book.pages ?? []);
+      toast.error(error instanceof Error ? error.message : "Could not reorder pages.");
+    }
+  }
+
   return (
-    <div className="overflow-x-auto">
+    <section className="rounded-xl border border-border bg-card p-5">
+      <div className="grid gap-5 lg:grid-cols-[220px_1fr]">
+        <div>
+          <img
+            src={draft.cover_url}
+            alt={draft.title}
+            className="h-72 w-full rounded-xl object-cover shadow-[var(--shadow)]"
+          />
+          <label className="mt-3 block text-sm">
+            <span className="mb-2 block text-muted-foreground">Change cover</span>
+            <input type="file" accept="image/*" onChange={handleCoverUpload} disabled={busy} />
+          </label>
+          <p className="mt-3 text-xs text-muted-foreground">
+            {pages.length} page image{pages.length === 1 ? "" : "s"} · {formatMoney(book.online_price_cents / 100)} online
+          </p>
+        </div>
+
+        <div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Title" value={draft.title} onChange={(value) => setDraft((current) => ({ ...current, title: value }))} />
+            <Field
+              label="Subtitle"
+              value={draft.subtitle}
+              onChange={(value) => setDraft((current) => ({ ...current, subtitle: value }))}
+            />
+            <Field label="Slug" value={draft.slug} onChange={(value) => setDraft((current) => ({ ...current, slug: value }))} />
+            <Field
+              label="Category"
+              value={draft.category}
+              onChange={(value) => setDraft((current) => ({ ...current, category: value }))}
+            />
+            <Field
+              label="Sort order"
+              value={String(draft.sort_order)}
+              onChange={(value) =>
+                setDraft((current) => ({ ...current, sort_order: Number.parseInt(value || "0", 10) || 0 }))
+              }
+            />
+            <SelectField
+              label="Size"
+              value={draft.size}
+              options={["short", "medium", "full"]}
+              onChange={(value) => setDraft((current) => ({ ...current, size: value as BookDraft["size"] }))}
+            />
+            <SelectField
+              label="Launch mode"
+              value={draft.launch_mode}
+              options={["prelaunch", "launch"]}
+              onChange={(value) =>
+                setDraft((current) => ({ ...current, launch_mode: value as BookDraft["launch_mode"] }))
+              }
+            />
+            <label className="flex items-end gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm">
+              <input
+                type="checkbox"
+                checked={draft.published}
+                onChange={(event) => setDraft((current) => ({ ...current, published: event.target.checked }))}
+              />
+              Published
+            </label>
+          </div>
+
+          <label className="mt-4 block text-sm">
+            <span className="mb-2 block text-muted-foreground">Blurb</span>
+            <textarea
+              value={draft.blurb}
+              onChange={(event) => setDraft((current) => ({ ...current, blurb: event.target.value }))}
+              className="min-h-32 w-full rounded-md border border-border bg-background px-3 py-2"
+            />
+          </label>
+
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Button variant="navy" onClick={saveBook} disabled={busy}>
+              Save book
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() =>
+                setDraft((current) => ({
+                  ...current,
+                  launch_mode: current.launch_mode === "prelaunch" ? "launch" : "prelaunch",
+                }))
+              }
+            >
+              Toggle launch mode
+            </Button>
+            <Button
+              variant={draft.published ? "outline" : "profit"}
+              onClick={() => setDraft((current) => ({ ...current, published: !current.published }))}
+            >
+              {draft.published ? "Mark unpublished" : "Publish"}
+            </Button>
+            <Button
+              variant="loss"
+              onClick={async () => {
+                if (!window.confirm(`Delete ${draft.title}?`)) return;
+                try {
+                  await adminDeleteBook({ data: { id: draft.id } });
+                  await onReload();
+                  toast.success("Book deleted.");
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "Could not delete the book.");
+                }
+              }}
+            >
+              Delete book
+            </Button>
+          </div>
+
+          <div className="mt-6 rounded-xl border border-border bg-background p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">Book pages</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Upload image pages, reorder them, or remove a page.
+                </p>
+              </div>
+              <label className="text-sm">
+                <span className="mb-2 block text-muted-foreground">Upload page images</span>
+                <input type="file" accept="image/*" multiple onChange={handlePageUpload} disabled={busy} />
+              </label>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {pages.map((page, index) => (
+                <div key={page.id} className="rounded-lg border border-border bg-card p-3">
+                  <img
+                    src={page.image_url}
+                    alt={`Page ${page.page_number}`}
+                    className="h-48 w-full rounded-md object-cover"
+                  />
+                  <p className="mt-2 text-sm font-medium">Page {page.page_number}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" disabled={index === 0} onClick={() => movePage(page.id, -1)}>
+                      Move up
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={index === pages.length - 1}
+                      onClick={() => movePage(page.id, 1)}
+                    >
+                      Move down
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="loss"
+                      onClick={async () => {
+                        try {
+                          const nextPages = await adminDeleteBookPage({
+                            data: { pageId: page.id, bookId: draft.id },
+                          });
+                          setPages(nextPages);
+                          await onReload();
+                          toast.success("Page removed.");
+                        } catch (error) {
+                          toast.error(error instanceof Error ? error.message : "Could not remove the page.");
+                        }
+                      }}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {reorderedPageIds.length === 0 ? (
+              <p className="mt-4 text-sm text-muted-foreground">No page images uploaded yet.</p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function UsersPanel() {
+  const [rows, setRows] = useState<UsersData>([]);
+
+  const reload = async () => {
+    const users = await adminUsers();
+    setRows(users);
+  };
+
+  useEffect(() => {
+    reload().catch((error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Could not load users."),
+    );
+  }, []);
+
+  return (
+    <div className="overflow-x-auto rounded-xl border border-border bg-card p-4">
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-border text-muted-foreground">
             <th className="py-2">Name</th>
             <th>Email</th>
             <th>CR</th>
+            <th>Role</th>
             <th>Tag</th>
-            <th></th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((u) => (
-            <tr key={u.user_id} className="border-b border-border">
-              <td className="py-2">{u.full_name}</td>
-              <td>{u.email}</td>
-              <td>{u.deriv_cr}</td>
-              <td>{u.deriv_tagged ? "yes" : "no"}</td>
+          {rows.map((user) => (
+            <tr key={user.user_id} className="border-b border-border align-top">
+              <td className="py-3">{user.full_name ?? "Unnamed"}</td>
+              <td>{user.email ?? "—"}</td>
+              <td>{user.deriv_cr ?? "—"}</td>
+              <td>{user.role}</td>
+              <td>{user.deriv_tagged ? "tagged" : "not tagged"}</td>
               <td className="space-x-2 whitespace-nowrap">
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={async () => {
-                    await adminSetTagged({ data: { userId: u.user_id, tagged: !u.deriv_tagged } });
-                    load();
+                    await adminSetTagged({ data: { userId: user.user_id, tagged: !user.deriv_tagged } });
+                    await reload();
                   }}
                 >
                   Toggle tag
                 </Button>
                 <Button
                   size="sm"
-                  variant={u.banned ? "profit" : "loss"}
+                  variant={user.banned ? "profit" : "loss"}
                   onClick={async () => {
-                    await adminSetBan({ data: { userId: u.user_id, banned: !u.banned } });
-                    load();
+                    await adminSetBan({ data: { userId: user.user_id, banned: !user.banned } });
+                    await reload();
                   }}
                 >
-                  {u.banned ? "Unban" : "Ban"}
+                  {user.banned ? "Unban" : "Ban"}
                 </Button>
               </td>
             </tr>
@@ -231,31 +765,85 @@ function Users() {
   );
 }
 
-function Coupons() {
-  const [rows, setRows] = useState<Awaited<ReturnType<typeof adminCoupons>>>([]);
+function CouponsPanel() {
+  const [rows, setRows] = useState<CouponsData>([]);
+  const [books, setBooks] = useState<BookRow[]>([]);
   const [code, setCode] = useState("");
-  const load = () => adminCoupons().then(setRows);
+  const [uses, setUses] = useState("20");
+  const [bookId, setBookId] = useState("");
+
+  const reload = async () => {
+    const [couponRows, bookRows] = await Promise.all([adminCoupons(), adminBooks()]);
+    setRows(couponRows);
+    setBooks(bookRows);
+  };
+
   useEffect(() => {
-    load().catch((e) => toast.error(String(e)));
+    reload().catch((error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Could not load coupons."),
+    );
   }, []);
+
   return (
-    <div>
+    <div className="space-y-6">
       <form
-        className="mb-6 flex gap-2"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          await adminCreateCoupon({ data: { code, uses: 20 } });
-          setCode("");
-          load();
+        className="rounded-xl border border-border bg-card p-5"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          try {
+            await adminCreateCoupon({
+              data: {
+                code,
+                uses: Number.parseInt(uses || "1", 10) || 1,
+                bookId: bookId || undefined,
+              },
+            });
+            setCode("");
+            setUses("20");
+            setBookId("");
+            await reload();
+            toast.success("Coupon created.");
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Could not create the coupon.");
+          }
         }}
       >
-        <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="NEW-CODE" />
-        <Button variant="navy">Create</Button>
+        <div className="grid gap-4 md:grid-cols-3">
+          <Field label="Code" value={code} onChange={setCode} />
+          <Field label="Uses" value={uses} onChange={setUses} />
+          <label className="text-sm">
+            <span className="mb-2 block text-muted-foreground">Book scope</span>
+            <select
+              value={bookId}
+              onChange={(event) => setBookId(event.target.value)}
+              className="h-11 w-full rounded-md border border-border bg-background px-3"
+            >
+              <option value="">All books</option>
+              {books.map((book) => (
+                <option key={book.id} value={book.id}>
+                  {book.title}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <Button variant="navy" className="mt-4">
+          Create coupon
+        </Button>
       </form>
-      <ul className="space-y-2 text-sm">
-        {rows.map((c) => (
-          <li key={c.id} className="rounded-md border border-border bg-card px-3 py-2">
-            {c.code} · {c.kind} · {c.uses_remaining} left · {c.user_id ?? "unassigned"}
+
+      <ul className="space-y-3 text-sm">
+        {rows.map((coupon) => (
+          <li key={coupon.id} className="rounded-xl border border-border bg-card px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="font-medium">{coupon.code}</span>
+              <span className="text-muted-foreground">
+                {coupon.kind} · {coupon.uses_remaining} left
+              </span>
+            </div>
+            <p className="mt-1 text-muted-foreground">
+              Book: {coupon.book_id ?? "all books"} · User: {coupon.user_id ?? "unassigned"}
+            </p>
           </li>
         ))}
       </ul>
@@ -263,21 +851,34 @@ function Coupons() {
   );
 }
 
-function Sales() {
-  const [sales, setSales] = useState<Awaited<ReturnType<typeof adminSales>>>([]);
-  const [logs, setLogs] = useState<Awaited<ReturnType<typeof adminLogs>>>([]);
+function SalesPanel() {
+  const [sales, setSales] = useState<SalesData>([]);
+  const [logs, setLogs] = useState<LogsData>([]);
+
   useEffect(() => {
-    adminSales().then(setSales);
-    adminLogs().then(setLogs);
+    Promise.all([adminSales(), adminLogs()])
+      .then(([saleRows, logRows]) => {
+        setSales(saleRows);
+        setLogs(logRows);
+      })
+      .catch((error: unknown) =>
+        toast.error(error instanceof Error ? error.message : "Could not load sales."),
+      );
   }, []);
+
   return (
     <div className="grid gap-8 lg:grid-cols-2">
       <div>
         <h2 className="font-display text-2xl">Sales</h2>
         <ul className="mt-3 space-y-2 text-sm">
-          {sales.map((s) => (
-            <li key={s.id} className="rounded-md border border-border bg-card px-3 py-2">
-              {s.kind} · {formatMoney(s.amount_cents / 100)} · {s.provider} · {s.status}
+          {sales.map((sale) => (
+            <li key={sale.id} className="rounded-md border border-border bg-card px-3 py-2">
+              <p className="font-medium">
+                {sale.kind} · {formatMoney(sale.amount_cents / 100)}
+              </p>
+              <p className="text-muted-foreground">
+                {sale.provider} · {sale.status} · ref {sale.reference ?? "pending"}
+              </p>
             </li>
           ))}
           {sales.length === 0 ? <li className="text-muted-foreground">No sales yet.</li> : null}
@@ -286,14 +887,60 @@ function Sales() {
       <div>
         <h2 className="font-display text-2xl">Reading log</h2>
         <ul className="mt-3 space-y-2 text-sm">
-          {logs.map((l, i) => (
-            <li key={i} className="rounded-md border border-border bg-card px-3 py-2">
-              {l.user_id.slice(0, 8)} · book {l.book_id} · page {l.page_index + 1}
+          {logs.map((log, index) => (
+            <li key={`${log.user_id}-${log.book_id}-${index}`} className="rounded-md border border-border bg-card px-3 py-2">
+              {log.user_id.slice(0, 8)} · book {log.book_id} · page {log.page_index + 1}
             </li>
           ))}
           {logs.length === 0 ? <li className="text-muted-foreground">No pages opened yet.</li> : null}
         </ul>
       </div>
     </div>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: Dispatch<SetStateAction<string>> | ((value: string) => void);
+}) {
+  return (
+    <label className="text-sm">
+      <span className="mb-2 block text-muted-foreground">{label}</span>
+      <Input value={value} onChange={(event) => onChange(event.target.value)} />
+    </label>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="text-sm">
+      <span className="mb-2 block text-muted-foreground">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-11 w-full rounded-md border border-border bg-background px-3"
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
