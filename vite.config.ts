@@ -1,5 +1,6 @@
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Plugin } from "vite";
 import { defineConfig } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
@@ -142,6 +143,8 @@ function authPopupPlugin(): Plugin {
   };
 }
 
+const tslibRuntimePath = fileURLToPath(new URL("./node_modules/tslib/tslib.es6.mjs", import.meta.url));
+
 // `0.0.0.0:8080` is the live-preview contract — don't change host/port.
 // The dev server starts once `src/router.tsx` and `src/routes/` exist — see
 // AGENTS.md § "First scaffold".
@@ -156,7 +159,18 @@ export default defineConfig(({ command, isPreview }) => ({
     port: 8081,
     strictPort: true,
   },
-  resolve: { tsconfigPaths: true },
+  resolve: {
+    alias: {
+      // Radix's server bundle imports helpers from `tslib`. Pointing the
+      // package name at the concrete ESM runtime keeps Vite/Nitro from leaving
+      // a bare runtime import for Vercel to resolve inside the function.
+      tslib: tslibRuntimePath,
+    },
+    tsconfigPaths: true,
+  },
+  ssr: {
+    noExternal: ["tslib", /^@radix-ui\//],
+  },
   plugins: [
     pgliteBootstrapPlugin(),
     // Before tanstackStart so /auth/popup never falls through to the SPA.
@@ -175,6 +189,7 @@ export default defineConfig(({ command, isPreview }) => ({
             // manifest + head-tag middleware). Nitro v3 defaults serverDir to
             // false, so removing this silently unwires /?install=1 on deploys.
             serverDir: "./server",
+            noExternals: ["tslib", /^@radix-ui\//],
           }),
         ]
       : []),
