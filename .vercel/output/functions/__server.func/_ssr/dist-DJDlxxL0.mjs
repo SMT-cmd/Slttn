@@ -1,180 +1,171 @@
-import { o as __toESM, t as __commonJSMin } from "../../_runtime.mjs";
-import { n as require_react, t as useComposedRefs } from "./react-compose-refs+[...].mjs";
-import { n as require_jsx_runtime, t as createContextScope } from "../radix-ui__react-context+react.mjs";
-import { t as composeEventHandlers } from "../radix-ui__primitive.mjs";
-import { __assign, __rest, __spreadArray } from "tslib";
-//#region node_modules/react-dom/cjs/react-dom.production.js
+import { o as __toESM } from "../_runtime.mjs";
+import { Q as require_react, S as Navigate, T as require_jsx_runtime, n as require_react_dom } from "../_libs/@tanstack/react-router+[...].mjs";
+import { a as hasGateSessionMarker } from "./server-D9B0HzbG.mjs";
+import { i as signOut, t as authClient } from "./client-CGHzwkia.mjs";
+import { n as clsx, t as cva } from "../_libs/class-variance-authority+clsx.mjs";
+import { t as twMerge } from "../_libs/tailwind-merge.mjs";
+import { t as ReactRemoveScroll } from "../_libs/react-remove-scroll+[...].mjs";
+import { t as hideOthers } from "../_libs/aria-hidden.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/dist-DJDlxxL0.js
+var import_react = /* @__PURE__ */ __toESM(require_react());
+var import_jsx_runtime = require_jsx_runtime();
+var import_react_dom = /* @__PURE__ */ __toESM(require_react_dom());
 /**
-* @license React
-* react-dom.production.js
+* Current user + loading state. Same behavior in live preview and when deployed:
+*   - Auth enabled -> the real signed-in user; `user` is `null` while
+*                            the session resolves (`isPending: true`) and when
+*                            signed out (`isPending: false`). Session comes from
+*                            Better Auth `useSession()` → `/api/auth/get-session`
+*                            (cookie when deployed; bearer in live preview).
+*   - Auth disabled (`VITE_AUTH_ENABLED=false`) -> `DEV_USER`, never pending.
 *
-* Copyright (c) Meta Platforms, Inc. and affiliates.
+* Protect a route by waiting out `isPending` before acting on `user` —
+* redirecting on `user: null` alone bounces signed-in visitors to sign-in on
+* every hard reload:
 *
-* This source code is licensed under the MIT license found in the
-* LICENSE file in the root directory of this source tree.
+*   import { RedirectToSignIn } from "@/lib/auth/gates";
+*   const { user, isPending } = useCurrentUserState();
+*   if (isPending) return null;              // still resolving — don't redirect yet
+*   if (!user) return <RedirectToSignIn />;  // definitely signed out
+*
+* `authEnabled` is a module-level constant fixed at load, so the guarded hook
+* call keeps a stable hook order across every render of a given component.
 */
-var require_react_dom_production = /* @__PURE__ */ __commonJSMin(((exports) => {
-	var React = require_react();
-	function formatProdErrorMessage(code) {
-		var url = "https://react.dev/errors/" + code;
-		if (1 < arguments.length) {
-			url += "?args[]=" + encodeURIComponent(arguments[1]);
-			for (var i = 2; i < arguments.length; i++) url += "&args[]=" + encodeURIComponent(arguments[i]);
-		}
-		return "Minified React error #" + code + "; visit " + url + " for the full message or use the non-minified dev environment for full errors and additional helpful warnings.";
-	}
-	function noop() {}
-	var Internals = {
-		d: {
-			f: noop,
-			r: function() {
-				throw Error(formatProdErrorMessage(522));
-			},
-			D: noop,
-			C: noop,
-			L: noop,
-			m: noop,
-			X: noop,
-			S: noop,
-			M: noop
-		},
-		p: 0,
-		findDOMNode: null
+function useCurrentUserState() {
+	const { data, isPending } = authClient.useSession();
+	const user = data?.user;
+	return {
+		user: user ? {
+			id: user.id,
+			displayName: user.name ?? null,
+			primaryEmail: user.email ?? null,
+			profileImageUrl: user.image ?? null,
+			isDevFallback: false
+		} : null,
+		isPending
 	};
-	var REACT_PORTAL_TYPE = Symbol.for("react.portal");
-	var REACT_RECOVERABLE_TYPE = Symbol.for("react.recoverable");
-	var REACT_OPTIMISTIC_KEY = Symbol.for("react.optimistic_key");
-	function createPortal$1(children, containerInfo, implementation) {
-		var key = 3 < arguments.length && void 0 !== arguments[3] ? arguments[3] : null;
-		return {
-			$$typeof: REACT_PORTAL_TYPE,
-			key: null == key ? null : key === REACT_OPTIMISTIC_KEY ? REACT_OPTIMISTIC_KEY : "" + key,
-			children,
-			containerInfo,
-			implementation
-		};
-	}
-	var ReactSharedInternals = React.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
-	function getCrossOriginStringAs(as, input) {
-		if ("font" === as) return "";
-		if ("string" === typeof input) return "use-credentials" === input ? input : "";
-	}
-	exports.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE = Internals;
-	exports.browser = function(reason) {
-		return {
-			$$typeof: REACT_RECOVERABLE_TYPE,
-			_reason: reason
-		};
-	};
-	exports.createPortal = function(children, container) {
-		var key = 2 < arguments.length && void 0 !== arguments[2] ? arguments[2] : null;
-		if (!container || 1 !== container.nodeType && 9 !== container.nodeType && 11 !== container.nodeType) throw Error(formatProdErrorMessage(299));
-		return createPortal$1(children, container, null, key);
-	};
-	exports.flushSync = function(fn) {
-		var previousTransition = ReactSharedInternals.T, previousUpdatePriority = Internals.p;
-		try {
-			if (ReactSharedInternals.T = null, Internals.p = 2, fn) return fn();
-		} finally {
-			ReactSharedInternals.T = previousTransition, Internals.p = previousUpdatePriority, Internals.d.f();
-		}
-	};
-	exports.preconnect = function(href, options) {
-		"string" === typeof href && (options ? (options = options.crossOrigin, options = "string" === typeof options ? "use-credentials" === options ? options : "" : void 0) : options = null, Internals.d.C(href, options));
-	};
-	exports.prefetchDNS = function(href) {
-		"string" === typeof href && Internals.d.D(href);
-	};
-	exports.preinit = function(href, options) {
-		if ("string" === typeof href && options && "string" === typeof options.as) {
-			var as = options.as, crossOrigin = getCrossOriginStringAs(as, options.crossOrigin), integrity = "string" === typeof options.integrity ? options.integrity : void 0, fetchPriority = "string" === typeof options.fetchPriority ? options.fetchPriority : void 0;
-			"style" === as ? Internals.d.S(href, "string" === typeof options.precedence ? options.precedence : void 0, {
-				crossOrigin,
-				integrity,
-				fetchPriority
-			}) : "script" === as && Internals.d.X(href, {
-				crossOrigin,
-				integrity,
-				fetchPriority,
-				nonce: "string" === typeof options.nonce ? options.nonce : void 0
-			});
-		}
-	};
-	exports.preinitModule = function(href, options) {
-		if ("string" === typeof href) if ("object" === typeof options && null !== options) {
-			if (null == options.as || "script" === options.as) {
-				var crossOrigin = getCrossOriginStringAs(options.as, options.crossOrigin);
-				Internals.d.M(href, {
-					crossOrigin,
-					integrity: "string" === typeof options.integrity ? options.integrity : void 0,
-					nonce: "string" === typeof options.nonce ? options.nonce : void 0,
-					fetchPriority: "string" === typeof options.fetchPriority ? options.fetchPriority : void 0
-				});
+}
+/**
+* Convenience view of `useCurrentUserState().user` for display (e.g.
+* `user?.displayName ?? "Guest"`). NOTE: `null` means *loading OR signed out* —
+* for redirects/guards use `useCurrentUserState()` and check `isPending`.
+*/
+function useCurrentUser() {
+	return useCurrentUserState().user;
+}
+var subscribeToNothing = () => () => {};
+var noGateSessionOnServer = () => false;
+/**
+* Auth state components — plain wrappers around `useCurrentUserState()`.
+*
+* With auth on, visitors are signed out until they authenticate — in the sandbox
+* live preview too, which does real sign-in. The shared dev user appears only
+* when auth is disabled (`VITE_AUTH_ENABLED=false`, the shipped default).
+* While the session is still resolving, gates that care about signed-out state
+* render nothing so there's no signed-out flash on hard reload.
+*/
+/** Where `RedirectToSignIn` sends signed-out visitors. Create this route. */
+var SIGN_IN_PATH = "/login";
+/** Render children only when a user is present (real session, or the disabled-auth dev user). */
+function SignedIn({ children }) {
+	const { user } = useCurrentUserState();
+	return user ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_jsx_runtime.Fragment, { children }) : null;
+}
+/**
+* Render children only once we KNOW the visitor is signed out (`isPending` has
+* cleared and there is no user). Hidden while the session is still loading.
+*/
+function SignedOut({ children }) {
+	const { user, isPending } = useCurrentUserState();
+	if (isPending || user) return null;
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_jsx_runtime.Fragment, { children });
+}
+/**
+* Client-side redirect to the sign-in route (TanStack `<Navigate>` — NOT a full
+* `window.location` reload). A hard navigation re-bootstraps the SPA and re-runs
+* session loading, which feels like a second "Loading…" on /login.
+*
+* Guard routes by waiting out `isPending` first (see `use-current-user`), then
+* render this.
+*/
+function RedirectToSignIn({ to = SIGN_IN_PATH }) {
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Navigate, { to });
+}
+/**
+* Minimal signed-in identity chip + sign-out. Restyle freely (see the
+* `design-ui` skill). Sign-out is only shown when auth is enabled (the
+* disabled-auth dev user has nothing to sign out of) and the session is not
+* gate-materialized — behind the gate the next request signs the viewer
+* straight back in, so a sign-out control there is a broken loop.
+*/
+function UserButton() {
+	const user = useCurrentUser();
+	const [signingOut, setSigningOut] = (0, import_react.useState)(false);
+	const gateSession = (0, import_react.useSyncExternalStore)(subscribeToNothing, hasGateSessionMarker, noGateSessionOnServer);
+	if (!user) return null;
+	const label = user.displayName ?? user.primaryEmail ?? "Account";
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+		className: "flex items-center gap-2",
+		children: [
+			user.profileImageUrl ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("img", {
+				src: user.profileImageUrl,
+				alt: "",
+				className: "h-8 w-8 rounded-full object-cover"
+			}) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+				className: "grid h-8 w-8 place-items-center rounded-full bg-black/10 text-sm font-medium dark:bg-white/20",
+				children: label.charAt(0).toUpperCase()
+			}),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+				className: "text-sm font-medium",
+				children: label
+			}),
+			!gateSession && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
+				type: "button",
+				disabled: signingOut,
+				onClick: () => {
+					setSigningOut(true);
+					signOut().catch(() => setSigningOut(false));
+				},
+				className: "cursor-pointer text-sm underline-offset-4 opacity-70 hover:underline disabled:cursor-wait disabled:no-underline",
+				children: signingOut ? "Signing out…" : "Sign out"
+			})
+		]
+	});
+}
+var __defProp$14 = Object.defineProperty;
+var __name$14 = (target, value) => __defProp$14(target, "name", {
+	value,
+	configurable: true
+});
+function setRef$1(ref, value) {
+	if (typeof ref === "function") return ref(value);
+	else if (ref !== null && ref !== void 0) ref.current = value;
+}
+__name$14(setRef$1, "setRef");
+function composeRefs(...refs) {
+	return (node) => {
+		let hasCleanup = false;
+		const cleanups = refs.map((ref) => {
+			const cleanup = setRef$1(ref, node);
+			if (!hasCleanup && typeof cleanup == "function") hasCleanup = true;
+			return cleanup;
+		});
+		if (hasCleanup) return () => {
+			for (let i = 0; i < cleanups.length; i++) {
+				const cleanup = cleanups[i];
+				if (typeof cleanup == "function") cleanup();
+				else setRef$1(refs[i], null);
 			}
-		} else options ?? Internals.d.M(href);
+		};
 	};
-	exports.preload = function(href, options) {
-		if ("string" === typeof href && "object" === typeof options && null !== options && "string" === typeof options.as) {
-			var as = options.as, crossOrigin = getCrossOriginStringAs(as, options.crossOrigin);
-			Internals.d.L(href, as, {
-				crossOrigin,
-				integrity: "string" === typeof options.integrity ? options.integrity : void 0,
-				nonce: "string" === typeof options.nonce ? options.nonce : void 0,
-				type: "string" === typeof options.type ? options.type : void 0,
-				fetchPriority: "string" === typeof options.fetchPriority ? options.fetchPriority : void 0,
-				referrerPolicy: "string" === typeof options.referrerPolicy ? options.referrerPolicy : void 0,
-				imageSrcSet: "string" === typeof options.imageSrcSet ? options.imageSrcSet : void 0,
-				imageSizes: "string" === typeof options.imageSizes ? options.imageSizes : void 0,
-				media: "string" === typeof options.media ? options.media : void 0
-			});
-		}
-	};
-	exports.preloadModule = function(href, options) {
-		if ("string" === typeof href) if (options) {
-			var crossOrigin = getCrossOriginStringAs(options.as, options.crossOrigin);
-			Internals.d.m(href, {
-				as: "string" === typeof options.as && "script" !== options.as ? options.as : void 0,
-				crossOrigin,
-				integrity: "string" === typeof options.integrity ? options.integrity : void 0,
-				nonce: "string" === typeof options.nonce ? options.nonce : void 0,
-				fetchPriority: "string" === typeof options.fetchPriority ? options.fetchPriority : void 0
-			});
-		} else Internals.d.m(href);
-	};
-	exports.requestFormReset = function(form) {
-		Internals.d.r(form);
-	};
-	exports.unstable_batchedUpdates = function(fn, a) {
-		return fn(a);
-	};
-	exports.useFormState = function(action, initialState, permalink) {
-		return ReactSharedInternals.H.useFormState(action, initialState, permalink);
-	};
-	exports.useFormStatus = function() {
-		return ReactSharedInternals.H.useHostTransitionStatus();
-	};
-	exports.version = "19.3.0";
-}));
-//#endregion
-//#region node_modules/react-dom/index.js
-var require_react_dom = /* @__PURE__ */ __commonJSMin(((exports, module) => {
-	function checkDCE() {
-		if (typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ === "undefined" || typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.checkDCE !== "function") return;
-		try {
-			__REACT_DEVTOOLS_GLOBAL_HOOK__.checkDCE(checkDCE);
-		} catch (err) {
-			console.error(err);
-		}
-	}
-	checkDCE();
-	module.exports = require_react_dom_production();
-}));
-//#endregion
-//#region node_modules/@radix-ui/react-slot/dist/index.mjs
-var import_react_dom = /* @__PURE__ */ __toESM(require_react_dom(), 1);
-var import_react = /* @__PURE__ */ __toESM(require_react(), 1);
-var __defProp$11 = Object.defineProperty;
-var __name$11 = (target, value) => __defProp$11(target, "name", {
+}
+__name$14(composeRefs, "composeRefs");
+function useComposedRefs(...refs) {
+	return import_react.useCallback(composeRefs(...refs), refs);
+}
+__name$14(useComposedRefs, "useComposedRefs");
+var __defProp$13 = Object.defineProperty;
+var __name$13 = (target, value) => __defProp$13(target, "name", {
 	value,
 	configurable: true
 });
@@ -211,18 +202,18 @@ function createSlot(ownerName) {
 	Slot2.displayName = `${ownerName}.Slot`;
 	return Slot2;
 }
-__name$11(createSlot, "createSlot");
+__name$13(createSlot, "createSlot");
 var Slot$1 = /* @__PURE__ */ createSlot("Slot");
 var SLOTTABLE_IDENTIFIER = Symbol.for("radix.slottable");
 // @__NO_SIDE_EFFECTS__
 function createSlottable(ownerName) {
-	const Slottable2 = /* @__PURE__ */ __name$11((props) => "child" in props ? props.children(props.child) : props.children, "Slottable");
+	const Slottable2 = /* @__PURE__ */ __name$13((props) => "child" in props ? props.children(props.child) : props.children, "Slottable");
 	Slottable2.displayName = `${ownerName}.Slottable`;
 	Slottable2.__radixId = SLOTTABLE_IDENTIFIER;
 	return Slottable2;
 }
-__name$11(createSlottable, "createSlottable");
-var getSlottableElementFromSlottable = /* @__PURE__ */ __name$11((slottable, child) => {
+__name$13(createSlottable, "createSlottable");
+var getSlottableElementFromSlottable = /* @__PURE__ */ __name$13((slottable, child) => {
 	if ("child" in slottable.props) {
 		const child2 = slottable.props.child;
 		if (!import_react.isValidElement(child2)) return null;
@@ -253,7 +244,7 @@ function mergeProps(slotProps, childProps) {
 		...overrideProps
 	};
 }
-__name$11(mergeProps, "mergeProps");
+__name$13(mergeProps, "mergeProps");
 function getElementRef$1(element) {
 	let getter = Object.getOwnPropertyDescriptor(element.props, "ref")?.get;
 	let mayWarn = getter && "isReactWarning" in getter && getter.isReactWarning;
@@ -263,32 +254,213 @@ function getElementRef$1(element) {
 	if (mayWarn) return element.props.ref;
 	return element.props.ref || element.ref;
 }
-__name$11(getElementRef$1, "getElementRef");
+__name$13(getElementRef$1, "getElementRef");
 function isSlottable(child) {
 	return import_react.isValidElement(child) && typeof child.type === "function" && "__radixId" in child.type && child.type.__radixId === SLOTTABLE_IDENTIFIER;
 }
-__name$11(isSlottable, "isSlottable");
+__name$13(isSlottable, "isSlottable");
 var REACT_LAZY_TYPE = Symbol.for("react.lazy");
 function isLazyComponent(element) {
 	return element != null && typeof element === "object" && "$$typeof" in element && element.$$typeof === REACT_LAZY_TYPE && "_payload" in element && isPromiseLike(element._payload);
 }
-__name$11(isLazyComponent, "isLazyComponent");
+__name$13(isLazyComponent, "isLazyComponent");
 function isPromiseLike(value) {
 	return typeof value === "object" && value !== null && "then" in value;
 }
-__name$11(isPromiseLike, "isPromiseLike");
-var createSlotError = /* @__PURE__ */ __name$11((ownerName) => {
+__name$13(isPromiseLike, "isPromiseLike");
+var createSlotError = /* @__PURE__ */ __name$13((ownerName) => {
 	return `${ownerName} failed to slot onto its children. Expected a single React element child or \`Slottable\`.`;
 }, "createSlotError");
-var createSlottableError = /* @__PURE__ */ __name$11((ownerName) => {
+var createSlottableError = /* @__PURE__ */ __name$13((ownerName) => {
 	return `${ownerName} failed to slot onto its \`Slottable\`. Expected \`Slottable\` to receive a single React element child.`;
 }, "createSlottableError");
 var use = import_react[" use ".trim().toString()];
-//#endregion
-//#region node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs
+function cn(...inputs) {
+	return twMerge(clsx(inputs));
+}
+function formatMoney(amount, currency = "USD") {
+	return new Intl.NumberFormat("en-US", {
+		style: "currency",
+		currency,
+		minimumFractionDigits: amount % 1 === 0 ? 0 : 2
+	}).format(amount);
+}
+var buttonVariants = cva("inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[opacity,transform,background-color,color,border-color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]", {
+	variants: {
+		variant: {
+			default: "bg-primary text-primary-foreground hover:opacity-90",
+			navy: "bg-navy text-navy-foreground hover:opacity-90",
+			profit: "bg-profit text-white hover:opacity-90",
+			outline: "border border-border bg-transparent text-foreground hover:bg-muted",
+			ghost: "hover:bg-muted text-foreground",
+			loss: "bg-loss text-white hover:opacity-90",
+			link: "text-primary underline-offset-4 hover:underline"
+		},
+		size: {
+			default: "h-11 px-5",
+			sm: "h-9 px-3 text-xs",
+			lg: "h-12 px-7 text-base",
+			icon: "size-11"
+		}
+	},
+	defaultVariants: {
+		variant: "default",
+		size: "default"
+	}
+});
+var Button = (0, import_react.forwardRef)(({ className, variant, size, asChild, ...props }, ref) => {
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(asChild ? Slot$1 : "button", {
+		className: cn(buttonVariants({
+			variant,
+			size
+		}), className),
+		ref,
+		...props
+	});
+});
+Button.displayName = "Button";
+var __defProp$12 = Object.defineProperty;
+var __name$12 = (target, value) => __defProp$12(target, "name", {
+	value,
+	configurable: true
+});
+var canUseDOM = !!(typeof window !== "undefined" && window.document && window.document.createElement);
+function composeEventHandlers(originalEventHandler, ourEventHandler, { checkForDefaultPrevented = true } = {}) {
+	return /* @__PURE__ */ __name$12(function handleEvent(event) {
+		originalEventHandler?.(event);
+		if (checkForDefaultPrevented === false || !event || !event.defaultPrevented) return ourEventHandler?.(event);
+	}, "handleEvent");
+}
+__name$12(composeEventHandlers, "composeEventHandlers");
+function getOwnerWindow(element) {
+	if (!canUseDOM) throw new Error("Cannot access window outside of the DOM");
+	return element?.ownerDocument?.defaultView ?? window;
+}
+__name$12(getOwnerWindow, "getOwnerWindow");
+function getOwnerDocument(element) {
+	if (!canUseDOM) throw new Error("Cannot access document outside of the DOM");
+	return element?.ownerDocument ?? document;
+}
+__name$12(getOwnerDocument, "getOwnerDocument");
+function getActiveElement(node, activeDescendant = false) {
+	const { activeElement } = getOwnerDocument(node);
+	if (!activeElement?.nodeName) return null;
+	if (isFrame(activeElement) && activeElement.contentDocument) return getActiveElement(activeElement.contentDocument.body, activeDescendant);
+	if (activeDescendant) {
+		const id = activeElement.getAttribute("aria-activedescendant");
+		if (id) {
+			const element = getOwnerDocument(activeElement).getElementById(id);
+			if (element) return element;
+		}
+	}
+	return activeElement;
+}
+__name$12(getActiveElement, "getActiveElement");
+function isFrame(element) {
+	return element.tagName === "IFRAME";
+}
+__name$12(isFrame, "isFrame");
+var __defProp$11 = Object.defineProperty;
+var __name$11 = (target, value) => __defProp$11(target, "name", {
+	value,
+	configurable: true
+});
+// @__NO_SIDE_EFFECTS__
+function createContext2(rootComponentName, defaultContext) {
+	const Context = import_react.createContext(defaultContext);
+	Context.displayName = rootComponentName + "Context";
+	const Provider = /* @__PURE__ */ __name$11((props) => {
+		const { children, ...context } = props;
+		const value = import_react.useMemo(() => context, Object.values(context));
+		return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Context.Provider, {
+			value,
+			children
+		});
+	}, "Provider");
+	Provider.displayName = rootComponentName + "Provider";
+	function useContext2(consumerName, options = {}) {
+		const { optional = false } = options;
+		const context = import_react.useContext(Context);
+		if (context) return context;
+		if (defaultContext !== void 0) return defaultContext;
+		if (optional) return void 0;
+		throw new Error(`\`${consumerName}\` must be used within \`${rootComponentName}\``);
+	}
+	__name$11(useContext2, "useContext");
+	return [Provider, useContext2];
+}
+__name$11(createContext2, "createContext");
+// @__NO_SIDE_EFFECTS__
+function createContextScope(scopeName, createContextScopeDeps = []) {
+	let defaultContexts = [];
+	function createContext3(rootComponentName, defaultContext) {
+		const BaseContext = import_react.createContext(defaultContext);
+		BaseContext.displayName = rootComponentName + "Context";
+		const index = defaultContexts.length;
+		defaultContexts = [...defaultContexts, defaultContext];
+		const Provider = /* @__PURE__ */ __name$11((props) => {
+			const { scope, children, ...context } = props;
+			const Context = scope?.[scopeName]?.[index] || BaseContext;
+			const value = import_react.useMemo(() => context, Object.values(context));
+			return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Context.Provider, {
+				value,
+				children
+			});
+		}, "Provider");
+		Provider.displayName = rootComponentName + "Provider";
+		function useContext2(consumerName, scope, options = {}) {
+			const { optional = false } = options;
+			const Context = scope?.[scopeName]?.[index] || BaseContext;
+			const context = import_react.useContext(Context);
+			if (context) return context;
+			if (defaultContext !== void 0) return defaultContext;
+			if (optional) return void 0;
+			throw new Error(`\`${consumerName}\` must be used within \`${rootComponentName}\``);
+		}
+		__name$11(useContext2, "useContext");
+		return [Provider, useContext2];
+	}
+	__name$11(createContext3, "createContext");
+	const createScope = /* @__PURE__ */ __name$11(() => {
+		const scopeContexts = defaultContexts.map((defaultContext) => {
+			return import_react.createContext(defaultContext);
+		});
+		return /* @__PURE__ */ __name$11(function useScope(scope) {
+			const contexts = scope?.[scopeName] || scopeContexts;
+			return import_react.useMemo(() => ({ [`__scope${scopeName}`]: {
+				...scope,
+				[scopeName]: contexts
+			} }), [scope, contexts]);
+		}, "useScope");
+	}, "createScope");
+	createScope.scopeName = scopeName;
+	return [createContext3, composeContextScopes(createScope, ...createContextScopeDeps)];
+}
+__name$11(createContextScope, "createContextScope");
+function composeContextScopes(...scopes) {
+	const baseScope = scopes[0];
+	if (scopes.length === 1) return baseScope;
+	const createScope = /* @__PURE__ */ __name$11(() => {
+		const scopeHooks = scopes.map((createScope2) => ({
+			useScope: createScope2(),
+			scopeName: createScope2.scopeName
+		}));
+		return /* @__PURE__ */ __name$11(function useComposedScopes(overrideScopes) {
+			const nextScopes = scopeHooks.reduce((nextScopes2, { useScope, scopeName }) => {
+				const currentScope = useScope(overrideScopes)[`__scope${scopeName}`];
+				return {
+					...nextScopes2,
+					...currentScope
+				};
+			}, {});
+			return import_react.useMemo(() => ({ [`__scope${baseScope.scopeName}`]: nextScopes }), [nextScopes]);
+		}, "useComposedScopes");
+	}, "createScope");
+	createScope.scopeName = baseScope.scopeName;
+	return createScope;
+}
+__name$11(composeContextScopes, "composeContextScopes");
 var useLayoutEffect2 = globalThis?.document ? import_react.useLayoutEffect : () => {};
-//#endregion
-//#region node_modules/@radix-ui/react-id/dist/index.mjs
 var __defProp$10 = Object.defineProperty;
 var __name$10 = (target, value) => __defProp$10(target, "name", {
 	value,
@@ -304,8 +476,6 @@ function useId(deterministicId) {
 	return deterministicId || (id ? `radix-${id}` : "");
 }
 __name$10(useId, "useId");
-//#endregion
-//#region node_modules/@radix-ui/react-use-effect-event/dist/index.mjs
 var __defProp$9 = Object.defineProperty;
 var __name$9 = (target, value) => __defProp$9(target, "name", {
 	value,
@@ -327,8 +497,6 @@ function useEffectEvent(callback) {
 	return import_react.useMemo(() => ((...args) => ref.current?.(...args)), []);
 }
 __name$9(useEffectEvent, "useEffectEvent");
-//#endregion
-//#region node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs
 var __defProp$8 = Object.defineProperty;
 var __name$8 = (target, value) => __defProp$8(target, "name", {
 	value,
@@ -429,9 +597,6 @@ function useControllableStateReducer(reducer, userArgs, initialArg, init) {
 	return [state, dispatch];
 }
 __name$8(useControllableStateReducer, "useControllableStateReducer");
-//#endregion
-//#region node_modules/@radix-ui/react-primitive/dist/index.mjs
-var import_jsx_runtime = require_jsx_runtime();
 var __defProp$7 = Object.defineProperty;
 var __name$7 = (target, value) => __defProp$7(target, "name", {
 	value,
@@ -476,23 +641,19 @@ function dispatchDiscreteCustomEvent(target, event) {
 	if (target) import_react_dom.flushSync(() => target.dispatchEvent(event));
 }
 __name$7(dispatchDiscreteCustomEvent, "dispatchDiscreteCustomEvent");
-//#endregion
-//#region node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs
 var __defProp$6 = Object.defineProperty;
 var __name$6 = (target, value) => __defProp$6(target, "name", {
 	value,
 	configurable: true
 });
-function useCallbackRef$1(callback) {
+function useCallbackRef(callback) {
 	const callbackRef = import_react.useRef(callback);
 	import_react.useEffect(() => {
 		callbackRef.current = callback;
 	});
 	return import_react.useMemo(() => ((...args) => callbackRef.current?.(...args)), []);
 }
-__name$6(useCallbackRef$1, "useCallbackRef");
-//#endregion
-//#region node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs
+__name$6(useCallbackRef, "useCallbackRef");
 var __defProp$5 = Object.defineProperty;
 var __name$5 = (target, value) => __defProp$5(target, "name", {
 	value,
@@ -546,7 +707,7 @@ var DismissableLayer = /* @__PURE__ */ import_react.forwardRef(/* @__PURE__ */ _
 		if (!event.defaultPrevented) onDismiss?.();
 	}, ownerDocument);
 	const isHighestLayer = node ? index === layers.length - 1 : false;
-	const handleKeyDown = useCallbackRef$1((event) => {
+	const handleKeyDown = useCallbackRef((event) => {
 		if (event.key !== "Escape") return;
 		onEscapeKeyDown?.(event);
 		if (!event.defaultPrevented && onDismiss) {
@@ -627,7 +788,7 @@ __name$5(useDismissableLayerSurface, "useDismissableLayerSurface");
 var IS_TRUE = /* @__PURE__ */ __name$5(() => true, "IS_TRUE");
 function usePointerDownOutside(onPointerDownOutside, args) {
 	const { ownerDocument = globalThis?.document, deferPointerDownOutside = false, isDeferredPointerDownOutsideRef, dismissableSurfaces, shouldHandlePointerDownOutside = IS_TRUE } = args;
-	const handlePointerDownOutside = useCallbackRef$1(onPointerDownOutside);
+	const handlePointerDownOutside = useCallbackRef(onPointerDownOutside);
 	const isPointerInsideReactTreeRef = import_react.useRef(false);
 	const isPointerDownOutsideRef = import_react.useRef(false);
 	const interceptedOutsideInteractionEventsRef = import_react.useRef(/* @__PURE__ */ new Map());
@@ -723,7 +884,7 @@ function usePointerDownOutside(onPointerDownOutside, args) {
 }
 __name$5(usePointerDownOutside, "usePointerDownOutside");
 function useFocusOutside(onFocusOutside, ownerDocument = globalThis?.document) {
-	const handleFocusOutside = useCallbackRef$1(onFocusOutside);
+	const handleFocusOutside = useCallbackRef(onFocusOutside);
 	const isFocusInsideReactTreeRef = import_react.useRef(false);
 	import_react.useEffect(() => {
 		const handleFocus = /* @__PURE__ */ __name$5((event) => {
@@ -755,8 +916,6 @@ function handleAndDispatchCustomEvent(name, handler, detail, { discrete }) {
 	else target.dispatchEvent(event);
 }
 __name$5(handleAndDispatchCustomEvent, "handleAndDispatchCustomEvent");
-//#endregion
-//#region node_modules/@radix-ui/react-focus-scope/dist/index.mjs
 var __defProp$4 = Object.defineProperty;
 var __name$4 = (target, value) => __defProp$4(target, "name", {
 	value,
@@ -771,8 +930,8 @@ var EVENT_OPTIONS = {
 var FocusScope = /* @__PURE__ */ import_react.forwardRef(/* @__PURE__ */ __name$4(function FocusScope2(props, forwardedRef) {
 	const { loop = false, trapped = false, onMountAutoFocus: onMountAutoFocusProp, onUnmountAutoFocus: onUnmountAutoFocusProp, ...scopeProps } = props;
 	const [container, setContainer] = import_react.useState(null);
-	const onMountAutoFocus = useCallbackRef$1(onMountAutoFocusProp);
-	const onUnmountAutoFocus = useCallbackRef$1(onUnmountAutoFocusProp);
+	const onMountAutoFocus = useCallbackRef(onMountAutoFocusProp);
+	const onUnmountAutoFocus = useCallbackRef(onUnmountAutoFocusProp);
 	const lastFocusedElementRef = import_react.useRef(null);
 	const composedRefs = useComposedRefs(forwardedRef, setContainer);
 	const focusScope = import_react.useRef({
@@ -961,8 +1120,6 @@ function removeLinks(items) {
 	return items.filter((item) => item.tagName !== "A");
 }
 __name$4(removeLinks, "removeLinks");
-//#endregion
-//#region node_modules/@radix-ui/react-portal/dist/index.mjs
 var __defProp$3 = Object.defineProperty;
 var __name$3 = (target, value) => __defProp$3(target, "name", {
 	value,
@@ -978,8 +1135,6 @@ var Portal = /* @__PURE__ */ import_react.forwardRef(/* @__PURE__ */ __name$3(fu
 		ref: forwardedRef
 	}), container) : null;
 }, "Portal"));
-//#endregion
-//#region node_modules/@radix-ui/react-presence/dist/index.mjs
 var __defProp$2 = Object.defineProperty;
 var __name$2 = (target, value) => __defProp$2(target, "name", {
 	value,
@@ -1120,8 +1275,6 @@ function getElementRef(element) {
 	return element.props.ref || element.ref;
 }
 __name$2(getElementRef, "getElementRef");
-//#endregion
-//#region node_modules/@radix-ui/react-focus-guards/dist/index.mjs
 var __defProp$1 = Object.defineProperty;
 var __name$1 = (target, value) => __defProp$1(target, "name", {
 	value,
@@ -1166,801 +1319,13 @@ function createFocusGuard() {
 	return element;
 }
 __name$1(createFocusGuard, "createFocusGuard");
-//#endregion
-//#region node_modules/react-remove-scroll-bar/dist/es2015/constants.js
-var zeroRightClassName = "right-scroll-bar-position";
-var fullWidthClassName = "width-before-scroll-bar";
-var noScrollbarsClassName = "with-scroll-bars-hidden";
-/**
-* Name of a CSS variable containing the amount of "hidden" scrollbar
-* ! might be undefined ! use will fallback!
-*/
-var removedBarSizeVariable = "--removed-body-scroll-bar-size";
-//#endregion
-//#region node_modules/use-callback-ref/dist/es2015/assignRef.js
-/**
-* Assigns a value for a given ref, no matter of the ref format
-* @param {RefObject} ref - a callback function or ref object
-* @param value - a new value
-*
-* @see https://github.com/theKashey/use-callback-ref#assignref
-* @example
-* const refObject = useRef();
-* const refFn = (ref) => {....}
-*
-* assignRef(refObject, "refValue");
-* assignRef(refFn, "refValue");
-*/
-function assignRef(ref, value) {
-	if (typeof ref === "function") ref(value);
-	else if (ref) ref.current = value;
-	return ref;
-}
-//#endregion
-//#region node_modules/use-callback-ref/dist/es2015/useRef.js
-/**
-* creates a MutableRef with ref change callback
-* @param initialValue - initial ref value
-* @param {Function} callback - a callback to run when value changes
-*
-* @example
-* const ref = useCallbackRef(0, (newValue, oldValue) => console.log(oldValue, '->', newValue);
-* ref.current = 1;
-* // prints 0 -> 1
-*
-* @see https://reactjs.org/docs/hooks-reference.html#useref
-* @see https://github.com/theKashey/use-callback-ref#usecallbackref---to-replace-reactuseref
-* @returns {MutableRefObject}
-*/
-function useCallbackRef(initialValue, callback) {
-	var ref = (0, import_react.useState)(function() {
-		return {
-			value: initialValue,
-			callback,
-			facade: {
-				get current() {
-					return ref.value;
-				},
-				set current(value) {
-					var last = ref.value;
-					if (last !== value) {
-						ref.value = value;
-						ref.callback(value, last);
-					}
-				}
-			}
-		};
-	})[0];
-	ref.callback = callback;
-	return ref.facade;
-}
-//#endregion
-//#region node_modules/use-callback-ref/dist/es2015/useMergeRef.js
-var useIsomorphicLayoutEffect = typeof window !== "undefined" ? import_react.useLayoutEffect : import_react.useEffect;
-var currentValues = /* @__PURE__ */ new WeakMap();
-/**
-* Merges two or more refs together providing a single interface to set their value
-* @param {RefObject|Ref} refs
-* @returns {MutableRefObject} - a new ref, which translates all changes to {refs}
-*
-* @see {@link mergeRefs} a version without buit-in memoization
-* @see https://github.com/theKashey/use-callback-ref#usemergerefs
-* @example
-* const Component = React.forwardRef((props, ref) => {
-*   const ownRef = useRef();
-*   const domRef = useMergeRefs([ref, ownRef]); // 👈 merge together
-*   return <div ref={domRef}>...</div>
-* }
-*/
-function useMergeRefs(refs, defaultValue) {
-	var callbackRef = useCallbackRef(defaultValue || null, function(newValue) {
-		return refs.forEach(function(ref) {
-			return assignRef(ref, newValue);
-		});
-	});
-	useIsomorphicLayoutEffect(function() {
-		var oldValue = currentValues.get(callbackRef);
-		if (oldValue) {
-			var prevRefs_1 = new Set(oldValue);
-			var nextRefs_1 = new Set(refs);
-			var current_1 = callbackRef.current;
-			prevRefs_1.forEach(function(ref) {
-				if (!nextRefs_1.has(ref)) assignRef(ref, null);
-			});
-			nextRefs_1.forEach(function(ref) {
-				if (!prevRefs_1.has(ref)) assignRef(ref, current_1);
-			});
-		}
-		currentValues.set(callbackRef, refs);
-	}, [refs]);
-	return callbackRef;
-}
-//#endregion
-//#region node_modules/use-sidecar/dist/es2015/medium.js
-function ItoI(a) {
-	return a;
-}
-function innerCreateMedium(defaults, middleware) {
-	if (middleware === void 0) middleware = ItoI;
-	var buffer = [];
-	var assigned = false;
-	return {
-		read: function() {
-			if (assigned) throw new Error("Sidecar: could not `read` from an `assigned` medium. `read` could be used only with `useMedium`.");
-			if (buffer.length) return buffer[buffer.length - 1];
-			return defaults;
-		},
-		useMedium: function(data) {
-			var item = middleware(data, assigned);
-			buffer.push(item);
-			return function() {
-				buffer = buffer.filter(function(x) {
-					return x !== item;
-				});
-			};
-		},
-		assignSyncMedium: function(cb) {
-			assigned = true;
-			while (buffer.length) {
-				var cbs = buffer;
-				buffer = [];
-				cbs.forEach(cb);
-			}
-			buffer = {
-				push: function(x) {
-					return cb(x);
-				},
-				filter: function() {
-					return buffer;
-				}
-			};
-		},
-		assignMedium: function(cb) {
-			assigned = true;
-			var pendingQueue = [];
-			if (buffer.length) {
-				var cbs = buffer;
-				buffer = [];
-				cbs.forEach(cb);
-				pendingQueue = buffer;
-			}
-			var executeQueue = function() {
-				var cbs = pendingQueue;
-				pendingQueue = [];
-				cbs.forEach(cb);
-			};
-			var cycle = function() {
-				return Promise.resolve().then(executeQueue);
-			};
-			cycle();
-			buffer = {
-				push: function(x) {
-					pendingQueue.push(x);
-					cycle();
-				},
-				filter: function(filter) {
-					pendingQueue = pendingQueue.filter(filter);
-					return buffer;
-				}
-			};
-		}
-	};
-}
-function createSidecarMedium(options) {
-	if (options === void 0) options = {};
-	var medium = innerCreateMedium(null);
-	medium.options = __assign({
-		async: true,
-		ssr: false
-	}, options);
-	return medium;
-}
-//#endregion
-//#region node_modules/use-sidecar/dist/es2015/exports.js
-var SideCar = function(_a) {
-	var sideCar = _a.sideCar, rest = __rest(_a, ["sideCar"]);
-	if (!sideCar) throw new Error("Sidecar: please provide `sideCar` property to import the right car");
-	var Target = sideCar.read();
-	if (!Target) throw new Error("Sidecar medium not found");
-	return import_react.createElement(Target, __assign({}, rest));
-};
-SideCar.isSideCarExport = true;
-function exportSidecar(medium, exported) {
-	medium.useMedium(exported);
-	return SideCar;
-}
-//#endregion
-//#region node_modules/react-remove-scroll/dist/es2015/medium.js
-var effectCar = createSidecarMedium();
-//#endregion
-//#region node_modules/react-remove-scroll/dist/es2015/UI.js
-var nothing = function() {};
-/**
-* Removes scrollbar from the page and contain the scroll within the Lock
-*/
-var RemoveScroll = import_react.forwardRef(function(props, parentRef) {
-	var ref = import_react.useRef(null);
-	var _a = import_react.useState({
-		onScrollCapture: nothing,
-		onWheelCapture: nothing,
-		onTouchMoveCapture: nothing
-	}), callbacks = _a[0], setCallbacks = _a[1];
-	var forwardProps = props.forwardProps, children = props.children, className = props.className, removeScrollBar = props.removeScrollBar, enabled = props.enabled, shards = props.shards, sideCar = props.sideCar, noRelative = props.noRelative, noIsolation = props.noIsolation, inert = props.inert, allowPinchZoom = props.allowPinchZoom, _b = props.as, Container = _b === void 0 ? "div" : _b, gapMode = props.gapMode, rest = __rest(props, [
-		"forwardProps",
-		"children",
-		"className",
-		"removeScrollBar",
-		"enabled",
-		"shards",
-		"sideCar",
-		"noRelative",
-		"noIsolation",
-		"inert",
-		"allowPinchZoom",
-		"as",
-		"gapMode"
-	]);
-	var SideCar = sideCar;
-	var containerRef = useMergeRefs([ref, parentRef]);
-	var containerProps = __assign(__assign({}, rest), callbacks);
-	return import_react.createElement(import_react.Fragment, null, enabled && import_react.createElement(SideCar, {
-		sideCar: effectCar,
-		removeScrollBar,
-		shards,
-		noRelative,
-		noIsolation,
-		inert,
-		setCallbacks,
-		allowPinchZoom: !!allowPinchZoom,
-		lockRef: ref,
-		gapMode
-	}), forwardProps ? import_react.cloneElement(import_react.Children.only(children), __assign(__assign({}, containerProps), { ref: containerRef })) : import_react.createElement(Container, __assign({}, containerProps, {
-		className,
-		ref: containerRef
-	}), children));
-});
-RemoveScroll.defaultProps = {
-	enabled: true,
-	removeScrollBar: true,
-	inert: false
-};
-RemoveScroll.classNames = {
-	fullWidth: fullWidthClassName,
-	zeroRight: zeroRightClassName
-};
-var getNonce = function() {
-	if (typeof __webpack_nonce__ !== "undefined") return __webpack_nonce__;
-};
-//#endregion
-//#region node_modules/react-style-singleton/dist/es2015/singleton.js
-function makeStyleTag() {
-	if (!document) return null;
-	var tag = document.createElement("style");
-	tag.type = "text/css";
-	var nonce = getNonce();
-	if (nonce) tag.setAttribute("nonce", nonce);
-	return tag;
-}
-function injectStyles(tag, css) {
-	if (tag.styleSheet) tag.styleSheet.cssText = css;
-	else tag.appendChild(document.createTextNode(css));
-}
-function insertStyleTag(tag) {
-	(document.head || document.getElementsByTagName("head")[0]).appendChild(tag);
-}
-var stylesheetSingleton = function() {
-	var counter = 0;
-	var stylesheet = null;
-	return {
-		add: function(style) {
-			if (counter == 0) {
-				if (stylesheet = makeStyleTag()) {
-					injectStyles(stylesheet, style);
-					insertStyleTag(stylesheet);
-				}
-			}
-			counter++;
-		},
-		remove: function() {
-			counter--;
-			if (!counter && stylesheet) {
-				stylesheet.parentNode && stylesheet.parentNode.removeChild(stylesheet);
-				stylesheet = null;
-			}
-		}
-	};
-};
-//#endregion
-//#region node_modules/react-style-singleton/dist/es2015/hook.js
-/**
-* creates a hook to control style singleton
-* @see {@link styleSingleton} for a safer component version
-* @example
-* ```tsx
-* const useStyle = styleHookSingleton();
-* ///
-* useStyle('body { overflow: hidden}');
-*/
-var styleHookSingleton = function() {
-	var sheet = stylesheetSingleton();
-	return function(styles, isDynamic) {
-		import_react.useEffect(function() {
-			sheet.add(styles);
-			return function() {
-				sheet.remove();
-			};
-		}, [styles && isDynamic]);
-	};
-};
-//#endregion
-//#region node_modules/react-style-singleton/dist/es2015/component.js
-/**
-* create a Component to add styles on demand
-* - styles are added when first instance is mounted
-* - styles are removed when the last instance is unmounted
-* - changing styles in runtime does nothing unless dynamic is set. But with multiple components that can lead to the undefined behavior
-*/
-var styleSingleton = function() {
-	var useStyle = styleHookSingleton();
-	var Sheet = function(_a) {
-		var styles = _a.styles, dynamic = _a.dynamic;
-		useStyle(styles, dynamic);
-		return null;
-	};
-	return Sheet;
-};
-//#endregion
-//#region node_modules/react-remove-scroll-bar/dist/es2015/utils.js
-var zeroGap = {
-	left: 0,
-	top: 0,
-	right: 0,
-	gap: 0
-};
-var parse = function(x) {
-	return parseInt(x || "", 10) || 0;
-};
-var getOffset = function(gapMode) {
-	var cs = window.getComputedStyle(document.body);
-	var left = cs[gapMode === "padding" ? "paddingLeft" : "marginLeft"];
-	var top = cs[gapMode === "padding" ? "paddingTop" : "marginTop"];
-	var right = cs[gapMode === "padding" ? "paddingRight" : "marginRight"];
-	return [
-		parse(left),
-		parse(top),
-		parse(right)
-	];
-};
-var getGapWidth = function(gapMode) {
-	if (gapMode === void 0) gapMode = "margin";
-	if (typeof window === "undefined") return zeroGap;
-	var offsets = getOffset(gapMode);
-	var documentWidth = document.documentElement.clientWidth;
-	var windowWidth = window.innerWidth;
-	return {
-		left: offsets[0],
-		top: offsets[1],
-		right: offsets[2],
-		gap: Math.max(0, windowWidth - documentWidth + offsets[2] - offsets[0])
-	};
-};
-//#endregion
-//#region node_modules/react-remove-scroll-bar/dist/es2015/component.js
-var Style = styleSingleton();
-var lockAttribute = "data-scroll-locked";
-var getStyles = function(_a, allowRelative, gapMode, important) {
-	var left = _a.left, top = _a.top, right = _a.right, gap = _a.gap;
-	if (gapMode === void 0) gapMode = "margin";
-	return "\n  .".concat(noScrollbarsClassName, " {\n   overflow: hidden ").concat(important, ";\n   padding-right: ").concat(gap, "px ").concat(important, ";\n  }\n  body[").concat(lockAttribute, "] {\n    overflow: hidden ").concat(important, ";\n    overscroll-behavior: contain;\n    ").concat([
-		allowRelative && "position: relative ".concat(important, ";"),
-		gapMode === "margin" && "\n    padding-left: ".concat(left, "px;\n    padding-top: ").concat(top, "px;\n    padding-right: ").concat(right, "px;\n    margin-left:0;\n    margin-top:0;\n    margin-right: ").concat(gap, "px ").concat(important, ";\n    "),
-		gapMode === "padding" && "padding-right: ".concat(gap, "px ").concat(important, ";")
-	].filter(Boolean).join(""), "\n  }\n  \n  .").concat(zeroRightClassName, " {\n    right: ").concat(gap, "px ").concat(important, ";\n  }\n  \n  .").concat(fullWidthClassName, " {\n    margin-right: ").concat(gap, "px ").concat(important, ";\n  }\n  \n  .").concat(zeroRightClassName, " .").concat(zeroRightClassName, " {\n    right: 0 ").concat(important, ";\n  }\n  \n  .").concat(fullWidthClassName, " .").concat(fullWidthClassName, " {\n    margin-right: 0 ").concat(important, ";\n  }\n  \n  body[").concat(lockAttribute, "] {\n    ").concat(removedBarSizeVariable, ": ").concat(gap, "px;\n  }\n");
-};
-var getCurrentUseCounter = function() {
-	var counter = parseInt(document.body.getAttribute("data-scroll-locked") || "0", 10);
-	return isFinite(counter) ? counter : 0;
-};
-var useLockAttribute = function() {
-	import_react.useEffect(function() {
-		document.body.setAttribute(lockAttribute, (getCurrentUseCounter() + 1).toString());
-		return function() {
-			var newCounter = getCurrentUseCounter() - 1;
-			if (newCounter <= 0) document.body.removeAttribute(lockAttribute);
-			else document.body.setAttribute(lockAttribute, newCounter.toString());
-		};
-	}, []);
-};
-/**
-* Removes page scrollbar and blocks page scroll when mounted
-*/
-var RemoveScrollBar = function(_a) {
-	var noRelative = _a.noRelative, noImportant = _a.noImportant, _b = _a.gapMode, gapMode = _b === void 0 ? "margin" : _b;
-	useLockAttribute();
-	var gap = import_react.useMemo(function() {
-		return getGapWidth(gapMode);
-	}, [gapMode]);
-	return import_react.createElement(Style, { styles: getStyles(gap, !noRelative, gapMode, !noImportant ? "!important" : "") });
-};
-//#endregion
-//#region node_modules/react-remove-scroll/dist/es2015/aggresiveCapture.js
-var passiveSupported = false;
-if (typeof window !== "undefined") try {
-	var options = Object.defineProperty({}, "passive", { get: function() {
-		passiveSupported = true;
-		return true;
-	} });
-	window.addEventListener("test", options, options);
-	window.removeEventListener("test", options, options);
-} catch (err) {
-	passiveSupported = false;
-}
-var nonPassive = passiveSupported ? { passive: false } : false;
-//#endregion
-//#region node_modules/react-remove-scroll/dist/es2015/handleScroll.js
-var alwaysContainsScroll = function(node) {
-	return node.tagName === "TEXTAREA";
-};
-var elementCanBeScrolled = function(node, overflow) {
-	if (!(node instanceof Element)) return false;
-	var styles = window.getComputedStyle(node);
-	return styles[overflow] !== "hidden" && !(styles.overflowY === styles.overflowX && !alwaysContainsScroll(node) && styles[overflow] === "visible");
-};
-var elementCouldBeVScrolled = function(node) {
-	return elementCanBeScrolled(node, "overflowY");
-};
-var elementCouldBeHScrolled = function(node) {
-	return elementCanBeScrolled(node, "overflowX");
-};
-var locationCouldBeScrolled = function(axis, node) {
-	var ownerDocument = node.ownerDocument;
-	var current = node;
-	do {
-		if (typeof ShadowRoot !== "undefined" && current instanceof ShadowRoot) current = current.host;
-		if (elementCouldBeScrolled(axis, current)) {
-			var _a = getScrollVariables(axis, current);
-			if (_a[1] > _a[2]) return true;
-		}
-		current = current.parentNode;
-	} while (current && current !== ownerDocument.body);
-	return false;
-};
-var getVScrollVariables = function(_a) {
-	return [
-		_a.scrollTop,
-		_a.scrollHeight,
-		_a.clientHeight
-	];
-};
-var getHScrollVariables = function(_a) {
-	return [
-		_a.scrollLeft,
-		_a.scrollWidth,
-		_a.clientWidth
-	];
-};
-var elementCouldBeScrolled = function(axis, node) {
-	return axis === "v" ? elementCouldBeVScrolled(node) : elementCouldBeHScrolled(node);
-};
-var getScrollVariables = function(axis, node) {
-	return axis === "v" ? getVScrollVariables(node) : getHScrollVariables(node);
-};
-var getDirectionFactor = function(axis, direction) {
-	/**
-	* If the element's direction is rtl (right-to-left), then scrollLeft is 0 when the scrollbar is at its rightmost position,
-	* and then increasingly negative as you scroll towards the end of the content.
-	* @see https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollLeft
-	*/
-	return axis === "h" && direction === "rtl" ? -1 : 1;
-};
-var handleScroll = function(axis, endTarget, event, sourceDelta, noOverscroll) {
-	var directionFactor = getDirectionFactor(axis, window.getComputedStyle(endTarget).direction);
-	var delta = directionFactor * sourceDelta;
-	var target = event.target;
-	var targetInLock = endTarget.contains(target);
-	var shouldCancelScroll = false;
-	var isDeltaPositive = delta > 0;
-	var availableScroll = 0;
-	var availableScrollTop = 0;
-	do {
-		if (!target) break;
-		var _a = getScrollVariables(axis, target), position = _a[0];
-		var elementScroll = _a[1] - _a[2] - directionFactor * position;
-		if (position || elementScroll) {
-			if (elementCouldBeScrolled(axis, target)) {
-				availableScroll += elementScroll;
-				availableScrollTop += position;
-			}
-		}
-		var parent_1 = target.parentNode;
-		target = parent_1 && parent_1.nodeType === Node.DOCUMENT_FRAGMENT_NODE ? parent_1.host : parent_1;
-	} while (!targetInLock && target !== document.body || targetInLock && (endTarget.contains(target) || endTarget === target));
-	if (isDeltaPositive && (noOverscroll && Math.abs(availableScroll) < 1 || !noOverscroll && delta > availableScroll)) shouldCancelScroll = true;
-	else if (!isDeltaPositive && (noOverscroll && Math.abs(availableScrollTop) < 1 || !noOverscroll && -delta > availableScrollTop)) shouldCancelScroll = true;
-	return shouldCancelScroll;
-};
-//#endregion
-//#region node_modules/react-remove-scroll/dist/es2015/SideEffect.js
-var getTouchXY = function(event) {
-	return "changedTouches" in event ? [event.changedTouches[0].clientX, event.changedTouches[0].clientY] : [0, 0];
-};
-var getDeltaXY = function(event) {
-	return [event.deltaX, event.deltaY];
-};
-var extractRef = function(ref) {
-	return ref && "current" in ref ? ref.current : ref;
-};
-var deltaCompare = function(x, y) {
-	return x[0] === y[0] && x[1] === y[1];
-};
-var generateStyle = function(id) {
-	return "\n  .block-interactivity-".concat(id, " {pointer-events: none;}\n  .allow-interactivity-").concat(id, " {pointer-events: all;}\n");
-};
-var idCounter = 0;
-var lockStack = [];
-function RemoveScrollSideCar(props) {
-	var shouldPreventQueue = import_react.useRef([]);
-	var touchStartRef = import_react.useRef([0, 0]);
-	var activeAxis = import_react.useRef();
-	var id = import_react.useState(idCounter++)[0];
-	var Style = import_react.useState(styleSingleton)[0];
-	var lastProps = import_react.useRef(props);
-	import_react.useEffect(function() {
-		lastProps.current = props;
-	}, [props]);
-	import_react.useEffect(function() {
-		if (props.inert) {
-			document.body.classList.add("block-interactivity-".concat(id));
-			var allow_1 = __spreadArray([props.lockRef.current], (props.shards || []).map(extractRef), true).filter(Boolean);
-			allow_1.forEach(function(el) {
-				return el.classList.add("allow-interactivity-".concat(id));
-			});
-			return function() {
-				document.body.classList.remove("block-interactivity-".concat(id));
-				allow_1.forEach(function(el) {
-					return el.classList.remove("allow-interactivity-".concat(id));
-				});
-			};
-		}
-	}, [
-		props.inert,
-		props.lockRef.current,
-		props.shards
-	]);
-	var shouldCancelEvent = import_react.useCallback(function(event, parent) {
-		if ("touches" in event && event.touches.length === 2 || event.type === "wheel" && event.ctrlKey) return !lastProps.current.allowPinchZoom;
-		var touch = getTouchXY(event);
-		var touchStart = touchStartRef.current;
-		var deltaX = "deltaX" in event ? event.deltaX : touchStart[0] - touch[0];
-		var deltaY = "deltaY" in event ? event.deltaY : touchStart[1] - touch[1];
-		var currentAxis;
-		var target = event.target;
-		var moveDirection = Math.abs(deltaX) > Math.abs(deltaY) ? "h" : "v";
-		if ("touches" in event && moveDirection === "h" && target.type === "range") return false;
-		var selection = window.getSelection();
-		var anchorNode = selection && selection.anchorNode;
-		if (anchorNode ? anchorNode === target || anchorNode.contains(target) : false) return false;
-		var canBeScrolledInMainDirection = locationCouldBeScrolled(moveDirection, target);
-		if (!canBeScrolledInMainDirection) return true;
-		if (canBeScrolledInMainDirection) currentAxis = moveDirection;
-		else {
-			currentAxis = moveDirection === "v" ? "h" : "v";
-			canBeScrolledInMainDirection = locationCouldBeScrolled(moveDirection, target);
-		}
-		if (!canBeScrolledInMainDirection) return false;
-		if (!activeAxis.current && "changedTouches" in event && (deltaX || deltaY)) activeAxis.current = currentAxis;
-		if (!currentAxis) return true;
-		var cancelingAxis = activeAxis.current || currentAxis;
-		return handleScroll(cancelingAxis, parent, event, cancelingAxis === "h" ? deltaX : deltaY, true);
-	}, []);
-	var shouldPrevent = import_react.useCallback(function(_event) {
-		var event = _event;
-		if (!lockStack.length || lockStack[lockStack.length - 1] !== Style) return;
-		var delta = "deltaY" in event ? getDeltaXY(event) : getTouchXY(event);
-		var sourceEvent = shouldPreventQueue.current.filter(function(e) {
-			return e.name === event.type && (e.target === event.target || event.target === e.shadowParent) && deltaCompare(e.delta, delta);
-		})[0];
-		if (sourceEvent && sourceEvent.should) {
-			if (event.cancelable) event.preventDefault();
-			return;
-		}
-		if (!sourceEvent) {
-			var shardNodes = (lastProps.current.shards || []).map(extractRef).filter(Boolean).filter(function(node) {
-				return node.contains(event.target);
-			});
-			if (shardNodes.length > 0 ? shouldCancelEvent(event, shardNodes[0]) : !lastProps.current.noIsolation) {
-				if (event.cancelable) event.preventDefault();
-			}
-		}
-	}, []);
-	var shouldCancel = import_react.useCallback(function(name, delta, target, should) {
-		var event = {
-			name,
-			delta,
-			target,
-			should,
-			shadowParent: getOutermostShadowParent(target)
-		};
-		shouldPreventQueue.current.push(event);
-		setTimeout(function() {
-			shouldPreventQueue.current = shouldPreventQueue.current.filter(function(e) {
-				return e !== event;
-			});
-		}, 1);
-	}, []);
-	var scrollTouchStart = import_react.useCallback(function(event) {
-		touchStartRef.current = getTouchXY(event);
-		activeAxis.current = void 0;
-	}, []);
-	var scrollWheel = import_react.useCallback(function(event) {
-		shouldCancel(event.type, getDeltaXY(event), event.target, shouldCancelEvent(event, props.lockRef.current));
-	}, []);
-	var scrollTouchMove = import_react.useCallback(function(event) {
-		shouldCancel(event.type, getTouchXY(event), event.target, shouldCancelEvent(event, props.lockRef.current));
-	}, []);
-	import_react.useEffect(function() {
-		lockStack.push(Style);
-		props.setCallbacks({
-			onScrollCapture: scrollWheel,
-			onWheelCapture: scrollWheel,
-			onTouchMoveCapture: scrollTouchMove
-		});
-		document.addEventListener("wheel", shouldPrevent, nonPassive);
-		document.addEventListener("touchmove", shouldPrevent, nonPassive);
-		document.addEventListener("touchstart", scrollTouchStart, nonPassive);
-		return function() {
-			lockStack = lockStack.filter(function(inst) {
-				return inst !== Style;
-			});
-			document.removeEventListener("wheel", shouldPrevent, nonPassive);
-			document.removeEventListener("touchmove", shouldPrevent, nonPassive);
-			document.removeEventListener("touchstart", scrollTouchStart, nonPassive);
-		};
-	}, []);
-	var removeScrollBar = props.removeScrollBar, inert = props.inert;
-	return import_react.createElement(import_react.Fragment, null, inert ? import_react.createElement(Style, { styles: generateStyle(id) }) : null, removeScrollBar ? import_react.createElement(RemoveScrollBar, {
-		noRelative: props.noRelative,
-		gapMode: props.gapMode
-	}) : null);
-}
-function getOutermostShadowParent(node) {
-	var shadowParent = null;
-	while (node !== null) {
-		if (node instanceof ShadowRoot) {
-			shadowParent = node.host;
-			node = node.host;
-		}
-		node = node.parentNode;
-	}
-	return shadowParent;
-}
-//#endregion
-//#region node_modules/react-remove-scroll/dist/es2015/sidecar.js
-var sidecar_default = exportSidecar(effectCar, RemoveScrollSideCar);
-//#endregion
-//#region node_modules/react-remove-scroll/dist/es2015/Combination.js
-var ReactRemoveScroll = import_react.forwardRef(function(props, ref) {
-	return import_react.createElement(RemoveScroll, __assign({}, props, {
-		ref,
-		sideCar: sidecar_default
-	}));
-});
-ReactRemoveScroll.classNames = RemoveScroll.classNames;
-//#endregion
-//#region node_modules/aria-hidden/dist/es2015/index.js
-var getDefaultParent = function(originalTarget) {
-	if (typeof document === "undefined") return null;
-	return (Array.isArray(originalTarget) ? originalTarget[0] : originalTarget).ownerDocument.body;
-};
-var counterMap = /* @__PURE__ */ new WeakMap();
-var uncontrolledNodes = /* @__PURE__ */ new WeakMap();
-var markerMap = {};
-var lockCount = 0;
-var unwrapHost = function(node) {
-	return node && (node.host || unwrapHost(node.parentNode));
-};
-var correctTargets = function(parent, targets) {
-	return targets.map(function(target) {
-		if (parent.contains(target)) return target;
-		var correctedTarget = unwrapHost(target);
-		if (correctedTarget && parent.contains(correctedTarget)) return correctedTarget;
-		console.error("aria-hidden", target, "in not contained inside", parent, ". Doing nothing");
-		return null;
-	}).filter(function(x) {
-		return Boolean(x);
-	});
-};
-/**
-* Marks everything except given node(or nodes) as aria-hidden
-* @param {Element | Element[]} originalTarget - elements to keep on the page
-* @param [parentNode] - top element, defaults to document.body
-* @param {String} [markerName] - a special attribute to mark every node
-* @param {String} [controlAttribute] - html Attribute to control
-* @return {Undo} undo command
-*/
-var applyAttributeToOthers = function(originalTarget, parentNode, markerName, controlAttribute) {
-	var targets = correctTargets(parentNode, Array.isArray(originalTarget) ? originalTarget : [originalTarget]);
-	if (!markerMap[markerName]) markerMap[markerName] = /* @__PURE__ */ new WeakMap();
-	var markerCounter = markerMap[markerName];
-	var hiddenNodes = [];
-	var elementsToKeep = /* @__PURE__ */ new Set();
-	var elementsToStop = new Set(targets);
-	var keep = function(el) {
-		if (!el || elementsToKeep.has(el)) return;
-		elementsToKeep.add(el);
-		keep(el.parentNode);
-	};
-	targets.forEach(keep);
-	var deep = function(parent) {
-		if (!parent || elementsToStop.has(parent)) return;
-		Array.prototype.forEach.call(parent.children, function(node) {
-			if (elementsToKeep.has(node)) deep(node);
-			else try {
-				var attr = node.getAttribute(controlAttribute);
-				var alreadyHidden = attr !== null && attr !== "false";
-				var counterValue = (counterMap.get(node) || 0) + 1;
-				var markerValue = (markerCounter.get(node) || 0) + 1;
-				counterMap.set(node, counterValue);
-				markerCounter.set(node, markerValue);
-				hiddenNodes.push(node);
-				if (counterValue === 1 && alreadyHidden) uncontrolledNodes.set(node, true);
-				if (markerValue === 1) node.setAttribute(markerName, "true");
-				if (!alreadyHidden) node.setAttribute(controlAttribute, "true");
-			} catch (e) {
-				console.error("aria-hidden: cannot operate on ", node, e);
-			}
-		});
-	};
-	deep(parentNode);
-	elementsToKeep.clear();
-	lockCount++;
-	return function() {
-		hiddenNodes.forEach(function(node) {
-			var counterValue = counterMap.get(node) - 1;
-			var markerValue = markerCounter.get(node) - 1;
-			counterMap.set(node, counterValue);
-			markerCounter.set(node, markerValue);
-			if (!counterValue) {
-				if (!uncontrolledNodes.has(node)) node.removeAttribute(controlAttribute);
-				uncontrolledNodes.delete(node);
-			}
-			if (!markerValue) node.removeAttribute(markerName);
-		});
-		lockCount--;
-		if (!lockCount) {
-			counterMap = /* @__PURE__ */ new WeakMap();
-			counterMap = /* @__PURE__ */ new WeakMap();
-			uncontrolledNodes = /* @__PURE__ */ new WeakMap();
-			markerMap = {};
-		}
-	};
-};
-/**
-* Marks everything except given node(or nodes) as aria-hidden
-* @param {Element | Element[]} originalTarget - elements to keep on the page
-* @param [parentNode] - top element, defaults to document.body
-* @param {String} [markerName] - a special attribute to mark every node
-* @return {Undo} undo command
-*/
-var hideOthers = function(originalTarget, parentNode, markerName) {
-	if (markerName === void 0) markerName = "data-aria-hidden";
-	var targets = Array.from(Array.isArray(originalTarget) ? originalTarget : [originalTarget]);
-	var activeParentNode = parentNode || getDefaultParent(originalTarget);
-	if (!activeParentNode) return function() {
-		return null;
-	};
-	targets.push.apply(targets, Array.from(activeParentNode.querySelectorAll("[aria-live], script")));
-	return applyAttributeToOthers(targets, activeParentNode, markerName, "aria-hidden");
-};
-//#endregion
-//#region node_modules/@radix-ui/react-dialog/dist/index.mjs
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", {
 	value,
 	configurable: true
 });
 var DIALOG_NAME = "Dialog";
-var [createDialogContext, createDialogScope] = createContextScope(DIALOG_NAME);
+var [createDialogContext, createDialogScope] = /* @__PURE__ */ createContextScope(DIALOG_NAME);
 var [DialogProvider, useDialogContext] = createDialogContext(DIALOG_NAME);
 var Dialog = /* @__PURE__ */ __name((props) => {
 	const { __scopeDialog, children, open: openProp, defaultOpen, onOpenChange, modal = true } = props;
@@ -2043,8 +1408,7 @@ var Slot = /* @__PURE__ */ createSlot("DialogOverlay.RemoveScroll");
 var DialogOverlayImpl = /* @__PURE__ */ import_react.forwardRef(/* @__PURE__ */ __name(function DialogOverlayImpl2(props, forwardedRef) {
 	const { __scopeDialog, ...overlayProps } = props;
 	const context = useDialogContext(OVERLAY_NAME, __scopeDialog);
-	const registerDismissableSurface = useDismissableLayerSurface();
-	const composedRefs = useComposedRefs(forwardedRef, registerDismissableSurface);
+	const composedRefs = useComposedRefs(forwardedRef, useDismissableLayerSurface());
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ReactRemoveScroll, {
 		as: Slot,
 		allowPinchZoom: true,
@@ -2200,4 +1564,4 @@ function getState(open) {
 }
 __name(getState, "getState");
 //#endregion
-export { DialogOverlay as a, DialogTrigger as c, DialogDescription as i, Slot$1 as l, DialogClose as n, DialogPortal as o, DialogContent as r, DialogTitle as s, Dialog as t, require_react_dom as u };
+export { DialogDescription as a, DialogTitle as c, SignedIn as d, SignedOut as f, useCurrentUserState as g, formatMoney as h, DialogContent as i, DialogTrigger as l, cn as m, Dialog as n, DialogOverlay as o, UserButton as p, DialogClose as r, DialogPortal as s, Button as t, RedirectToSignIn as u };

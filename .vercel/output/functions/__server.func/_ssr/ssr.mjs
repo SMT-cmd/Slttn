@@ -1,9 +1,7 @@
 import { r as __exportAll$1 } from "../_runtime.mjs";
-import { n as require_react } from "../_libs/@radix-ui/react-compose-refs+[...].mjs";
-import { A as toCrossJSONStream, B as invariant, D as fromJSON, F as resolveManifestAssetLink, I as resolveManifestCssLink, J as rootRouteId, K as isRedirect, L as waitForReason, N as getScriptPreloadAttrs, P as getStylesheetHref, R as _getRenderedMatches, U as isDangerousProtocol, W as isPromise, Y as isNotFound, a as isSsrResponse, c as stripSsrResponseBody, i as disposeSsrResponse, k as toCrossJSONAsync, m as RouterProvider, n as bindSsrResponseToRequest, o as normalizeSsrResponse, q as parseRedirect, r as defineHandlerCallback, s as replaceSsrResponse, t as renderRouterToStream, z as executeRewriteInput } from "../_libs/@tanstack/react-router+[...].mjs";
+import { B as _getRenderedMatches, F as getScriptPreloadAttrs, G as isDangerousProtocol, H as invariant, I as getStylesheetHref, J as isRedirect, K as isPromise, L as resolveManifestAssetLink, M as toCrossJSONStream, Q as require_react, R as resolveManifestCssLink, T as require_jsx_runtime, V as executeRewriteInput, X as rootRouteId, Y as parseRedirect, Z as isNotFound, a as disposeSsrResponse, c as replaceSsrResponse, h as RouterProvider, i as defineHandlerCallback, j as toCrossJSONAsync, k as fromJSON, l as stripSsrResponseBody, o as isSsrResponse, r as bindSsrResponseToRequest, s as normalizeSsrResponse, t as renderRouterToStream, z as waitForReason } from "../_libs/@tanstack/react-router+[...].mjs";
 import { n as createServerHistory } from "../_libs/tanstack__history.mjs";
 import { a as defaultSerovalDeserializerPlugins, i as createRawStreamRPCPlugin, n as attachRouterServerSsrUtils, o as makeSerovalPlugin, r as getNormalizedURL, s as createSerializationAdapter, t as mergeHeaders } from "../_libs/@tanstack/router-core+[...].mjs";
-import { n as require_jsx_runtime } from "../_libs/radix-ui__react-context+react.mjs";
 import { n as setCookie, r as toResponse, t as H3Event } from "../_libs/h3-v2+rou3.mjs";
 import { AsyncLocalStorage } from "node:async_hooks";
 //#region node_modules/.nitro/vite/services/ssr/index.js
@@ -1666,7 +1664,7 @@ var getBaseManifest = getProdBaseManifest;
 var createEarlyHintsForRequest = createEarlyHintsCollector;
 async function loadEntries() {
 	const [routerEntry, startEntry, pluginAdapters] = await Promise.all([
-		import("./router-DQyfNFaT.mjs").then((n) => n.t),
+		import("./router-DAbHp7-E.mjs").then((n) => n.t),
 		import("./start-5Z2QO8AU.mjs"),
 		import("./empty-plugin-adapters-D9UWiqvJ.mjs")
 	]);

@@ -1,16 +1,14 @@
 import { o as __toESM } from "../_runtime.mjs";
-import { n as require_react } from "../_libs/@radix-ui/react-compose-refs+[...].mjs";
-import { b as Link } from "../_libs/@tanstack/react-router+[...].mjs";
-import { n as require_jsx_runtime } from "../_libs/radix-ui__react-context+react.mjs";
+import { Q as require_react, T as require_jsx_runtime, x as Link } from "../_libs/@tanstack/react-router+[...].mjs";
 import { r as SITE } from "./site-BJP5UGIc.mjs";
 import { t as AUTH_PROVIDERS } from "./server-D9B0HzbG.mjs";
 import { n as toast } from "../_libs/sonner.mjs";
 import { r as signIn, t as authClient } from "./client-CGHzwkia.mjs";
-import { t as Button } from "./button-VMoNJXYX.mjs";
-import { t as Shell } from "./shell-Cyz-QISl.mjs";
-import { t as Input } from "./input-DY3dfF79.mjs";
-import { t as Label } from "./label-CNBWVg9A.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/login-B-uPSdXX.js
+import { t as Button } from "./dist-DJDlxxL0.mjs";
+import { t as Shell } from "./shell-DHDyTYq0.mjs";
+import { t as Input } from "./input-Cs_CjqnH.mjs";
+import { t as Label } from "./label-DR9CMjK_.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/login-CbxaCzZh.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 var derivProvider = AUTH_PROVIDERS.find((provider) => provider.label === "Deriv");
