@@ -1,7 +1,5 @@
 import { o as __toESM } from "../_runtime.mjs";
-import { n as require_react } from "../_libs/@radix-ui/react-compose-refs+[...].mjs";
-import { C as useRouter, _ as lazyRouteComponent, d as Scripts, f as HeadContent, g as Outlet, h as createRouter, v as createFileRoute, y as createRootRoute } from "../_libs/@tanstack/react-router+[...].mjs";
-import { n as require_jsx_runtime } from "../_libs/radix-ui__react-context+react.mjs";
+import { Q as require_react, T as require_jsx_runtime, _ as Outlet, b as createRootRoute, f as Scripts, g as createRouter, p as HeadContent, v as lazyRouteComponent, w as useRouter, y as createFileRoute } from "../_libs/@tanstack/react-router+[...].mjs";
 import { a as getServerFnById, i as TSS_SERVER_FUNCTION, r as createServerFn, s as __exportAll } from "./ssr.mjs";
 import { i as authMiddleware, r as SITE } from "./site-BJP5UGIc.mjs";
 import { A as boolean, D as _enum, F as object, M as literal, P as number, R as string, k as array, z as union } from "../_libs/@better-auth/core+[...].mjs";
@@ -140,7 +138,7 @@ var adminSaveSetting = createServerFn({ method: "POST" }).middleware([authMiddle
 	value: string()
 })).handler(createSsrRpc("7788db9edffbaa146725cc19bacf940f5b5f11fb617fa862649667ac5b61092a"));
 //#endregion
-//#region node_modules/.nitro/vite/services/ssr/assets/router-DQyfNFaT.js
+//#region node_modules/.nitro/vite/services/ssr/assets/router-DAbHp7-E.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 var FALLBACK_MESSAGE = "An unexpected error occurred. Try reloading the page.";
@@ -537,48 +535,48 @@ function Root() {
 		] })]
 	});
 }
-var $$splitComponentImporter$17 = () => import("./routes-lFuYAYGt.mjs");
+var $$splitComponentImporter$17 = () => import("./routes-D_FfnpU8.mjs");
 var Route$18 = createFileRoute("/")({
 	loader: () => listBooks(),
 	component: lazyRouteComponent($$splitComponentImporter$17, "component")
 });
-var $$splitComponentImporter$16 = () => import("./about-wD0fxZwn.mjs");
+var $$splitComponentImporter$16 = () => import("./about-BsxR4HC9.mjs");
 var Route$17 = createFileRoute("/about")({ component: lazyRouteComponent($$splitComponentImporter$16, "component") });
-var $$splitComponentImporter$15 = () => import("./account-CIUb-hXw.mjs");
+var $$splitComponentImporter$15 = () => import("./account-B5WZTP8X.mjs");
 var Route$16 = createFileRoute("/account")({ component: lazyRouteComponent($$splitComponentImporter$15, "component") });
-var $$splitComponentImporter$14 = () => import("./checkout-CwUwEuJI.mjs");
+var $$splitComponentImporter$14 = () => import("./checkout-jXquCLSv.mjs");
 var Route$15 = createFileRoute("/checkout")({
 	validateSearch: (s) => ({ slug: typeof s.slug === "string" ? s.slug : void 0 }),
 	component: lazyRouteComponent($$splitComponentImporter$14, "component")
 });
-var $$splitComponentImporter$13 = () => import("./community-CPwWAos_.mjs");
+var $$splitComponentImporter$13 = () => import("./community-BfQ4vzFx.mjs");
 var Route$14 = createFileRoute("/community")({ component: lazyRouteComponent($$splitComponentImporter$13, "component") });
-var $$splitComponentImporter$12 = () => import("./contact-h5dfvPEW.mjs");
+var $$splitComponentImporter$12 = () => import("./contact-BL8bTfLS.mjs");
 var Route$13 = createFileRoute("/contact")({ component: lazyRouteComponent($$splitComponentImporter$12, "component") });
-var $$splitComponentImporter$11 = () => import("./cookies-DU3c1Yqx.mjs");
+var $$splitComponentImporter$11 = () => import("./cookies-9Phg1lvt.mjs");
 var Route$12 = createFileRoute("/cookies")({ component: lazyRouteComponent($$splitComponentImporter$11, "component") });
-var $$splitComponentImporter$10 = () => import("./copyright-DmfI2vSa.mjs");
+var $$splitComponentImporter$10 = () => import("./copyright-DdHaJiLm.mjs");
 var Route$11 = createFileRoute("/copyright")({ component: lazyRouteComponent($$splitComponentImporter$10, "component") });
-var $$splitComponentImporter$9 = () => import("./disclaimer-DsxlNnN7.mjs");
+var $$splitComponentImporter$9 = () => import("./disclaimer-HipMYZ3y.mjs");
 var Route$10 = createFileRoute("/disclaimer")({ component: lazyRouteComponent($$splitComponentImporter$9, "component") });
-var $$splitComponentImporter$8 = () => import("./login-B-uPSdXX.mjs");
+var $$splitComponentImporter$8 = () => import("./login-CbxaCzZh.mjs");
 var Route$9 = createFileRoute("/login")({ component: lazyRouteComponent($$splitComponentImporter$8, "component") });
-var $$splitComponentImporter$7 = () => import("./pricing-DiuJMyvb.mjs");
+var $$splitComponentImporter$7 = () => import("./pricing-DB_ZeWxj.mjs");
 var Route$8 = createFileRoute("/pricing")({ component: lazyRouteComponent($$splitComponentImporter$7, "component") });
-var $$splitComponentImporter$6 = () => import("./privacy-BMnCC0is.mjs");
+var $$splitComponentImporter$6 = () => import("./privacy-DGdlpMCa.mjs");
 var Route$7 = createFileRoute("/privacy")({ component: lazyRouteComponent($$splitComponentImporter$6, "component") });
-var $$splitComponentImporter$5 = () => import("./refund-DOPZEF2V.mjs");
+var $$splitComponentImporter$5 = () => import("./refund-4eqvergG.mjs");
 var Route$6 = createFileRoute("/refund")({ component: lazyRouteComponent($$splitComponentImporter$5, "component") });
-var $$splitComponentImporter$4 = () => import("./terms-Bj_cN1F3.mjs");
+var $$splitComponentImporter$4 = () => import("./terms-CnP6RXwU.mjs");
 var Route$5 = createFileRoute("/terms")({ component: lazyRouteComponent($$splitComponentImporter$4, "component") });
-var $$splitComponentImporter$3 = () => import("./admin-wnFJtk8-.mjs");
+var $$splitComponentImporter$3 = () => import("./admin-DbyZee-3.mjs");
 var Route$4 = createFileRoute("/admin/")({ component: lazyRouteComponent($$splitComponentImporter$3, "component") });
-var $$splitComponentImporter$2 = () => import("./library-6W3Lp7fm.mjs");
+var $$splitComponentImporter$2 = () => import("./library-CR5qLufv.mjs");
 var Route$3 = createFileRoute("/library/")({
 	loader: () => listBooks(),
 	component: lazyRouteComponent($$splitComponentImporter$2, "component")
 });
-var $$splitComponentImporter$1 = () => import("../_slug-BVEOYwbd.mjs");
+var $$splitComponentImporter$1 = () => import("../_slug-CBdrxDR1.mjs");
 var Route$2 = createFileRoute("/library/$slug")({
 	loader: ({ params }) => getBook({ data: { slug: params.slug } }),
 	component: lazyRouteComponent($$splitComponentImporter$1, "component")
@@ -587,7 +585,7 @@ var Route$1 = createFileRoute("/api/auth/$")({ server: { handlers: {
 	GET: ({ request }) => auth.handler(request),
 	POST: ({ request }) => auth.handler(request)
 } } });
-var $$splitComponentImporter = () => import("./read._slug-Cdiq5iTq.mjs");
+var $$splitComponentImporter = () => import("./read._slug-CvVjf1Ot.mjs");
 var Route = createFileRoute("/library/read/$slug")({ component: lazyRouteComponent($$splitComponentImporter, "component") });
 var IndexRoute = Route$18.update({
 	id: "/",

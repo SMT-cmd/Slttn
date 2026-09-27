@@ -1,6 +1,6 @@
-import { n as require_jsx_runtime } from "../_libs/radix-ui__react-context+react.mjs";
-import { t as Legal } from "./legal-C7Ni6UAP.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/terms-Bj_cN1F3.js
+import { T as require_jsx_runtime } from "../_libs/@tanstack/react-router+[...].mjs";
+import { t as Legal } from "./legal-n_Hbc-wJ.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/terms-CnP6RXwU.js
 var import_jsx_runtime = require_jsx_runtime();
 var SplitComponent = () => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Legal, {
 	title: "Terms of Service",

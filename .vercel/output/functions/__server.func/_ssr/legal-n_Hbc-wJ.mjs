@@ -1,6 +1,6 @@
-import { n as require_jsx_runtime } from "../_libs/radix-ui__react-context+react.mjs";
-import { t as Shell } from "./shell-Cyz-QISl.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/legal-C7Ni6UAP.js
+import { T as require_jsx_runtime } from "../_libs/@tanstack/react-router+[...].mjs";
+import { t as Shell } from "./shell-DHDyTYq0.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/legal-n_Hbc-wJ.js
 var import_jsx_runtime = require_jsx_runtime();
 function Legal({ title, children }) {
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Shell, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", {

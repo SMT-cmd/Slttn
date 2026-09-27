@@ -1,8 +1,7 @@
-import { b as Link } from "../_libs/@tanstack/react-router+[...].mjs";
-import { n as require_jsx_runtime } from "../_libs/radix-ui__react-context+react.mjs";
-import { s as formatMoney } from "./button-VMoNJXYX.mjs";
-import { t as Badge } from "./badge-swUHOtDb.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/book-card-iP_CPt4q.js
+import { T as require_jsx_runtime, x as Link } from "../_libs/@tanstack/react-router+[...].mjs";
+import { h as formatMoney } from "./dist-DJDlxxL0.mjs";
+import { t as Badge } from "./badge-Bd3zoPZi.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/book-card-DiMOMulw.js
 var import_jsx_runtime = require_jsx_runtime();
 function BookCard({ book }) {
 	const price = book.online_price_cents / 100;

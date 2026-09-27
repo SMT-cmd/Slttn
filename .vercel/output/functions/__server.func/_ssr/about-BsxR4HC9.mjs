@@ -1,7 +1,7 @@
-import { n as require_jsx_runtime } from "../_libs/radix-ui__react-context+react.mjs";
+import { T as require_jsx_runtime } from "../_libs/@tanstack/react-router+[...].mjs";
 import { r as SITE } from "./site-BJP5UGIc.mjs";
-import { t as Shell } from "./shell-Cyz-QISl.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/about-wD0fxZwn.js
+import { t as Shell } from "./shell-DHDyTYq0.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/about-BsxR4HC9.js
 var import_jsx_runtime = require_jsx_runtime();
 function About() {
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Shell, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {

@@ -1,12 +1,9 @@
 import { o as __toESM } from "../_runtime.mjs";
-import { n as require_react } from "../_libs/@radix-ui/react-compose-refs+[...].mjs";
-import { b as Link } from "../_libs/@tanstack/react-router+[...].mjs";
-import { n as require_jsx_runtime } from "../_libs/radix-ui__react-context+react.mjs";
-import { a as DialogOverlay$1, i as DialogDescription$1, n as DialogClose, o as DialogPortal$1, r as DialogContent$1, s as DialogTitle$1, t as Dialog$1 } from "../_libs/@radix-ui/react-dialog+[...].mjs";
+import { Q as require_react, T as require_jsx_runtime, x as Link } from "../_libs/@tanstack/react-router+[...].mjs";
 import { d as Lock, f as ChevronRight, p as ChevronLeft, t as X } from "../_libs/lucide-react.mjs";
-import { N as logPage, P as readerPayload, c as acceptTos, n as Route } from "./router-DQyfNFaT.mjs";
-import { c as useCurrentUserState, n as RedirectToSignIn, o as cn, t as Button } from "./button-VMoNJXYX.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/read._slug-Cdiq5iTq.js
+import { N as logPage, P as readerPayload, c as acceptTos, n as Route } from "./router-DAbHp7-E.mjs";
+import { a as DialogDescription$1, c as DialogTitle$1, g as useCurrentUserState, i as DialogContent$1, m as cn, n as Dialog$1, o as DialogOverlay$1, r as DialogClose, s as DialogPortal$1, t as Button, u as RedirectToSignIn } from "./dist-DJDlxxL0.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/read._slug-CvVjf1Ot.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 var Dialog = Dialog$1;
