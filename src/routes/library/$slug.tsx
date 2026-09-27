@@ -29,8 +29,9 @@ function BookPage() {
     );
   }
   const online = book.online_price_cents / 100;
+  const launched = book.launch_mode === "launch";
   const dl =
-    book.launch_mode === "public"
+    launched
       ? book.download_public_cents / 100
       : book.download_prelaunch_cents / 100;
 
@@ -53,10 +54,11 @@ function BookPage() {
         <div>
           <div className="flex flex-wrap gap-2">
             <Badge tone="blue">{book.category}</Badge>
-            <Badge tone={book.launch_mode === "prelaunch" ? "green" : "navy"}>
-              {book.launch_mode === "prelaunch" ? "Pre-launch" : "Public"}
+            <Badge tone={launched ? "navy" : "green"}>
+              {launched ? "Launch" : "Pre-launch"}
             </Badge>
             <Badge tone="muted">Series {book.series_no}</Badge>
+            <Badge tone="muted">{book.page_count} image pages</Badge>
           </div>
           <h1 className="mt-4 font-display text-5xl">
             {book.title} <span className="text-profit">{book.subtitle}</span>
@@ -80,7 +82,7 @@ function BookPage() {
               <p className="mt-2 font-display text-3xl">{formatMoney(dl)}</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Always paid — {formatMoney(PRICING.downloadPrelaunch)} in pre-launch,{" "}
-                {formatMoney(PRICING.downloadPublic)} after public launch. Never free.
+                {formatMoney(PRICING.downloadPublic)} after launch. Never free.
               </p>
             </div>
           </div>
@@ -96,9 +98,8 @@ function BookPage() {
             </Button>
           </div>
           <p className="mt-4 text-xs text-muted-foreground">
-            Every page is watermarked with your name and CR (or email). Right-click and
-            copying are disabled in the reader. This is educational content, not financial
-            advice.
+            Every uploaded page image is watermarked with your name and CR or email in the
+            reader. Sample access shows only the opening pages until the title is unlocked.
           </p>
         </div>
       </div>

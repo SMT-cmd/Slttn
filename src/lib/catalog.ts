@@ -1,5 +1,7 @@
 import { getDb } from "./db";
-import { PRICING, SITE, type BookCategory, type BookSize, type LaunchMode } from "./site";
+import { PRICING, SITE, type BookCategory, type BookSize } from "./site";
+
+export type CatalogLaunchMode = "prelaunch" | "launch";
 
 export type CatalogPage = {
   id: string;
@@ -16,7 +18,7 @@ export type CatalogBook = {
   subtitle: string;
   category: BookCategory | string;
   size: BookSize;
-  launch_mode: LaunchMode;
+  launch_mode: CatalogLaunchMode;
   cover_url: string;
   blurb: string;
   published: boolean;
@@ -32,7 +34,7 @@ type CatalogBookRecord = {
   subtitle: string | null;
   category: string;
   size: BookSize | string;
-  launch_mode: LaunchMode | string;
+  launch_mode: CatalogLaunchMode | "public" | string;
   cover_url: string | null;
   blurb: string | null;
   published: boolean | null;
@@ -66,8 +68,8 @@ function safeSize(size: string | null | undefined): BookSize {
   return size === "short" || size === "medium" || size === "full" ? size : "medium";
 }
 
-function safeLaunchMode(mode: string | null | undefined): LaunchMode {
-  return mode === "public" ? "public" : "prelaunch";
+function safeLaunchMode(mode: string | null | undefined): CatalogLaunchMode {
+  return mode === "launch" || mode === "public" ? "launch" : "prelaunch";
 }
 
 export function defaultCoverFor(slug: string) {
@@ -152,3 +154,14 @@ export async function getCatalogBookPages(bookId: string) {
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => normalizeCatalogPage(row as CatalogPageRecord));
 }
+
+export async function getCatalogSnapshot(includeUnpublished = false) {
+  return listCatalogBooks(includeUnpublished);
+}
+
+export const CATALOG = {
+  list: listCatalogBooks,
+  getBySlug: getCatalogBookBySlug,
+  getPages: getCatalogBookPages,
+  snapshot: getCatalogSnapshot,
+};

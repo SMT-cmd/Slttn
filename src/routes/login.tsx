@@ -10,6 +10,9 @@ import { SITE } from "@/lib/site";
 
 export const Route = createFileRoute("/login")({ component: Login });
 
+const derivProvider = GROK_PROVIDERS.find((provider) => provider.label === "Deriv");
+const secondaryProviders = GROK_PROVIDERS.filter((provider) => provider.label !== "Deriv");
+
 function Login() {
   const [mode, setMode] = useState<"in" | "up">("in");
   const [email, setEmail] = useState("");
@@ -43,8 +46,9 @@ function Login() {
           <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">Sign in</p>
           <h1 className="mt-3 font-display text-5xl">Come in through the front door.</h1>
           <p className="mt-4 max-w-md text-muted-foreground">
-            If you have a Deriv account, sign in here, then link your CR from the account
-            page. Tagged SLT partners get member coupons. Google, X, or email all work.
+            Use Deriv first if that is your main trading account. We check the partnership
+            tag after sign-in, keep Google and email/password available, and you can still
+            link or relink Deriv later from your account page.
           </p>
           <img
             src="/brand/trading-library-powered.png"
@@ -54,18 +58,41 @@ function Login() {
         </div>
         <div className="rounded-xl border border-border bg-card p-6 sm:p-8">
           {authEnabled ? (
-            <div className="space-y-3">
-              {GROK_PROVIDERS.map((p) => (
-                <Button
-                  key={p.providerId}
-                  type="button"
-                  variant={p.providerId === "google" ? "navy" : "outline"}
-                  className="w-full"
-                  onClick={() => signIn(p.providerId, { callbackURL: "/account" })}
-                >
-                  Continue with {p.label}
-                </Button>
-              ))}
+            <div className="space-y-4">
+              {derivProvider ? (
+                <div className="rounded-xl border border-profit/30 bg-profit/6 p-4">
+                  <p className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
+                    Primary option
+                  </p>
+                  <Button
+                    type="button"
+                    variant="navy"
+                    size="lg"
+                    className="mt-3 w-full"
+                    onClick={() => signIn(derivProvider.providerId, { callbackURL: "/account" })}
+                  >
+                    Login with Deriv
+                  </Button>
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    Best for existing Deriv clients. We will check the partnership tag after
+                    login and sync it to your account.
+                  </p>
+                </div>
+              ) : null}
+
+              <div className="space-y-3">
+                {secondaryProviders.map((p) => (
+                  <Button
+                    key={p.providerId}
+                    type="button"
+                    variant={p.providerId === "grok-google" ? "navy" : "outline"}
+                    className="w-full"
+                    onClick={() => signIn(p.providerId, { callbackURL: "/account" })}
+                  >
+                    Continue with {p.label}
+                  </Button>
+                ))}
+              </div>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">Sign-in is being connected.</p>
@@ -127,11 +154,11 @@ function Login() {
             </Button>
           </form>
           <p className="mt-4 text-xs text-muted-foreground">
-            After you are in, link Deriv from{" "}
+            After you are in, you can still link or relink Deriv from{" "}
             <Link to="/account" className="underline">
               your account
             </Link>{" "}
-            so we can check the partnership tag.
+            if you started with Google or email/password.
           </p>
         </div>
       </div>

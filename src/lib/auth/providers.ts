@@ -1,3 +1,5 @@
+import { DERIV_PROVIDER_ID } from "../deriv";
+
 /**
  * The upstream identity providers this app offers for sign-in (via the broker).
  *
@@ -26,6 +28,7 @@ export type GrokProvider = {
 };
 
 export const GROK_PROVIDERS: readonly GrokProvider[] = [
+  { providerId: DERIV_PROVIDER_ID, idp: "deriv", label: "Deriv" },
   { providerId: "grok-google", idp: "google", label: "Google" },
   { providerId: "grok-x", idp: "twitter", label: "X" },
 ];
