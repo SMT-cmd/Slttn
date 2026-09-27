@@ -1,7 +1,7 @@
 import { genericOAuthClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 import { runPreSignInSignOut, runSignOut } from "../../../scripts/sign-out-plan.mjs";
-import { GROK_PROVIDERS } from "./providers";
+import { AUTH_PROVIDERS } from "./providers";
 
 /**
  * Better Auth client for this React SPA (browser-side).
@@ -38,7 +38,7 @@ export const authClient = createAuthClient({
 export const authEnabled = import.meta.env.VITE_AUTH_ENABLED !== "false";
 
 /** The upstream providers to render sign-in buttons for. */
-export { GROK_PROVIDERS };
+export { AUTH_PROVIDERS };
 
 // ── Live-preview bearer token ────────────────────────────────────────────────
 // The embedded preview iframe has partitioned cookies, so we keep the session's
@@ -83,8 +83,8 @@ function inLivePreview(): boolean {
 type PopupMessage = { source: "grok-auth-popup"; token: string | null; error?: string };
 
 /**
- * Start sign-in with one upstream provider (`providerId` from `GROK_PROVIDERS`),
- * federating through the Grok auth broker.
+ * Start sign-in with one upstream provider (`providerId` from `AUTH_PROVIDERS`),
+ * federating through the shared auth broker.
  *
  * - **Live preview** (`*.grok-sandbox.com` iframe): opens a POPUP to
  *   `/auth/popup`, served by the template Vite plugin (see `vite.config.ts` +
