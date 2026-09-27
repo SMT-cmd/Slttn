@@ -57,6 +57,15 @@ function requiredPublicEnv(name: "VITE_SUPABASE_URL" | "VITE_SUPABASE_ANON_KEY")
   return value;
 }
 
+function requiredServerOrPublicEnv(
+  serverName: "SUPABASE_URL" | "SUPABASE_ANON_KEY",
+  publicName: "VITE_SUPABASE_URL" | "VITE_SUPABASE_ANON_KEY",
+): string {
+  const value = fromProcess(serverName) ?? readEnv(publicName);
+  if (!value) throw new Error(`${serverName} or ${publicName} is not configured.`);
+  return value;
+}
+
 function requiredServerEnv(name: "SUPABASE_SERVICE_ROLE_KEY"): string {
   const value = fromProcess(name);
   if (!value) throw new Error(`${name} is not configured.`);
@@ -237,16 +246,16 @@ class RestQueryBuilder<T> implements SupabaseQueryBuilder<T> {
     const contentType = response.headers.get("content-type") ?? "";
     const payload = text && contentType.includes("application/json") ? (JSON.parse(text) as T) : null;
 
+    if (this.singleMode === "maybeSingle" && response.status === 406) {
+      return { data: null, error: null };
+    }
+
     if (!response.ok) {
       const errorMessage =
         typeof payload === "object" && payload !== null && "message" in payload
           ? String((payload as { message?: string }).message)
           : text || `${response.status} ${response.statusText}`;
       return { data: null, error: { message: errorMessage } };
-    }
-
-    if (this.singleMode === "maybeSingle" && response.status === 406) {
-      return { data: null, error: null };
     }
 
     return { data: payload, error: null };
@@ -269,29 +278,37 @@ function createRestClient(apiKey: string, bearerToken?: string): SupabaseLikeCli
   return new RestSupabaseClient(normalizeBaseUrl(requiredPublicEnv("VITE_SUPABASE_URL")), apiKey, bearerToken);
 }
 
+function createServerRestClient(apiKey: string, bearerToken?: string): SupabaseLikeClient {
+  return new RestSupabaseClient(
+    normalizeBaseUrl(requiredServerOrPublicEnv("SUPABASE_URL", "VITE_SUPABASE_URL")),
+    apiKey,
+    bearerToken,
+  );
+}
+
 export function createBrowserSupabaseClient(): SupabaseLikeClient {
   globalRef.__sltBrowserSupabase__ ??= createRestClient(requiredPublicEnv("VITE_SUPABASE_ANON_KEY"));
   return globalRef.__sltBrowserSupabase__;
 }
 
 export function createServerSupabaseClient(accessToken?: string): SupabaseLikeClient {
-  const key = requiredPublicEnv("VITE_SUPABASE_ANON_KEY");
+  const key = requiredServerOrPublicEnv("SUPABASE_ANON_KEY", "VITE_SUPABASE_ANON_KEY");
   if (!accessToken) {
     globalRef.__sltServerSupabase__ ??= new Map<string, SupabaseLikeClient>();
     const cacheKey = "anon";
     if (!globalRef.__sltServerSupabase__.has(cacheKey)) {
-      globalRef.__sltServerSupabase__.set(cacheKey, createRestClient(key));
+      globalRef.__sltServerSupabase__.set(cacheKey, createServerRestClient(key));
     }
     return globalRef.__sltServerSupabase__.get(cacheKey)!;
   }
-  return createRestClient(key, accessToken);
+  return createServerRestClient(key, accessToken);
 }
 
 export function getSupabaseAdmin(): SupabaseLikeClient {
   if (typeof window !== "undefined") {
     throw new Error("getSupabaseAdmin() is server-only.");
   }
-  globalRef.__sltAdminSupabase__ ??= createRestClient(requiredServerEnv("SUPABASE_SERVICE_ROLE_KEY"));
+  globalRef.__sltAdminSupabase__ ??= createServerRestClient(requiredServerEnv("SUPABASE_SERVICE_ROLE_KEY"));
   return globalRef.__sltAdminSupabase__;
 }
 

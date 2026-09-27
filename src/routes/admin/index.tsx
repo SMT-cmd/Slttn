@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type ChangeEvent, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -36,9 +36,9 @@ export const Route = createFileRoute("/admin/")({ component: Admin });
 type TabKey = "home" | "books" | "users" | "coupons" | "sales";
 type OverviewData = Awaited<ReturnType<typeof adminOverview>>;
 type UsersData = Awaited<ReturnType<typeof adminUsers>>;
-type CouponsData = Awaited<ReturnType<typeof adminCoupons>>;
-type SalesData = Awaited<ReturnType<typeof adminSales>>;
-type LogsData = Awaited<ReturnType<typeof adminLogs>>;
+type CouponsData = NonNullable<Awaited<ReturnType<typeof adminCoupons>>>;
+type SalesData = NonNullable<Awaited<ReturnType<typeof adminSales>>>;
+type LogsData = NonNullable<Awaited<ReturnType<typeof adminLogs>>>;
 type SignedUpload = Awaited<ReturnType<typeof adminSignCloudinaryUpload>>;
 
 type SettingsForm = {
@@ -94,7 +94,7 @@ function createBookDraft(book: BookRow): BookDraft {
     slug: book.slug,
     category: book.category,
     size: book.size as "short" | "medium" | "full",
-    launch_mode: book.launch_mode === "launch" ? "launch" : "prelaunch",
+    launch_mode: book.launch_mode === "prelaunch" ? "prelaunch" : "launch",
     blurb: book.description,
     published: book.published,
     sort_order: book.sort_order,
@@ -284,22 +284,22 @@ function HomePanel() {
           <Field
             label="Partner code"
             value={form.partner_code}
-            onChange={(value) => setForm((current) => (current ? { ...current, partner_code: value } : current))}
+            onChange={(value: string) => setForm((current) => (current ? { ...current, partner_code: value } : current))}
           />
           <Field
             label="Support email"
             value={form.support_email}
-            onChange={(value) => setForm((current) => (current ? { ...current, support_email: value } : current))}
+            onChange={(value: string) => setForm((current) => (current ? { ...current, support_email: value } : current))}
           />
           <Field
             label="Telegram link"
             value={form.telegram_url}
-            onChange={(value) => setForm((current) => (current ? { ...current, telegram_url: value } : current))}
+            onChange={(value: string) => setForm((current) => (current ? { ...current, telegram_url: value } : current))}
           />
           <Field
             label="WhatsApp link"
             value={form.whatsapp_url}
-            onChange={(value) => setForm((current) => (current ? { ...current, whatsapp_url: value } : current))}
+            onChange={(value: string) => setForm((current) => (current ? { ...current, whatsapp_url: value } : current))}
           />
         </div>
         <label className="mt-4 block text-sm">
@@ -356,22 +356,22 @@ function BooksPanel() {
           <Field
             label="Title"
             value={newBook.title}
-            onChange={(value) => setNewBook((current) => ({ ...current, title: value }))}
+            onChange={(value: string) => setNewBook((current) => ({ ...current, title: value }))}
           />
           <Field
             label="Subtitle"
             value={newBook.subtitle}
-            onChange={(value) => setNewBook((current) => ({ ...current, subtitle: value }))}
+            onChange={(value: string) => setNewBook((current) => ({ ...current, subtitle: value }))}
           />
           <Field
             label="Slug"
             value={newBook.slug}
-            onChange={(value) => setNewBook((current) => ({ ...current, slug: value }))}
+            onChange={(value: string) => setNewBook((current) => ({ ...current, slug: value }))}
           />
           <Field
             label="Category"
             value={newBook.category}
-            onChange={(value) => setNewBook((current) => ({ ...current, category: value }))}
+            onChange={(value: string) => setNewBook((current) => ({ ...current, category: value }))}
           />
           <SelectField
             label="Size"
@@ -542,22 +542,22 @@ function BookEditor({ book, onReload }: { book: BookRow; onReload: () => Promise
 
         <div>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Title" value={draft.title} onChange={(value) => setDraft((current) => ({ ...current, title: value }))} />
+            <Field label="Title" value={draft.title} onChange={(value: string) => setDraft((current) => ({ ...current, title: value }))} />
             <Field
               label="Subtitle"
               value={draft.subtitle}
-              onChange={(value) => setDraft((current) => ({ ...current, subtitle: value }))}
+              onChange={(value: string) => setDraft((current) => ({ ...current, subtitle: value }))}
             />
-            <Field label="Slug" value={draft.slug} onChange={(value) => setDraft((current) => ({ ...current, slug: value }))} />
+            <Field label="Slug" value={draft.slug} onChange={(value: string) => setDraft((current) => ({ ...current, slug: value }))} />
             <Field
               label="Category"
               value={draft.category}
-              onChange={(value) => setDraft((current) => ({ ...current, category: value }))}
+              onChange={(value: string) => setDraft((current) => ({ ...current, category: value }))}
             />
             <Field
               label="Sort order"
               value={String(draft.sort_order)}
-              onChange={(value) =>
+              onChange={(value: string) =>
                 setDraft((current) => ({ ...current, sort_order: Number.parseInt(value || "0", 10) || 0 }))
               }
             />
@@ -773,8 +773,8 @@ function CouponsPanel() {
   const [bookId, setBookId] = useState("");
 
   const reload = async () => {
-    const [couponRows, bookRows] = await Promise.all([adminCoupons(), adminBooks()]);
-    setRows(couponRows);
+        const [couponRows, bookRows] = await Promise.all([adminCoupons(), adminBooks()]);
+        setRows(couponRows ?? []);
     setBooks(bookRows);
   };
 
@@ -858,8 +858,8 @@ function SalesPanel() {
   useEffect(() => {
     Promise.all([adminSales(), adminLogs()])
       .then(([saleRows, logRows]) => {
-        setSales(saleRows);
-        setLogs(logRows);
+        setSales(saleRows ?? []);
+        setLogs(logRows ?? []);
       })
       .catch((error: unknown) =>
         toast.error(error instanceof Error ? error.message : "Could not load sales."),
@@ -906,7 +906,7 @@ function Field({
 }: {
   label: string;
   value: string;
-  onChange: Dispatch<SetStateAction<string>> | ((value: string) => void);
+  onChange: (value: string) => void;
 }) {
   return (
     <label className="text-sm">

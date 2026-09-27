@@ -68,6 +68,11 @@ function Reader() {
 
   const current = data.pages[page];
   const showLock = data.lockedFrom !== null && page === data.pages.length - 1;
+  const watermarkRows = [
+    "top-1/4",
+    "top-1/2",
+    "top-3/4",
+  ];
 
   return (
     <div
@@ -106,53 +111,38 @@ function Reader() {
           {data.book.title} {data.book.subtitle}
         </p>
         <p className="text-navy-foreground/70">
-          {page + 1} / {data.totalPages}
+          {data.totalPages === 0 ? "No pages" : `${page + 1} / ${data.totalPages}`}
         </p>
       </header>
 
       <div className="relative mx-auto grid min-h-[calc(100dvh-8rem)] max-w-3xl place-items-center px-3 py-6">
-        <div className="watermark absolute inset-0 opacity-90" />
-        <p className="pointer-events-none absolute inset-x-8 top-1/3 rotate-[-18deg] text-center text-sm tracking-[0.2em] text-white/15 uppercase">
-          {data.watermark}
-        </p>
         {current ? (
-          <article className="page-flip relative z-10 w-full rounded-md bg-paper p-8 text-ink shadow-[var(--shadow)] sm:p-12">
-            <p className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
-              The Trading Library · {data.book.author}
-            </p>
-            <h1 className="mt-3 font-display text-3xl sm:text-4xl">{current.heading}</h1>
-            <div className="mt-6 space-y-4 text-[1.02rem] leading-7">
-              {current.body.map((para) => (
-                <p key={para.slice(0, 24)}>{para}</p>
-              ))}
-            </div>
-            {current.bullets ? (
-              <ul className="mt-5 list-disc space-y-1 pl-5 text-sm">
-                {current.bullets.map((b) => (
-                  <li key={b}>{b}</li>
-                ))}
-              </ul>
-            ) : null}
-            {current.note ? (
-              <aside
-                className={`mt-6 rounded-md border p-4 text-sm ${
-                  current.note.tone === "green"
-                    ? "border-profit/30 bg-mint"
-                    : current.note.tone === "red"
-                      ? "border-loss/30 bg-loss/8"
-                      : "border-navy/20 bg-muted"
-                }`}
+          <article className="page-flip relative z-10 w-full overflow-hidden rounded-md bg-paper shadow-[var(--shadow)]">
+            <img
+              src={current.image_url}
+              alt={`${data.book.title} page ${page + 1}`}
+              className="block w-full select-none"
+              draggable={false}
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/4 via-transparent to-black/8" />
+            {watermarkRows.map((topClass, index) => (
+              <p
+                key={`${topClass}-${index}`}
+                className={`pointer-events-none absolute inset-x-6 ${topClass} rotate-[-18deg] text-center text-sm tracking-[0.28em] text-white/18 uppercase sm:text-base`}
               >
-                <p className="text-xs tracking-[0.16em] uppercase">{current.note.title}</p>
-                <p className="mt-1">{current.note.text}</p>
-              </aside>
-            ) : null}
+                {data.watermark}
+              </p>
+            ))}
+            <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-black/45 px-4 py-3 text-[11px] tracking-[0.2em] text-white/80 uppercase">
+              <span>{data.book.author}</span>
+              <span>Page {page + 1}</span>
+            </div>
             {showLock ? (
-              <div className="mt-8 rounded-md border border-border bg-muted p-4">
+              <div className="absolute inset-x-4 bottom-4 rounded-md border border-white/15 bg-black/72 p-4 text-white shadow-lg backdrop-blur-sm">
                 <p className="flex items-center gap-2 font-medium">
                   <Lock className="size-4" /> The rest of this book is locked
                 </p>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 text-sm text-white/75">
                   Sample pages end here. Tagged members can generate a coupon. Everyone else
                   can buy online access.
                 </p>
@@ -169,7 +159,11 @@ function Reader() {
               </div>
             ) : null}
           </article>
-        ) : null}
+        ) : (
+          <div className="relative z-10 w-full rounded-md border border-white/10 bg-white/5 p-8 text-center text-white/70">
+            No page images have been uploaded for this title yet.
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between px-4 pb-6">
@@ -193,5 +187,3 @@ function Reader() {
     </div>
   );
 }
-
-

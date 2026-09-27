@@ -5,7 +5,6 @@ import { Shell } from "@/components/layout/shell";
 import { BookCard } from "@/components/book-card";
 import { Input } from "@/components/ui/input";
 import { listBooks } from "@/lib/server/platform";
-import { CATEGORIES } from "@/lib/site";
 
 export const Route = createFileRoute("/library/")({
   loader: () => listBooks(),
@@ -13,9 +12,13 @@ export const Route = createFileRoute("/library/")({
 });
 
 function Library() {
-  const books = Route.useLoaderData();
+  const books = Route.useLoaderData() as Awaited<ReturnType<typeof listBooks>>;
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("All");
+  const categories = useMemo(
+    () => ["All", ...new Set(books.map((book) => book.category).filter(Boolean))],
+    [books],
+  );
   const filtered = useMemo(() => {
     return books.filter((b) => {
       const hay = `${b.title} ${b.subtitle} ${b.description} ${b.category}`.toLowerCase();
@@ -51,7 +54,7 @@ function Library() {
             />
           </div>
           <div className="flex flex-wrap gap-2">
-            {["All", ...CATEGORIES].map((c) => (
+            {categories.map((c) => (
               <button
                 key={c}
                 type="button"

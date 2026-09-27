@@ -19,7 +19,7 @@ import { PRICING, SITE } from "@/lib/site";
 import { getSupabaseAdmin } from "@/lib/supabase";
 
 type SupabaseAdmin = ReturnType<typeof getSupabaseAdmin>;
-type LaunchModeValue = "prelaunch" | "launch";
+type LaunchModeValue = "prelaunch" | "launch" | "public";
 
 type AuthUserRow = {
   id: string;
@@ -163,7 +163,7 @@ function normalizeLaunchMode(mode: string | null | undefined): LaunchModeValue {
 }
 
 function uiLaunchMode(mode: string | null | undefined): LaunchModeValue {
-  return normalizeLaunchMode(mode);
+  return normalizeLaunchMode(mode) === "launch" ? "public" : "prelaunch";
 }
 
 function slugify(value: string) {
@@ -432,12 +432,12 @@ async function requireAdmin(db: SupabaseAdmin, userId: string) {
 async function loadBooksWithPages(includeUnpublished = false) {
   const books = await listCatalogBooks(includeUnpublished);
   const rows = await Promise.all(
-    books.map(async (book) => {
+    books.map(async (book: CatalogBook) => {
       const pages = await getCatalogBookPages(book.id);
       return toBookRow(book, pages.length, pages);
     }),
   );
-  return rows.sort((left, right) => left.sort_order - right.sort_order);
+  return rows.sort((left: BookRow, right: BookRow) => left.sort_order - right.sort_order);
 }
 
 async function accessForBook(db: SupabaseAdmin, profile: Profile, book: BookRow) {
@@ -901,7 +901,7 @@ export const startCheckout = createServerFn({ method: "POST" })
       if (!book) throw new Error("We could not find that book.");
       amount =
         data.kind === "download"
-          ? book.launch_mode === "public"
+          ? book.launch_mode !== "prelaunch"
             ? book.download_public_cents
             : book.download_prelaunch_cents
           : book.online_price_cents;
@@ -924,12 +924,12 @@ export const startCheckout = createServerFn({ method: "POST" })
     ) as PurchaseRecord;
 
     if (profile.role === "admin") {
-      if (purchaseKind === "subscription") {
-        const days = data.kind === "sub6" ? 180 : 90;
+      if (purchaseKind === "sub3" || purchaseKind === "sub6") {
+        const days = purchaseKind === "sub6" ? 180 : 90;
         assertSupabase(
           await db.from("subscriptions").insert({
             user_id: context.userId,
-            plan: data.kind,
+            plan: purchaseKind,
             status: "active",
             expires_at: new Date(Date.now() + days * 86400000).toISOString(),
           }),
@@ -945,6 +945,9 @@ export const startCheckout = createServerFn({ method: "POST" })
       book_slug: book?.slug ?? "",
     };
     const email = profile.email ?? (await getAuthUser(db, context.userId)).email ?? "";
+    if (!email) {
+      throw new Error("Add an email address to your account before starting payment checkout.");
+    }
     const description =
       data.kind === "sub3" || data.kind === "sub6"
         ? data.kind === "sub6"
@@ -1065,14 +1068,14 @@ export const myLibrary = createServerFn({ method: "GET" })
         .select("code, kind, uses_remaining, created_at")
         .eq("user_id", context.userId)
         .order("created_at", { ascending: false }),
-    );
+    ) as Array<{ code: string; kind: string; uses_remaining: number | null; created_at: string }> | null;
     const purchases = assertSupabase(
       await db
         .from("purchases")
         .select("kind, amount_cents, created_at, book_id")
         .eq("user_id", context.userId)
         .order("created_at", { ascending: false }),
-    );
+    ) as Array<{ kind: string; amount_cents: number; created_at: string; book_id: string | null }> | null;
     return { profile, coupons, purchases };
   });
 
@@ -1099,14 +1102,21 @@ export const exportMyData = createServerFn({ method: "GET" })
         .select("id, kind, amount_cents, provider, status, created_at")
         .eq("user_id", context.userId)
         .order("created_at", { ascending: false }),
-    );
+    ) as Array<{
+      id: string;
+      kind: string;
+      amount_cents: number;
+      provider: string;
+      status: string;
+      created_at: string;
+    }> | null;
     const coupons = assertSupabase(
       await db
         .from("coupons")
         .select("code, kind, uses_remaining, created_at")
         .eq("user_id", context.userId)
         .order("created_at", { ascending: false }),
-    );
+    ) as Array<{ code: string; kind: string; uses_remaining: number | null; created_at: string }> | null;
     return { profile, purchases, coupons };
   });
 
@@ -1353,7 +1363,7 @@ export const adminDeleteBookPage = createServerFn({ method: "POST" })
     assertSupabase(await db.from("book_pages").delete().eq("id", data.pageId));
     const pages = await getCatalogBookPages(data.bookId);
     await Promise.all(
-      pages.map(async (page, index) =>
+      pages.map(async (page: CatalogPage, index: number) =>
         assertSupabase(
           await db.from("book_pages").update({ page_number: index + 1 }).eq("id", page.id),
         ),
