@@ -428,9 +428,9 @@ describe("gateIdentityUserInfo", () => {
       }),
       {
         id: "User-1",
-        email: "user-1@viewer.grok.invalid",
+        email: "user-1@viewer.invalid",
         emailVerified: false,
-        name: "Grok user",
+        name: "Viewer",
       },
     );
   });

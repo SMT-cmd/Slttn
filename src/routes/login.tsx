@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import { GROK_PROVIDERS, authEnabled, signIn, authClient } from "@/lib/auth/client";
+import { AUTH_PROVIDERS, authEnabled, signIn, authClient } from "@/lib/auth/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,8 +10,8 @@ import { SITE } from "@/lib/site";
 
 export const Route = createFileRoute("/login")({ component: Login });
 
-const derivProvider = GROK_PROVIDERS.find((provider) => provider.label === "Deriv");
-const secondaryProviders = GROK_PROVIDERS.filter((provider) => provider.label !== "Deriv");
+const derivProvider = AUTH_PROVIDERS.find((provider) => provider.label === "Deriv");
+const secondaryProviders = AUTH_PROVIDERS.filter((provider) => provider.label !== "Deriv");
 
 function Login() {
   const [mode, setMode] = useState<"in" | "up">("in");
@@ -85,7 +85,7 @@ function Login() {
                   <Button
                     key={p.providerId}
                     type="button"
-                    variant={p.providerId === "grok-google" ? "navy" : "outline"}
+                    variant={p.label === "Google" ? "navy" : "outline"}
                     className="w-full"
                     onClick={() => signIn(p.providerId, { callbackURL: "/account" })}
                   >
