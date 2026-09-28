@@ -3,39 +3,71 @@ import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { ThemeProvider } from "@/components/theme";
+import { SiteContext } from "@/lib/site-context";
+import { getSiteContext } from "@/lib/server/site-context";
 import { SITE } from "@/lib/site";
 import appCss from "../styles.css?url";
 
 export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: `${SITE.name} — ${SITE.library}` },
-      {
-        name: "description",
-        content:
-          "Exclusive trading books, community, and education for synthetic indices. The market that never sleeps.",
-      },
-      { name: "theme-color", content: "#0E2744" },
-    ],
-    links: [
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
-      { rel: "stylesheet", href: appCss },
-      { rel: "manifest", href: "/__grok/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/icon-192.png" },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Outfit:wght@300;400;500;600;700&display=swap",
-      },
-    ],
-  }),
+  loader: () => getSiteContext(),
+  head: ({ loaderData }) => {
+    const siteContext = loaderData;
+    const title = siteContext.isLibraryHost
+      ? `${SITE.library} | ${SITE.name}`
+      : `${SITE.name} | Trading Library for Serious Synthetic Indices Traders`;
+    const description = siteContext.isLibraryHost
+      ? "A premium trading library for serious synthetic indices traders. Clear books, a secure reader, and structured education built for real market work."
+      : "SLT Trade Hub is the home of The Trading Library: structured trading education, premium books, and a serious community for synthetic indices traders.";
+    const shareUrl = siteContext.isLibraryHost
+      ? siteContext.librarySiteUrl
+      : siteContext.mainSiteUrl;
+    const ogImage = `${siteContext.origin}/og.jpg`;
+
+    return {
+      meta: [
+        { charSet: "utf-8" },
+        { name: "viewport", content: "width=device-width, initial-scale=1" },
+        { title },
+        { name: "description", content: description },
+        { name: "theme-color", content: "#0E2744" },
+        { name: "robots", content: "index,follow" },
+        { property: "og:type", content: "website" },
+        { property: "og:site_name", content: SITE.name },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:url", content: shareUrl },
+        { property: "og:image", content: ogImage },
+        { property: "og:image:secure_url", content: ogImage },
+        { property: "og:image:alt", content: `${SITE.name} branded share card` },
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: description },
+        { name: "twitter:image", content: ogImage },
+      ],
+      links: [
+        { rel: "canonical", href: shareUrl },
+        { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+        { rel: "icon", type: "image/png", sizes: "16x16", href: "/favicon-16x16.png" },
+        { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32x32.png" },
+        { rel: "shortcut icon", href: "/favicon.ico" },
+        { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" },
+        { rel: "manifest", href: "/__grok/manifest.webmanifest" },
+        { rel: "stylesheet", href: appCss },
+        { rel: "preconnect", href: "https://fonts.googleapis.com" },
+        { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+        {
+          rel: "stylesheet",
+          href: "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Outfit:wght@300;400;500;600;700&display=swap",
+        },
+      ],
+    };
+  },
   component: Root,
 });
 
 function Root() {
+  const siteContext = Route.useLoaderData();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -44,10 +76,12 @@ function Root() {
       <body>
         <PreviewHostBridge />
         <ThemeProvider>
-          <AuthProvider>
-            <Outlet />
-            <Toaster richColors position="top-center" />
-          </AuthProvider>
+          <SiteContext.Provider value={siteContext}>
+            <AuthProvider>
+              <Outlet />
+              <Toaster richColors position="top-center" />
+            </AuthProvider>
+          </SiteContext.Provider>
         </ThemeProvider>
         <Scripts />
       </body>
