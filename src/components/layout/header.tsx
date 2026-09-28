@@ -43,9 +43,9 @@ export function Header({ library }: { library?: boolean }) {
   const homeLink = library ? libraryLink : marketingHref("/", siteContext);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/60 bg-background shadow-[0_8px_24px_-22px_rgb(14_39_68_/_0.45)]">
-      <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-3 px-4 py-2">
-        <a href={homeLink} className="flex items-center gap-3">
+    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/95 backdrop-blur">
+      <div className="mx-auto flex min-h-16 max-w-6xl items-center gap-3 px-4 py-2">
+        <a href={homeLink} className="flex min-w-0 items-center gap-3">
           <img
             src={library ? "/brand/trading-library-powered.png" : "/brand/slt-logo.png"}
             alt={library ? SITE.library : SITE.name}
@@ -54,17 +54,19 @@ export function Header({ library }: { library?: boolean }) {
               library ? "h-10 w-10 rounded-md" : "h-10 w-10 rounded-full",
             )}
           />
-          <span className="leading-tight">
+          <span className="min-w-0 leading-tight">
             <span className="block font-display text-lg font-semibold tracking-tight">
               {library ? SITE.library : SITE.name}
             </span>
-            <span className="hidden text-[10px] tracking-[0.18em] text-muted-foreground uppercase lg:block">
-              {library ? "Premium books for synthetic indices traders" : "Structured trading education"}
+            <span className="hidden text-[10px] tracking-[0.18em] text-muted-foreground uppercase xl:block">
+              {library
+                ? "Trading books for synthetic indices traders"
+                : "Structured education for synthetic indices traders"}
             </span>
           </span>
         </a>
 
-        <nav className="hidden items-center gap-5 lg:flex">
+        <nav className="ml-4 hidden flex-1 items-center justify-center gap-5 lg:flex">
           {LINKS.map((l) => (
             <a
               key={l.to}
@@ -79,7 +81,7 @@ export function Header({ library }: { library?: boolean }) {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={toggle}
@@ -118,14 +120,14 @@ export function Header({ library }: { library?: boolean }) {
                 <Menu className="size-5" />
               </button>
             </SheetTrigger>
-            <SheetContent className="border-l border-border">
+            <SheetContent side="right" className="w-full max-w-sm border-l border-border px-6">
               <div className="pr-8">
                 <p className="text-xs tracking-[0.18em] text-muted-foreground uppercase">Menu</p>
                 <p className="mt-2 font-display text-2xl">{library ? SITE.library : SITE.name}</p>
                 <p className="mt-2 text-sm text-muted-foreground">
                   {library
-                    ? "Books, pricing, and access for serious traders."
-                    : "Library access, community, and trader education."}
+                    ? "Browse titles, check pricing, and open your reader."
+                    : "Library access, pricing, and community links."}
                 </p>
               </div>
               <div className="mt-8 flex flex-col gap-1">

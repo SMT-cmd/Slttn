@@ -1,8 +1,8 @@
 export const SITE = {
   name: "SLT Trade Hub",
   library: "The Trading Library",
-  tagline: "Profitability is the Culture",
-  headline: "Structured trading education for synthetic indices traders.",
+  tagline: "Trading books and education for synthetic indices traders",
+  headline: "Trading books and education for synthetic indices traders.",
   domain: "slttradehub.online",
   libraryHost: "library.slttradehub.online",
   email: "hello@slttradehub.online",
@@ -11,14 +11,14 @@ export const SITE = {
   telegram: "https://t.me/slttradehub",
   whatsapp: "https://chat.whatsapp.com/slttradehub",
   url: "https://slttradehub.online",
-  marketingTitle: "SLT Trade Hub | Trading Books and Education for Synthetic Indices Traders",
+  marketingTitle: "SLT Trade Hub | Synthetic Indices Trading Books, Education, and Community",
   marketingDescription:
     "SLT Trade Hub gives synthetic indices traders practical books, secure reading access, and focused education for Volatility, Boom & Crash, Step, Jump, and Range markets.",
-  libraryTitle: "The Trading Library | Synthetic Indices Trading Books and Secure Reader",
+  libraryTitle: "The Trading Library | Synthetic Indices Trading Books and Secure Online Reader",
   libraryDescription:
     "Browse synthetic indices trading books for Volatility, Boom & Crash, Step, Jump, and Range markets with clear pricing, secure online reading, and straightforward member access.",
   ogImagePath: "/og.png",
-  ogImageAlt: "SLT Trade Hub share card featuring trading books for synthetic indices traders",
+  ogImageAlt: "SLT Trade Hub share card for synthetic indices trading books and education",
 };
 
 export function bookPageTitle(title: string, subtitle?: string | null) {

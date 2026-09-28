@@ -4,7 +4,8 @@ import { toast } from "sonner";
 import { Shell } from "@/components/layout/shell";
 import { Button } from "@/components/ui/button";
 import { getBook, startCheckout, type BookRow } from "@/lib/server/platform";
-import { PRICING } from "@/lib/site";
+import { PRICING, SITE } from "@/lib/site";
+import { useSiteContext } from "@/lib/site-context";
 import { formatMoney } from "@/lib/utils";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
@@ -14,12 +15,23 @@ export const Route = createFileRoute("/checkout")({
   validateSearch: (s: Record<string, unknown>): Search => ({
     slug: typeof s.slug === "string" ? s.slug : undefined,
   }),
+  head: () => ({
+    meta: [
+      { title: `Checkout | ${SITE.library}` },
+      {
+        name: "description",
+        content:
+          "Review pricing for online reading, downloads, and library passes for The Trading Library.",
+      },
+    ],
+  }),
   component: Checkout,
 });
 
 function Checkout() {
   const { slug } = Route.useSearch();
   const { user } = useCurrentUserState();
+  const siteContext = useSiteContext();
   const [book, setBook] = useState<BookRow | null>(null);
 
   useEffect(() => {
@@ -45,7 +57,7 @@ function Checkout() {
   }
 
   return (
-    <Shell>
+    <Shell library={siteContext.isLibraryHost}>
       <div className="mx-auto max-w-3xl px-4 py-14">
         <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">Checkout</p>
         <h1 className="mt-2 font-display text-5xl">Pay the way that fits.</h1>

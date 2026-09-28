@@ -23,7 +23,7 @@ function Pricing() {
     <Shell>
       <div className="mx-auto max-w-4xl px-4 py-16">
         <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">Pricing</p>
-        <h1 className="mt-3 font-display text-5xl">Clear numbers. No theatre.</h1>
+        <h1 className="mt-3 font-display text-5xl">Clear pricing for every reader.</h1>
         <div className="mt-10 grid gap-4 sm:grid-cols-2">
           <div className="rounded-xl border border-border bg-card p-6">
             <p className="text-xs tracking-[0.16em] uppercase text-profit">Pre-launch</p>

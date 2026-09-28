@@ -30,31 +30,31 @@ export const Route = createFileRoute("/")({
 const BENEFITS = [
   {
     icon: BookOpen,
-    title: "Books built to be used",
-    text: "A proper library, a secure reader, and titles written for repeat study, not one-night motivation.",
+    title: "Books built for study",
+    text: "Practical trading books, a secure reader, and material worth revisiting before live sessions.",
   },
   {
     icon: Shield,
-    title: "Clear access and member pricing",
-    text: "Tagged SLT members get member pricing and coupon access. Everyone else sees the public rate up front.",
+    title: "Clear access and pricing",
+    text: "Tagged SLT members can use their member access. Public readers see the standard price clearly.",
   },
   {
     icon: Users,
     title: "A serious trading community",
-    text: "Telegram, WhatsApp, and market notes for traders who want process, accountability, and cleaner execution.",
+    text: "Telegram, WhatsApp, and market notes for traders who value process, accountability, and clean execution.",
   },
   {
     icon: Sparkles,
-    title: "Written for synthetic indices",
-    text: "Volatility, Boom & Crash, Step, Jump, and Range explained in plain language traders can use.",
+    title: "Focused on synthetic indices",
+    text: "Volatility, Boom & Crash, Step, Jump, and Range explained in language traders can use at the chart.",
   },
 ];
 
 const STEPS = [
   { n: "01", t: "Sign in", d: "Use Deriv, Google, X, or email to open your account." },
-  { n: "02", t: "Check your access", d: "Tagged members can generate a coupon. Everyone else chooses a title or pass." },
-  { n: "03", t: "Open your book", d: "Read inside the secure online reader with your access attached to every page." },
-  { n: "04", t: "Trade with the room", d: "Stay close to the community, notes, and optional alerts once your process is in place." },
+  { n: "02", t: "Confirm your access", d: "Tagged members can generate a coupon. Everyone else can choose a title or a pass." },
+  { n: "03", t: "Open your book", d: "Read inside the secure online reader with your access tied to every page." },
+  { n: "04", t: "Stay connected", d: "Use the community, notes, and optional alerts to support an already-defined process." },
 ];
 
 const QUOTES = [
@@ -97,11 +97,11 @@ function Home() {
               SLT Trade Hub
             </p>
             <h1 className="rise rise-2 mt-4 font-display text-5xl font-semibold text-navy dark:text-foreground sm:text-6xl lg:text-7xl">
-              Trading books and education for synthetic indices traders.
+              Serious trading books for synthetic indices traders.
             </h1>
             <p className="rise rise-3 mt-5 max-w-xl text-lg text-muted-foreground">
               Study the markets you actually trade with clear books, secure online reading,
-              and a disciplined trading community covering Volatility, Boom & Crash, Step,
+              and a disciplined community built around Volatility, Boom & Crash, Step,
               Jump, and Range indices.
             </p>
             <div className="rise rise-4 mt-6 flex flex-wrap gap-2 text-sm text-muted-foreground">
@@ -176,7 +176,7 @@ function Home() {
       <section className="mx-auto max-w-6xl px-4 py-20">
         <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">What this is</p>
         <h2 className="mt-3 max-w-3xl font-display text-4xl sm:text-5xl">
-          SLT Trade Hub gives traders structure before they add more risk.
+          SLT Trade Hub helps traders build structure before they add more risk.
         </h2>
         <p className="mt-5 max-w-2xl text-muted-foreground">
           We publish books for traders who want cleaner entries, better sizing, and a
@@ -189,7 +189,7 @@ function Home() {
         <div className="mx-auto flex max-w-6xl items-end justify-between px-4">
           <div>
             <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">The Trading Library</p>
-            <h2 className="mt-2 font-display text-4xl">The shelf</h2>
+            <h2 className="mt-2 font-display text-4xl">Featured titles</h2>
           </div>
           <Link to="/library" className="hidden text-sm font-medium text-primary sm:inline">
             Browse all titles
@@ -216,7 +216,7 @@ function Home() {
 
       <section className="mx-auto max-w-6xl px-4 py-20">
         <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">Why join</p>
-        <h2 className="mt-2 font-display text-4xl">What you actually get</h2>
+        <h2 className="mt-2 font-display text-4xl">What you get</h2>
         <div className="mt-10 grid gap-6 sm:grid-cols-2">
           {BENEFITS.map((b) => (
             <div key={b.title} className="rounded-xl border border-border bg-card p-6">
@@ -255,7 +255,7 @@ function Home() {
             <MessageCircle className="size-5 text-primary" />
             <h3 className="mt-3 font-display text-2xl">Telegram</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              The main room for SLT members. Process talk, not miracle screenshots.
+              The main room for SLT members. Structured discussion, reviews, and session context.
             </p>
           </a>
           <a
@@ -265,14 +265,14 @@ function Home() {
             <Users className="size-5 text-profit" />
             <h3 className="mt-3 font-display text-2xl">WhatsApp</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Faster session notes, reminders, and trading-day updates.
+              Session notes, reminders, and trading-day updates.
             </p>
           </a>
           <div className="rounded-xl border border-border bg-card p-6">
             <Bot className="size-5 text-loss" />
             <h3 className="mt-3 font-display text-2xl">Market alerts</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Optional alerts. They do not replace the books, the size, or your stop.
+              Optional alerts that support your plan. They do not replace risk control.
             </p>
           </div>
         </div>
@@ -301,8 +301,8 @@ function Home() {
         <div className="mx-auto max-w-4xl rounded-xl bg-navy px-6 py-14 text-center text-navy-foreground sm:px-12">
           <h2 className="font-display text-4xl sm:text-5xl">Open the library.</h2>
           <p className="mx-auto mt-4 max-w-lg text-navy-foreground/75">
-            Start with the title that matches your market and read inside a secure, clean
-            member experience.
+            Start with the title that matches your market and read inside a secure member
+            experience designed for focused study.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Button asChild size="lg">
