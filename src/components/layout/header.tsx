@@ -40,11 +40,12 @@ export function Header({ library }: { library?: boolean }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
   const libraryLink = libraryHomeHref(siteContext);
+  const homeLink = library ? libraryLink : marketingHref("/", siteContext);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/80 bg-background/95 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-border/60 bg-background shadow-[0_8px_24px_-22px_rgb(14_39_68_/_0.45)]">
       <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-3 px-4 py-2">
-        <a href={library ? libraryLink : "/"} className="flex items-center gap-3">
+        <a href={homeLink} className="flex items-center gap-3">
           <img
             src={library ? "/brand/trading-library-powered.png" : "/brand/slt-logo.png"}
             alt={library ? SITE.library : SITE.name}
@@ -111,7 +112,7 @@ export function Header({ library }: { library?: boolean }) {
             <SheetTrigger asChild>
               <button
                 type="button"
-                className="grid size-11 place-items-center rounded-md hover:bg-muted md:hidden"
+                className="grid size-11 place-items-center rounded-md hover:bg-muted lg:hidden"
                 aria-label="Open menu"
               >
                 <Menu className="size-5" />

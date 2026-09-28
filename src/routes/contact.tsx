@@ -7,7 +7,19 @@ import { Input, Textarea } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SITE } from "@/lib/site";
 
-export const Route = createFileRoute("/contact")({ component: Contact });
+export const Route = createFileRoute("/contact")({
+  head: () => ({
+    meta: [
+      { title: `Contact | ${SITE.name}` },
+      {
+        name: "description",
+        content:
+          "Contact SLT Trade Hub about The Trading Library, book access, trader support, or general enquiries.",
+      },
+    ],
+  }),
+  component: Contact,
+});
 
 function Contact() {
   const [busy, setBusy] = useState(false);

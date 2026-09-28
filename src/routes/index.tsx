@@ -9,7 +9,6 @@ import {
   Bot,
 } from "lucide-react";
 import { Shell } from "@/components/layout/shell";
-import { CandleStrip } from "@/components/candles";
 import { BookCard } from "@/components/book-card";
 import { Button } from "@/components/ui/button";
 import { listBooks } from "@/lib/server/platform";
@@ -42,7 +41,7 @@ const BENEFITS = [
   {
     icon: Users,
     title: "A serious trading community",
-    text: "Telegram, WhatsApp, and optional alerts for traders who want process, accountability, and cleaner execution.",
+    text: "Telegram, WhatsApp, and market notes for traders who want process, accountability, and cleaner execution.",
   },
   {
     icon: Sparkles,
@@ -91,21 +90,31 @@ function Home() {
 
   return (
     <Shell>
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-x-0 top-0 h-[28rem] bg-[var(--hero-wash)]" />
-        <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:py-24">
+      <section className="border-b border-border bg-background">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
           <div>
             <p className="rise text-xs tracking-[0.22em] text-muted-foreground uppercase">
-              A complete trading library
+              SLT Trade Hub
             </p>
             <h1 className="rise rise-2 mt-4 font-display text-5xl font-semibold text-navy dark:text-foreground sm:text-6xl lg:text-7xl">
-              A serious trading library for synthetic indices traders.
+              Trading books and education for synthetic indices traders.
             </h1>
             <p className="rise rise-3 mt-5 max-w-xl text-lg text-muted-foreground">
-              Study the markets you trade with structured books, a secure reader, and a
-              trader-first community covering Volatility, Boom & Crash, Step, Jump, and
-              Range indices.
+              Study the markets you actually trade with clear books, secure online reading,
+              and a disciplined trading community covering Volatility, Boom & Crash, Step,
+              Jump, and Range indices.
             </p>
+            <div className="rise rise-4 mt-6 flex flex-wrap gap-2 text-sm text-muted-foreground">
+              <span className="rounded-full border border-border bg-card px-3 py-1">
+                Practical trading books
+              </span>
+              <span className="rounded-full border border-border bg-card px-3 py-1">
+                Secure online reader
+              </span>
+              <span className="rounded-full border border-border bg-card px-3 py-1">
+                Community and market notes
+              </span>
+            </div>
             <div className="rise rise-4 mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild variant="navy" size="lg">
                 <Link to="/library">
@@ -118,8 +127,42 @@ function Home() {
             </div>
           </div>
           <div className="relative">
-            <div className="rounded-xl bg-mint px-4 py-8">
-              <CandleStrip className="h-36" />
+            <div className="rounded-[28px] border border-border bg-card p-6 shadow-[var(--shadow)]">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs tracking-[0.18em] text-muted-foreground uppercase">
+                    The Trading Library
+                  </p>
+                  <h2 className="mt-3 font-display text-3xl text-navy dark:text-foreground">
+                    Clear material for real trading work.
+                  </h2>
+                </div>
+                <img
+                  src="/brand/slt-logo.png"
+                  alt={SITE.name}
+                  className="size-16 rounded-full object-cover"
+                />
+              </div>
+              <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl bg-muted px-4 py-4">
+                  <p className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
+                    Coverage
+                  </p>
+                  <p className="mt-2 text-sm font-medium">Volatility, Boom & Crash, Step, Jump, Range</p>
+                </div>
+                <div className="rounded-2xl bg-muted px-4 py-4">
+                  <p className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
+                    Access
+                  </p>
+                  <p className="mt-2 text-sm font-medium">Secure reader, member pricing, clean checkout</p>
+                </div>
+                <div className="rounded-2xl bg-muted px-4 py-4">
+                  <p className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
+                    Focus
+                  </p>
+                  <p className="mt-2 text-sm font-medium">Risk, execution, and repeatable process</p>
+                </div>
+              </div>
             </div>
             <img
               src="/covers/synthetic-indices-101.png"
@@ -202,7 +245,7 @@ function Home() {
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-20">
-        <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">Community & bots</p>
+        <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">Community</p>
         <h2 className="mt-2 font-display text-4xl">Stay in the room</h2>
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           <a
@@ -227,7 +270,7 @@ function Home() {
           </a>
           <div className="rounded-xl border border-border bg-card p-6">
             <Bot className="size-5 text-loss" />
-            <h3 className="mt-3 font-display text-2xl">Signal bots</h3>
+            <h3 className="mt-3 font-display text-2xl">Market alerts</h3>
             <p className="mt-2 text-sm text-muted-foreground">
               Optional alerts. They do not replace the books, the size, or your stop.
             </p>
@@ -258,8 +301,8 @@ function Home() {
         <div className="mx-auto max-w-4xl rounded-xl bg-navy px-6 py-14 text-center text-navy-foreground sm:px-12">
           <h2 className="font-display text-4xl sm:text-5xl">Open the library.</h2>
           <p className="mx-auto mt-4 max-w-lg text-navy-foreground/75">
-            Start with the title that matches your market and read it inside a secure,
-            trader-first experience.
+            Start with the title that matches your market and read inside a secure, clean
+            member experience.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Button asChild size="lg">

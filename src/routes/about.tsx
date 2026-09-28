@@ -2,7 +2,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Shell } from "@/components/layout/shell";
 import { SITE } from "@/lib/site";
 
-export const Route = createFileRoute("/about")({ component: About });
+export const Route = createFileRoute("/about")({
+  head: () => ({
+    meta: [
+      { title: `About ${SITE.name} | Synthetic Indices Trading Education` },
+      {
+        name: "description",
+        content:
+          "Learn about SLT Trade Hub, the team behind The Trading Library, and the practical trading education built for synthetic indices traders.",
+      },
+    ],
+  }),
+  component: About,
+});
 
 function About() {
   return (

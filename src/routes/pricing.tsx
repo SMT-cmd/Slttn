@@ -1,10 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Shell } from "@/components/layout/shell";
 import { Button } from "@/components/ui/button";
-import { PRICING } from "@/lib/site";
+import { PRICING, SITE } from "@/lib/site";
 import { formatMoney } from "@/lib/utils";
 
-export const Route = createFileRoute("/pricing")({ component: Pricing });
+export const Route = createFileRoute("/pricing")({
+  head: () => ({
+    meta: [
+      { title: `Pricing | ${SITE.name}` },
+      {
+        name: "description",
+        content:
+          "View SLT Trade Hub pricing for tagged members, public readers, downloads, and all-books access across The Trading Library.",
+      },
+    ],
+  }),
+  component: Pricing,
+});
 
 function Pricing() {
   return (
