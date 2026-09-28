@@ -38,17 +38,17 @@ export function LibraryCatalogContent({ books }: { books: LibraryBooks }) {
 
   return (
     <Shell library>
-      <div className="bg-[var(--hero-wash)]">
+      <div className="border-b border-border bg-background">
         <div className="mx-auto max-w-6xl px-4 py-14">
           <p className="text-xs tracking-[0.22em] text-muted-foreground uppercase">
             The Trading Library
           </p>
           <h1 className="mt-3 font-display text-5xl sm:text-6xl">
-            A serious library for synthetic indices traders.
+            Trading books for synthetic indices traders.
           </h1>
           <p className="mt-4 max-w-xl text-muted-foreground">
-            Browse the latest titles, filter by market, and open any book to see reader
-            access, member pricing, or download options.
+            Browse the shelf, filter by market, and open any title to view reading access,
+            pricing, and member options.
           </p>
         </div>
       </div>

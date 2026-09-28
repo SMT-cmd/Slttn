@@ -7,11 +7,11 @@ import { SITE } from "@/lib/site";
 export const Route = createFileRoute("/community")({
   head: () => ({
     meta: [
-      { title: `Community | ${SITE.name}` },
+      { title: `Trading Community | ${SITE.name}` },
       {
         name: "description",
         content:
-          "Join the SLT Trade Hub community on Telegram and WhatsApp for trader discussion, session notes, and optional alerts.",
+          "Join the SLT Trade Hub trading community on Telegram and WhatsApp for market discussion, session notes, and optional market alerts.",
       },
     ],
   }),
@@ -51,7 +51,7 @@ function Community() {
           </div>
           <div className="rounded-xl border border-border bg-card p-6">
             <Bot className="size-5 text-loss" />
-            <h2 className="mt-3 font-display text-3xl">Signal bots</h2>
+            <h2 className="mt-3 font-display text-3xl">Market alerts</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               Optional alerts only. If an alert changes your risk plan, it is the wrong tool
               for you. Access notes go out to tagged members after approval.

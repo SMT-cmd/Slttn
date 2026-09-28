@@ -3,26 +3,46 @@ import { Shell } from "@/components/layout/shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getBook } from "@/lib/server/platform";
+import { libraryHomeHref, libraryReaderHref, useSiteContext } from "@/lib/site-context";
+import { bookPageDescription, bookPageTitle, PRICING } from "@/lib/site";
 import { formatMoney } from "@/lib/utils";
-import { PRICING } from "@/lib/site";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
 export const Route = createFileRoute("/library/$slug")({
   loader: ({ params }) => getBook({ data: { slug: params.slug } }),
+  head: ({ loaderData }) => {
+    if (!loaderData) {
+      return {
+        meta: [
+          { title: "Book Not Found | The Trading Library" },
+          { name: "description", content: "The requested title is not currently available." },
+        ],
+      };
+    }
+
+    return {
+      meta: [
+        { title: bookPageTitle(loaderData.title, loaderData.subtitle) },
+        { name: "description", content: bookPageDescription(loaderData.description) },
+      ],
+    };
+  },
   component: BookPage,
 });
 
-function BookPage() {
+export function BookPage() {
   const book = Route.useLoaderData();
   const { user, isPending } = useCurrentUserState();
   const navigate = useNavigate();
+  const siteContext = useSiteContext();
+
   if (!book) {
     return (
       <Shell library>
         <div className="mx-auto max-w-xl px-4 py-24 text-center">
           <h1 className="font-display text-4xl">That title is not on the shelf.</h1>
           <Button asChild variant="navy" className="mt-6">
-            <Link to="/library">Back to the library</Link>
+            <a href={libraryHomeHref(siteContext)}>Back to the library</a>
           </Button>
         </div>
       </Shell>
@@ -41,7 +61,7 @@ function BookPage() {
       navigate({ to: "/login" });
       return;
     }
-    navigate({ to: "/library/read/$slug", params: { slug: book.slug } });
+    window.location.assign(libraryReaderHref(book.slug, siteContext));
   }
 
   return (

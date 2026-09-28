@@ -12,16 +12,14 @@ export const Route = createRootRoute({
   loader: () => getSiteContext(),
   head: ({ loaderData }) => {
     const siteContext = loaderData;
-    const title = siteContext.isLibraryHost
-      ? `${SITE.library} | ${SITE.name}`
-      : `${SITE.name} | Trading Library for Serious Synthetic Indices Traders`;
+    const title = siteContext.isLibraryHost ? SITE.libraryTitle : SITE.marketingTitle;
     const description = siteContext.isLibraryHost
-      ? "A premium trading library for serious synthetic indices traders. Clear books, a secure reader, and structured education built for real market work."
-      : "SLT Trade Hub is the home of The Trading Library: structured trading education, premium books, and a serious community for synthetic indices traders.";
+      ? SITE.libraryDescription
+      : SITE.marketingDescription;
     const shareUrl = siteContext.isLibraryHost
       ? siteContext.librarySiteUrl
       : siteContext.mainSiteUrl;
-    const ogImage = `${siteContext.origin}/og.jpg`;
+    const ogImage = `${siteContext.origin}${SITE.ogImagePath}`;
 
     return {
       meta: [
@@ -38,7 +36,9 @@ export const Route = createRootRoute({
         { property: "og:url", content: shareUrl },
         { property: "og:image", content: ogImage },
         { property: "og:image:secure_url", content: ogImage },
-        { property: "og:image:alt", content: `${SITE.name} branded share card` },
+        { property: "og:image:width", content: "1200" },
+        { property: "og:image:height", content: "630" },
+        { property: "og:image:alt", content: SITE.ogImageAlt },
         { name: "twitter:card", content: "summary_large_image" },
         { name: "twitter:title", content: title },
         { name: "twitter:description", content: description },

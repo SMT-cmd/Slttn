@@ -6,14 +6,16 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { acceptTos, logPage, readerPayload } from "@/lib/server/platform";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { libraryBookHref, libraryHomeHref, useSiteContext } from "@/lib/site-context";
 
 export const Route = createFileRoute("/library/read/$slug")({
   component: Reader,
 });
 
-function Reader() {
+export function Reader() {
   const { slug } = Route.useParams();
   const { user, isPending } = useCurrentUserState();
+  const siteContext = useSiteContext();
   const [data, setData] = useState<Awaited<ReturnType<typeof readerPayload>> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -56,7 +58,7 @@ function Reader() {
         <div>
           <h1 className="font-display text-3xl">{error}</h1>
           <Button asChild variant="navy" className="mt-6">
-            <Link to="/library">Back to the library</Link>
+            <a href={libraryHomeHref(siteContext)}>Back to the library</a>
           </Button>
         </div>
       </div>
@@ -104,9 +106,9 @@ function Reader() {
       </Dialog>
 
       <header className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-        <Link to="/library/$slug" params={{ slug }} className="hover:underline">
+        <a href={libraryBookHref(slug, siteContext)} className="hover:underline">
           Close reader
-        </Link>
+        </a>
         <p className="truncate font-display text-lg">
           {data.book.title} {data.book.subtitle}
         </p>
