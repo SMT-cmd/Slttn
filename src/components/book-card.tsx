@@ -1,12 +1,13 @@
-import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/utils";
 import type { BookRow } from "@/lib/server/platform";
+import { libraryBookHref, useSiteContext } from "@/lib/site-context";
 
 export function BookCard({ book }: { book: BookRow }) {
   const price = book.online_price_cents / 100;
+  const siteContext = useSiteContext();
   return (
-    <Link to="/library/$slug" params={{ slug: book.slug }} className="group block">
+    <a href={libraryBookHref(book.slug, siteContext)} className="group block">
       <div className="book-3d overflow-hidden rounded-sm bg-card">
         <img
           src={book.cover_url}
@@ -25,6 +26,6 @@ export function BookCard({ book }: { book: BookRow }) {
         </h3>
         <p className="text-sm text-muted-foreground">From {formatMoney(price)} to read online</p>
       </div>
-    </Link>
+    </a>
   );
 }

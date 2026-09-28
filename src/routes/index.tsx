@@ -14,40 +14,48 @@ import { BookCard } from "@/components/book-card";
 import { Button } from "@/components/ui/button";
 import { listBooks } from "@/lib/server/platform";
 import { SITE } from "@/lib/site";
+import { useSiteContext } from "@/lib/site-context";
+import { LibraryCatalogContent } from "./library/index";
 
 export const Route = createFileRoute("/")({
   loader: () => listBooks(),
+  head: () => ({
+    meta: [
+      { title: SITE.marketingTitle },
+      { name: "description", content: SITE.marketingDescription },
+    ],
+  }),
   component: Home,
 });
 
 const BENEFITS = [
   {
     icon: BookOpen,
-    title: "A real library, not a folder of PDFs",
-    text: "Designed covers, a proper reader, and books written as a series — not recycled threads.",
+    title: "Books built to be used",
+    text: "A proper library, a secure reader, and titles written for repeat study, not one-night motivation.",
   },
   {
     icon: Shield,
-    title: "Access that respects the partnership",
-    text: "Tagged SLT members get member pricing and coupons. Everyone else pays the listed rate.",
+    title: "Clear access and member pricing",
+    text: "Tagged SLT members get member pricing and coupon access. Everyone else sees the public rate up front.",
   },
   {
     icon: Users,
-    title: "A room that stays serious",
-    text: "Telegram, WhatsApp, and signal bots for people who already treat this as work.",
+    title: "A serious trading community",
+    text: "Telegram, WhatsApp, and optional alerts for traders who want process, accountability, and cleaner execution.",
   },
   {
     icon: Sparkles,
-    title: "Always-on markets, written clearly",
-    text: "Volatility, Boom & Crash, Step, Jump, Range — without folklore and without gold-leaf hype.",
+    title: "Written for synthetic indices",
+    text: "Volatility, Boom & Crash, Step, Jump, and Range explained in plain language traders can use.",
   },
 ];
 
 const STEPS = [
-  { n: "01", t: "Sign in", d: "Google, X, or email. Then link your Deriv CR if you have one." },
-  { n: "02", t: "Confirm access", d: "Tagged members generate a coupon. Everyone else chooses a book or a pass." },
-  { n: "03", t: "Read at the desk", d: "Open the online reader. Every page is watermarked to you." },
-  { n: "04", t: "Stay in the room", d: "Join the community and the bots after you have a process, not before." },
+  { n: "01", t: "Sign in", d: "Use Deriv, Google, X, or email to open your account." },
+  { n: "02", t: "Check your access", d: "Tagged members can generate a coupon. Everyone else chooses a title or pass." },
+  { n: "03", t: "Open your book", d: "Read inside the secure online reader with your access attached to every page." },
+  { n: "04", t: "Trade with the room", d: "Stay close to the community, notes, and optional alerts once your process is in place." },
 ];
 
 const QUOTES = [
@@ -75,6 +83,11 @@ const QUOTES = [
 
 function Home() {
   const books = Route.useLoaderData();
+  const siteContext = useSiteContext();
+
+  if (siteContext.isLibraryHost) {
+    return <LibraryCatalogContent books={books} />;
+  }
 
   return (
     <Shell>
@@ -86,17 +99,17 @@ function Home() {
               A complete trading library
             </p>
             <h1 className="rise rise-2 mt-4 font-display text-5xl font-semibold text-navy dark:text-foreground sm:text-6xl lg:text-7xl">
-              Become the trader who still has an account.
+              A serious trading library for synthetic indices traders.
             </h1>
             <p className="rise rise-3 mt-5 max-w-xl text-lg text-muted-foreground">
-              Exclusive books, a watermarked desk reader, and a community for synthetic
-              indices — Volatility, Boom & Crash, Step, Jump, Range. Written by{" "}
-              {SITE.author}.
+              Study the markets you trade with structured books, a secure reader, and a
+              trader-first community covering Volatility, Boom & Crash, Step, Jump, and
+              Range indices.
             </p>
             <div className="rise rise-4 mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild variant="navy" size="lg">
                 <Link to="/library">
-                  Enter The Trading Library <ArrowRight className="size-4" />
+                  Explore The Trading Library <ArrowRight className="size-4" />
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg">
@@ -120,12 +133,12 @@ function Home() {
       <section className="mx-auto max-w-6xl px-4 py-20">
         <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">What this is</p>
         <h2 className="mt-3 max-w-3xl font-display text-4xl sm:text-5xl">
-          SLT Trade Hub is a trading desk with a library attached.
+          SLT Trade Hub gives traders structure before they add more risk.
         </h2>
         <p className="mt-5 max-w-2xl text-muted-foreground">
-          We publish books for people who already know the chart can hurt them. No
-          recycled gold-and-black funnels. Navy, paper, green, red — the colours the
-          market actually uses. {SITE.tagline}.
+          We publish books for traders who want cleaner entries, better sizing, and a
+          process they can repeat. The library, reader, and community are built to support
+          real trading work.
         </p>
       </section>
 
@@ -175,7 +188,7 @@ function Home() {
       <section className="bg-navy py-20 text-navy-foreground">
         <div className="mx-auto max-w-6xl px-4">
           <p className="text-xs tracking-[0.2em] text-navy-foreground/60 uppercase">How it works</p>
-          <h2 className="mt-2 font-display text-4xl">Four quiet steps</h2>
+          <h2 className="mt-2 font-display text-4xl">How access works</h2>
           <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {STEPS.map((s) => (
               <div key={s.n}>
@@ -209,7 +222,7 @@ function Home() {
             <Users className="size-5 text-profit" />
             <h3 className="mt-3 font-display text-2xl">WhatsApp</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Faster pings for session notes and desk reminders.
+              Faster session notes, reminders, and trading-day updates.
             </p>
           </a>
           <div className="rounded-xl border border-border bg-card p-6">
@@ -224,7 +237,7 @@ function Home() {
 
       <section className="border-y border-border bg-mint/60 py-16 dark:bg-muted">
         <div className="mx-auto max-w-6xl overflow-hidden px-4">
-          <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">From the desk</p>
+          <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">Trader feedback</p>
           <div className="marquee mt-8 items-stretch">
             {QUOTES.concat(QUOTES).map((t, i) => (
               <blockquote
@@ -245,7 +258,8 @@ function Home() {
         <div className="mx-auto max-w-4xl rounded-xl bg-navy px-6 py-14 text-center text-navy-foreground sm:px-12">
           <h2 className="font-display text-4xl sm:text-5xl">Open the library.</h2>
           <p className="mx-auto mt-4 max-w-lg text-navy-foreground/75">
-            Start with Synthetic Indices 101. Keep the account. That is the whole pitch.
+            Start with the title that matches your market and read it inside a secure,
+            trader-first experience.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Button asChild size="lg">
