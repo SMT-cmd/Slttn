@@ -163,25 +163,96 @@ async function uploadFile(file: File, signed: SignedUpload) {
 function Admin() {
   const { user, isPending } = useCurrentUserState();
   const [tab, setTab] = useState<TabKey>("home");
-  const [allowed, setAllowed] = useState<boolean | null>(null);
+  const [accessState, setAccessState] = useState<"checking" | "allowed" | "locked" | "error">(
+    "checking",
+  );
+  const [accessMessage, setAccessMessage] = useState("");
 
   useEffect(() => {
-    if (isPending || !user) return;
+    if (isPending) {
+      const timer = window.setTimeout(() => {
+        setAccessState("error");
+        setAccessMessage("Admin access is taking too long to confirm. Try signing in again.");
+      }, 10000);
+      return () => window.clearTimeout(timer);
+    }
+
+    if (!user) {
+      setAccessState("checking");
+      setAccessMessage("");
+      return;
+    }
+
+    let cancelled = false;
+    setAccessState("checking");
+    setAccessMessage("");
+
+    const timer = window.setTimeout(() => {
+      if (cancelled) return;
+      setAccessState("error");
+      setAccessMessage("Admin access check timed out. Please reload your session and try again.");
+    }, 10000);
+
     getMe()
-      .then((profile) => setAllowed(profile.role === "admin"))
-      .catch(() => setAllowed(false));
+      .then((profile) => {
+        if (cancelled) return;
+        window.clearTimeout(timer);
+        setAccessState(profile.role === "admin" ? "allowed" : "locked");
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        window.clearTimeout(timer);
+        setAccessState("error");
+        setAccessMessage(
+          error instanceof Error && error.message
+            ? error.message
+            : "We could not confirm your admin access.",
+        );
+      });
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [isPending, user]);
 
-  if (isPending || allowed === null) {
+  if (!user && !isPending) return <RedirectToSignIn />;
+  if (isPending || accessState === "checking") {
     return <div className="grid min-h-dvh place-items-center">Checking the desk…</div>;
   }
-  if (!user) return <RedirectToSignIn />;
-  if (!allowed) {
+  if (accessState === "error") {
+    return (
+      <Shell>
+        <div className="mx-auto max-w-lg px-4 py-24 text-center">
+          <h1 className="font-display text-4xl">We could not confirm this desk yet.</h1>
+          <p className="mt-3 text-muted-foreground">
+            {accessMessage || "Please refresh your sign-in session and try again."}
+          </p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            If your session looks fine, open your account first and then return to the admin
+            desk.
+          </p>
+          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+            <Button asChild variant="navy">
+              <Link to="/login">Go to login</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link to="/account">Open account</Link>
+            </Button>
+          </div>
+        </div>
+      </Shell>
+    );
+  }
+  if (accessState === "locked") {
     return (
       <Shell>
         <div className="mx-auto max-w-lg px-4 py-24 text-center">
           <h1 className="font-display text-4xl">This desk is locked.</h1>
           <p className="mt-3 text-muted-foreground">You need admin access.</p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Ask the owner to set your profile role to admin in Supabase profiles table.
+          </p>
           <Button asChild variant="navy" className="mt-6">
             <Link to="/account">Back to account</Link>
           </Button>

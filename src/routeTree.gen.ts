@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as CheckoutRouteImport } from './routes/checkout'
@@ -26,12 +27,18 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as LibraryIndexRouteImport } from './routes/library/index'
 import { Route as LibrarySlugRouteImport } from './routes/library/$slug'
+import { Route as ReadSlugRouteImport } from './routes/read.$slug'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as LibraryReadSlugRouteImport } from './routes/library/read.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SlugRoute = SlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -114,6 +121,11 @@ const LibrarySlugRoute = LibrarySlugRouteImport.update({
   path: '/library/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReadSlugRoute = ReadSlugRouteImport.update({
+  id: '/read/$slug',
+  path: '/read/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -127,6 +139,7 @@ const LibraryReadSlugRoute = LibraryReadSlugRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$slug': typeof SlugRoute
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
   '/checkout': typeof CheckoutRoute
@@ -141,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/refund': typeof RefundRoute
   '/terms': typeof TermsRoute
   '/library/$slug': typeof LibrarySlugRoute
+  '/read/$slug': typeof ReadSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/library/': typeof LibraryIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -148,6 +162,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$slug': typeof SlugRoute
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
   '/checkout': typeof CheckoutRoute
@@ -162,6 +177,7 @@ export interface FileRoutesByTo {
   '/refund': typeof RefundRoute
   '/terms': typeof TermsRoute
   '/library/$slug': typeof LibrarySlugRoute
+  '/read/$slug': typeof ReadSlugRoute
   '/admin': typeof AdminIndexRoute
   '/library': typeof LibraryIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -170,6 +186,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$slug': typeof SlugRoute
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
   '/checkout': typeof CheckoutRoute
@@ -184,6 +201,7 @@ export interface FileRoutesById {
   '/refund': typeof RefundRoute
   '/terms': typeof TermsRoute
   '/library/$slug': typeof LibrarySlugRoute
+  '/read/$slug': typeof ReadSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/library/': typeof LibraryIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -193,6 +211,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/$slug'
     | '/about'
     | '/account'
     | '/checkout'
@@ -207,6 +226,7 @@ export interface FileRouteTypes {
     | '/refund'
     | '/terms'
     | '/library/$slug'
+    | '/read/$slug'
     | '/admin/'
     | '/library/'
     | '/api/auth/$'
@@ -214,6 +234,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/$slug'
     | '/about'
     | '/account'
     | '/checkout'
@@ -228,6 +249,7 @@ export interface FileRouteTypes {
     | '/refund'
     | '/terms'
     | '/library/$slug'
+    | '/read/$slug'
     | '/admin'
     | '/library'
     | '/api/auth/$'
@@ -235,6 +257,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/$slug'
     | '/about'
     | '/account'
     | '/checkout'
@@ -249,6 +272,7 @@ export interface FileRouteTypes {
     | '/refund'
     | '/terms'
     | '/library/$slug'
+    | '/read/$slug'
     | '/admin/'
     | '/library/'
     | '/api/auth/$'
@@ -257,6 +281,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SlugRoute: typeof SlugRoute
   AboutRoute: typeof AboutRoute
   AccountRoute: typeof AccountRoute
   CheckoutRoute: typeof CheckoutRoute
@@ -271,6 +296,7 @@ export interface RootRouteChildren {
   RefundRoute: typeof RefundRoute
   TermsRoute: typeof TermsRoute
   LibrarySlugRoute: typeof LibrarySlugRoute
+  ReadSlugRoute: typeof ReadSlugRoute
   AdminIndexRoute: typeof AdminIndexRoute
   LibraryIndexRoute: typeof LibraryIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -284,6 +310,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$slug': {
+      id: '/$slug'
+      path: '/$slug'
+      fullPath: '/$slug'
+      preLoaderRoute: typeof SlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -398,6 +431,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LibrarySlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/read/$slug': {
+      id: '/read/$slug'
+      path: '/read/$slug'
+      fullPath: '/read/$slug'
+      preLoaderRoute: typeof ReadSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -417,6 +457,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SlugRoute: SlugRoute,
   AboutRoute: AboutRoute,
   AccountRoute: AccountRoute,
   CheckoutRoute: CheckoutRoute,
@@ -431,6 +472,7 @@ const rootRouteChildren: RootRouteChildren = {
   RefundRoute: RefundRoute,
   TermsRoute: TermsRoute,
   LibrarySlugRoute: LibrarySlugRoute,
+  ReadSlugRoute: ReadSlugRoute,
   AdminIndexRoute: AdminIndexRoute,
   LibraryIndexRoute: LibraryIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

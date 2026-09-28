@@ -1,5 +1,5 @@
 import { r as __exportAll$1 } from "../_runtime.mjs";
-import { B as _getRenderedMatches, F as getScriptPreloadAttrs, G as isDangerousProtocol, H as invariant, I as getStylesheetHref, J as isRedirect, K as isPromise, L as resolveManifestAssetLink, M as toCrossJSONStream, Q as require_react, R as resolveManifestCssLink, T as require_jsx_runtime, V as executeRewriteInput, X as rootRouteId, Y as parseRedirect, Z as isNotFound, a as disposeSsrResponse, c as replaceSsrResponse, h as RouterProvider, i as defineHandlerCallback, j as toCrossJSONAsync, k as fromJSON, l as stripSsrResponseBody, o as isSsrResponse, r as bindSsrResponseToRequest, s as normalizeSsrResponse, t as renderRouterToStream, z as waitForReason } from "../_libs/@tanstack/react-router+[...].mjs";
+import { A as toCrossJSONAsync, B as executeRewriteInput, F as getStylesheetHref, G as isPromise, I as resolveManifestAssetLink, J as parseRedirect, L as resolveManifestCssLink, O as fromJSON, P as getScriptPreloadAttrs, R as waitForReason, V as invariant, W as isDangerousProtocol, X as isNotFound, Y as rootRouteId, Z as require_react, a as disposeSsrResponse, c as replaceSsrResponse, h as RouterProvider, i as defineHandlerCallback, j as toCrossJSONStream, l as stripSsrResponseBody, o as isSsrResponse, q as isRedirect, r as bindSsrResponseToRequest, s as normalizeSsrResponse, t as renderRouterToStream, w as require_jsx_runtime, z as _getRenderedMatches } from "../_libs/@tanstack/react-router+[...].mjs";
 import { n as createServerHistory } from "../_libs/tanstack__history.mjs";
 import { a as defaultSerovalDeserializerPlugins, i as createRawStreamRPCPlugin, n as attachRouterServerSsrUtils, o as makeSerovalPlugin, r as getNormalizedURL, s as createSerializationAdapter, t as mergeHeaders } from "../_libs/@tanstack/router-core+[...].mjs";
 import { n as setCookie, r as toResponse, t as H3Event } from "../_libs/h3-v2+rou3.mjs";
@@ -116,7 +116,7 @@ var HEADERS = { TSS_SHELL: "X-TSS_SHELL" };
 * the dev styles URL for route-scoped CSS collection.
 */
 async function getStartManifest(matchedRoutes) {
-	const { tsrStartManifest } = await import("../_tanstack-start-manifest_v-DNNngCLu.mjs");
+	const { tsrStartManifest } = await import("../_tanstack-start-manifest_v-B2YTrDEq.mjs");
 	const startManifest = tsrStartManifest();
 	let routes = startManifest.routes;
 	routes[rootRouteId];
@@ -138,139 +138,143 @@ async function getStartManifest(matchedRoutes) {
 var manifest = {
 	"035e846639f5cc827b39f0318f6007ce3803368cda37522808c9cebd04661413": {
 		functionName: "adminLogs_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"04e5639db739b0839cfebd67de896a0d2fe694e2ebcefb1c2072bc050ddd3700": {
 		functionName: "adminSales_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"0d23e03059175d54501826d235dae1507f777acfe757ff62fab824ddb4e4df2c": {
 		functionName: "adminCoupons_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"176472fc9de20cc9e6ba85c59961d999537c9877f6462b278651c9db9cde34c1": {
 		functionName: "adminCreateCoupon_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"1f36f9c475d9786bd94c597ac66218fe6af4e44ea96ac73d947f52b9450d1434": {
 		functionName: "adminDeleteBookPage_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"22e9214950effb7f61d1e7d59b6613320d4ab9b8b3287a00c68bcd4dc3ce87bc": {
 		functionName: "exportMyData_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"245401eb6c064a28621e7b695633b5a8be104584b21c9871c0dd6f09776ab607": {
 		functionName: "startCheckout_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"32ab9119064bda4fcb4847571245ecc5e77b86e7bdb74b97c43df4ab62e85097": {
 		functionName: "adminSaveBookCover_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"3fef606d0e87112a769b7c3a68684bdfd004ca30bc1d5e033159b61b7371e8ef": {
 		functionName: "linkDeriv_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"404b6fc97be7a0f2f48392c73e39e9f383c9101af64e6edd7692620966cf8711": {
 		functionName: "adminUsers_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"431adad02939f861c034d67637e7b2c3aaae4ef8fe82002a60f44254a28e679e": {
 		functionName: "listBooks_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"43c54d2e6552c10a90169e779940861f182097dcfce2aed36e525a5679e3e60e": {
 		functionName: "adminSignCloudinaryUpload_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"485595352bf67270fa93735d59b828f8dd4f18c120724ad1db4cdca5493b74ec": {
 		functionName: "adminSetTagged_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"5b165c3c83dcb09ee648b0c3072327046423041d862fc3ca5b1f7f7597d4d573": {
 		functionName: "confirmAge_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"73586ac73c79080f2ae95cb9d1e9a67e6ec56c12bcf746c26bd642ace4b1a75d": {
 		functionName: "getBook_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"7788db9edffbaa146725cc19bacf940f5b5f11fb617fa862649667ac5b61092a": {
 		functionName: "adminSaveSetting_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"7a827671e42db560e9c6f02abafc536bd540aaf406705c3d575904efbff74913": {
 		functionName: "deleteMyAccount_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"7c3905a63665241dbf6619880dab43013fd8100470b4334a53ce324f03bd5c94": {
 		functionName: "myLibrary_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"87e61a00e51e9c6e5879f9116cc0a16f5719a488a636508cbbb35eb8acd4d0c6": {
 		functionName: "logPage_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"931fbaffd6198eaac0e89154b90c6dfa79d66cabd5cb75c82fd93dd8b07e022f": {
 		functionName: "updateProfileName_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"9de6774a931d71f0fafcfda4e6a53d03b0ea05f7e6632f125e5c2174f7c9b913": {
 		functionName: "publicSettings_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"a0f275ec79df219f892e3b16bdd14df13f585c9c26c346cb9a28c0038b19437c": {
 		functionName: "adminBooks_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"ac84d119572a559a03f5c2c24fcd4706c00de30d8c621790fa0b36b7f59bb29b": {
 		functionName: "acceptTos_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"bdef7d8b5aa00ee5ca532368415f4f515079abcc8f2541d3a977d00ef2c5e809": {
 		functionName: "adminUpdateBook_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"bfb90ca6aae4fea3353da6eede48d85b3254f6f9c83e2c1866d2efa5d8629727": {
 		functionName: "adminDeleteBook_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"c775325625dca866a254cdbaf435819668583ab4d8859d88d82b07f63af40dda": {
 		functionName: "redeemCoupon_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"c863ffe5b334437e9fdd831f2c9b449ebed26df1784aa6e149b1c224045e370b": {
 		functionName: "adminCreateBook_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"cb01c1f2f5caadc2abac63d08c77e51a26b82b065e61ccfaefd2cd71e8fc1410": {
 		functionName: "adminSetBan_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"d18154b9192d9cd5105ef25c6a2c56ba14caf7b5aeb3bb017d0ab91e95f4530e": {
 		functionName: "generateMemberCoupon_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
+	},
+	"d60d9130a3746bb3bb59d91ae9352cdfcdd1510a6430048d164669cf06540359": {
+		functionName: "getSiteContext_createServerFn_handler",
+		importer: () => import("./site-context-Cs-BVevd.mjs")
 	},
 	"df967009e3e1b1d934bc0b95d1e44d3c87bf8439bcd6a803e9305bfce69a0663": {
 		functionName: "adminReorderBookPages_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"f3501b4c7cf3a88a6e3430c02b5baed3fb03f8dc1f6b0b104a95add35cd7fc18": {
 		functionName: "adminCreateBookPages_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"fbb2973f7518273fbca810f2df82887d1ce40bbce31b33f413334bccfaaaa7f1": {
 		functionName: "adminOverview_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"fc2533132ae950be65c04fca33089b9e44e4abc7f88f33bb402dc42ae19c3270": {
 		functionName: "readerPayload_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	},
 	"fd1d6e62a1e273faf817d786c31ed5f141c550b282114593fe886b4ddc2631d8": {
 		functionName: "getMe_createServerFn_handler",
-		importer: () => import("./platform-DXAz2Ljd.mjs")
+		importer: () => import("./platform-Dfh84n-c.mjs")
 	}
 };
 async function getServerFnById(id, access) {
@@ -1664,7 +1668,7 @@ var getBaseManifest = getProdBaseManifest;
 var createEarlyHintsForRequest = createEarlyHintsCollector;
 async function loadEntries() {
 	const [routerEntry, startEntry, pluginAdapters] = await Promise.all([
-		import("./router-DAbHp7-E.mjs").then((n) => n.t),
+		import("./router-DMO4jLWn.mjs").then((n) => n.t),
 		import("./start-5Z2QO8AU.mjs"),
 		import("./empty-plugin-adapters-D9UWiqvJ.mjs")
 	]);
