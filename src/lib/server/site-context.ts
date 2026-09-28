@@ -10,6 +10,19 @@ function currentHost() {
   return host.split(",")[0]?.trim() || SITE.domain;
 }
 
+function currentPathname() {
+  const request = getRequest();
+  const url = request?.url;
+
+  if (!url) return "/";
+
+  try {
+    return new URL(url).pathname || "/";
+  } catch {
+    return "/";
+  }
+}
+
 export const getSiteContext = createServerFn({ method: "GET" }).handler(async () => {
-  return resolveSiteContext(currentHost());
+  return resolveSiteContext(currentHost(), currentPathname());
 });

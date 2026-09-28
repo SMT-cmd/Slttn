@@ -11,12 +11,13 @@ export const SITE = {
   telegram: "https://t.me/slttradehub",
   whatsapp: "https://chat.whatsapp.com/slttradehub",
   url: "https://slttradehub.online",
-  marketingTitle: "SLT Trade Hub | Synthetic Indices Trading Books, Education, and Community",
+  libraryUrl: "https://library.slttradehub.online",
+  marketingTitle: "Synthetic Indices Trading Books, Education, and Community | SLT Trade Hub",
   marketingDescription:
-    "SLT Trade Hub gives synthetic indices traders practical books, secure reading access, and focused education for Volatility, Boom & Crash, Step, Jump, and Range markets.",
-  libraryTitle: "The Trading Library | Synthetic Indices Trading Books and Secure Online Reader",
+    "SLT Trade Hub helps synthetic indices traders study Volatility, Boom & Crash, Step, Jump, and Range markets with practical trading books, secure online reading, and a focused community.",
+  libraryTitle: "Synthetic Indices Trading Book Library | The Trading Library",
   libraryDescription:
-    "Browse synthetic indices trading books for Volatility, Boom & Crash, Step, Jump, and Range markets with clear pricing, secure online reading, and straightforward member access.",
+    "Browse The Trading Library for synthetic indices trading books on Volatility, Boom & Crash, Step, Jump, and Range, with secure online reading, clear pricing, and member access options.",
   ogImagePath: "/og.png",
   ogImageAlt: "SLT Trade Hub share card for synthetic indices trading books and education",
 };

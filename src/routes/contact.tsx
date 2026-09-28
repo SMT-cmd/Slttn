@@ -10,11 +10,11 @@ import { SITE } from "@/lib/site";
 export const Route = createFileRoute("/contact")({
   head: () => ({
     meta: [
-      { title: `Contact | ${SITE.name}` },
+      { title: `Contact ${SITE.name} | Library and Trader Support` },
       {
         name: "description",
         content:
-          "Contact SLT Trade Hub about The Trading Library, book access, trader support, or general enquiries.",
+          "Contact SLT Trade Hub about The Trading Library, synthetic indices trading book access, pricing help, or general trader support.",
       },
     ],
   }),

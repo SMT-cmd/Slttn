@@ -16,9 +16,8 @@ export const Route = createRootRoute({
     const description = siteContext.isLibraryHost
       ? SITE.libraryDescription
       : SITE.marketingDescription;
-    const shareUrl = siteContext.isLibraryHost
-      ? siteContext.librarySiteUrl
-      : siteContext.mainSiteUrl;
+    const siteName = siteContext.isLibraryHost ? SITE.library : SITE.name;
+    const shareUrl = siteContext.currentUrl;
     const ogImage = `${siteContext.origin}${SITE.ogImagePath}`;
 
     return {
@@ -31,7 +30,7 @@ export const Route = createRootRoute({
         { name: "robots", content: "index,follow" },
         { property: "og:type", content: "website" },
         { property: "og:locale", content: "en_US" },
-        { property: "og:site_name", content: SITE.name },
+        { property: "og:site_name", content: siteName },
         { property: "og:title", content: title },
         { property: "og:description", content: description },
         { property: "og:url", content: shareUrl },

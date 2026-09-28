@@ -4,6 +4,8 @@ import { SITE } from "@/lib/site";
 export type SiteContextValue = {
   host: string;
   origin: string;
+  pathname: string;
+  currentUrl: string;
   isLibraryHost: boolean;
   mainSiteUrl: string;
   librarySiteUrl: string;
@@ -27,21 +29,37 @@ function isLocalHost(host: string) {
   );
 }
 
+function normalizePathname(value: string | null | undefined) {
+  const raw = (value ?? "").trim();
+  if (!raw || raw === "/") return "/";
+  const withSlash = raw.startsWith("/") ? raw : `/${raw}`;
+  return withSlash.replace(/\/+$/, "") || "/";
+}
+
 export function isLibraryHost(host: string | null | undefined) {
   const normalized = normalizeHost(host);
   return normalized === SITE.libraryHost || normalized.startsWith("library.");
 }
 
-export function resolveSiteContext(host: string | null | undefined): SiteContextValue {
+export function resolveSiteContext(
+  host: string | null | undefined,
+  pathname?: string | null,
+): SiteContextValue {
   const normalizedHost = normalizeHost(host) || SITE.domain;
   const protocol = isLocalHost(normalizedHost) ? "http" : "https";
+  const normalizedPathname = normalizePathname(pathname);
+  const origin = `${protocol}://${normalizedHost}`;
+  const currentUrl =
+    normalizedPathname === "/" ? origin : `${origin}${normalizedPathname}`;
 
   return {
     host: normalizedHost,
-    origin: `${protocol}://${normalizedHost}`,
+    origin,
+    pathname: normalizedPathname,
+    currentUrl,
     isLibraryHost: isLibraryHost(normalizedHost),
     mainSiteUrl: SITE.url,
-    librarySiteUrl: `https://${SITE.libraryHost}`,
+    librarySiteUrl: SITE.libraryUrl,
   };
 }
 

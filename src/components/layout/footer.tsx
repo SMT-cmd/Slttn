@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import { SITE } from "@/lib/site";
 import {
   libraryHomeHref,
@@ -18,26 +17,37 @@ const LEGAL = [
   { to: "/contact", label: "Contact" },
 ] as const;
 
-export function Footer() {
+export function Footer({ library }: { library?: boolean }) {
   const siteContext = useSiteContext();
   const libraryLink = libraryHomeHref(siteContext);
+  const brandName = library ? SITE.library : SITE.name;
+  const brandTagline = library
+    ? "Secure reading access for synthetic indices traders"
+    : SITE.tagline;
+  const brandDescription = library
+    ? "Browse the shelf, open secure reading access, and jump back to the SLT Trade Hub desk for pricing, community, and support."
+    : "Structured trading education, premium books, and a library built for traders who want process, risk discipline, and clear market work.";
+  const brandImage = library ? "/brand/trading-library.png" : "/brand/slt-logo.png";
 
   return (
     <footer className="mt-auto border-t border-border bg-navy text-navy-foreground">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 md:grid-cols-4">
         <div className="md:col-span-2">
           <div className="flex items-center gap-3">
-            <img src="/brand/slt-logo.png" alt="" className="h-12 w-12 rounded-full bg-paper" />
+            <img
+              src={brandImage}
+              alt=""
+              className={library ? "h-12 w-12 rounded-xl bg-paper object-cover object-top p-0.5" : "h-12 w-12 rounded-full bg-paper"}
+            />
             <div>
-              <p className="font-display text-2xl">{SITE.name}</p>
+              <p className="font-display text-2xl">{brandName}</p>
               <p className="text-xs tracking-[0.16em] text-navy-foreground/70 uppercase">
-                {SITE.tagline}
+                {brandTagline}
               </p>
             </div>
           </div>
           <p className="mt-4 max-w-md text-sm text-navy-foreground/75">
-            Structured trading education, premium books, and a library built for traders
-            who want process, risk discipline, and clear market work.
+            {brandDescription}
           </p>
         </div>
         <div>
@@ -73,7 +83,7 @@ export function Footer() {
         </div>
       </div>
       <div className="border-t border-white/10 px-4 py-4 text-center text-xs text-navy-foreground/55">
-        © {new Date().getFullYear()} {SITE.name}. {SITE.domain}
+        © {new Date().getFullYear()} {brandName}. {SITE.domain}
       </div>
     </footer>
   );

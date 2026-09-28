@@ -18,12 +18,6 @@ import { LibraryCatalogContent } from "./library/index";
 
 export const Route = createFileRoute("/")({
   loader: () => listBooks(),
-  head: () => ({
-    meta: [
-      { title: SITE.marketingTitle },
-      { name: "description", content: SITE.marketingDescription },
-    ],
-  }),
   component: Home,
 });
 
