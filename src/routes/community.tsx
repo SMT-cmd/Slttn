@@ -7,11 +7,11 @@ import { SITE } from "@/lib/site";
 export const Route = createFileRoute("/community")({
   head: () => ({
     meta: [
-      { title: `Trading Community | ${SITE.name}` },
+      { title: `Synthetic Indices Trading Community | ${SITE.name}` },
       {
         name: "description",
         content:
-          "Join the SLT Trade Hub trading community on Telegram and WhatsApp for market discussion, session notes, and optional market alerts.",
+          "Join the SLT Trade Hub synthetic indices trading community on Telegram and WhatsApp for market discussion, session notes, and optional market alerts.",
       },
     ],
   }),

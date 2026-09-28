@@ -7,11 +7,11 @@ import { formatMoney } from "@/lib/utils";
 export const Route = createFileRoute("/pricing")({
   head: () => ({
     meta: [
-      { title: `Pricing | ${SITE.name}` },
+      { title: `Trading Book Pricing | ${SITE.name}` },
       {
         name: "description",
         content:
-          "View SLT Trade Hub pricing for tagged members, public readers, downloads, and all-books access across The Trading Library.",
+          "View SLT Trade Hub pricing for synthetic indices trading books, tagged-member access, public reading, downloads, and all-books passes across The Trading Library.",
       },
     ],
   }),

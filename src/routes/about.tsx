@@ -5,11 +5,11 @@ import { SITE } from "@/lib/site";
 export const Route = createFileRoute("/about")({
   head: () => ({
     meta: [
-      { title: `About ${SITE.name} | Synthetic Indices Trading Education` },
+      { title: `About SLT Trade Hub | Synthetic Indices Trading Books and Education` },
       {
         name: "description",
         content:
-          "Learn about SLT Trade Hub, the team behind The Trading Library, and the practical trading education built for synthetic indices traders.",
+          "Learn about SLT Trade Hub, the team behind The Trading Library, and the practical synthetic indices trading books, education, and community built for disciplined traders.",
       },
     ],
   }),
