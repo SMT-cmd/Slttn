@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { useRouterState } from "@tanstack/react-router";
 import { Menu, Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import { SignedIn, SignedOut, UserButton } from "@/lib/auth/gates";
@@ -41,17 +41,21 @@ export function Header({ library }: { library?: boolean }) {
   const [open, setOpen] = useState(false);
   const libraryLink = libraryHomeHref(siteContext);
   const homeLink = library ? libraryLink : marketingHref("/", siteContext);
+  const signInLink = marketingHref("/login", siteContext);
+  const accountLink = marketingHref("/account", siteContext);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/95 backdrop-blur">
       <div className="mx-auto flex min-h-16 max-w-6xl items-center gap-3 px-4 py-2">
         <a href={homeLink} className="flex min-w-0 items-center gap-3">
           <img
-            src={library ? "/brand/trading-library-powered.png" : "/brand/slt-logo.png"}
+            src={library ? "/brand/trading-library.png" : "/brand/slt-logo.png"}
             alt={library ? SITE.library : SITE.name}
             className={cn(
-              "shrink-0 object-contain",
-              library ? "h-10 w-10 rounded-md" : "h-10 w-10 rounded-full",
+              "shrink-0",
+              library
+                ? "h-11 w-11 rounded-xl border border-border/80 bg-card object-cover object-top p-0.5"
+                : "h-10 w-10 rounded-full object-contain",
             )}
           />
           <span className="min-w-0 leading-tight">
@@ -66,14 +70,15 @@ export function Header({ library }: { library?: boolean }) {
           </span>
         </a>
 
-        <nav className="ml-4 hidden flex-1 items-center justify-center gap-5 lg:flex">
+        <nav className="ml-2 hidden flex-1 items-center justify-center gap-1 lg:flex xl:gap-2">
           {LINKS.map((l) => (
             <a
               key={l.to}
               href={l.to === "/library" ? libraryLink : marketingHref(l.to, siteContext)}
               className={cn(
-                "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground",
-                isActiveLink(l.to, pathname, siteContext.isLibraryHost) && "text-foreground",
+                "whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                isActiveLink(l.to, pathname, siteContext.isLibraryHost) &&
+                  "bg-muted text-foreground",
               )}
             >
               {l.label}
@@ -96,16 +101,16 @@ export function Header({ library }: { library?: boolean }) {
             <>
               <SignedOut>
                 <Button asChild size="sm" variant="navy" className="hidden md:inline-flex">
-                  <Link to="/login">Sign in</Link>
+                  <a href={signInLink}>Sign in</a>
                 </Button>
               </SignedOut>
               <SignedIn>
-                <Link
-                  to="/account"
+                <a
+                  href={accountLink}
                   className="hidden text-sm font-medium text-muted-foreground hover:text-foreground md:inline"
                 >
                   {user?.displayName?.split(" ")[0] ?? "Account"}
-                </Link>
+                </a>
                 <UserButton compact />
               </SignedIn>
             </>
@@ -120,46 +125,51 @@ export function Header({ library }: { library?: boolean }) {
                 <Menu className="size-5" />
               </button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-full max-w-sm border-l border-border px-6">
-              <div className="pr-8">
-                <p className="text-xs tracking-[0.18em] text-muted-foreground uppercase">Menu</p>
-                <p className="mt-2 font-display text-2xl">{library ? SITE.library : SITE.name}</p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {library
-                    ? "Browse titles, check pricing, and open your reader."
-                    : "Library access, pricing, and community links."}
-                </p>
-              </div>
-              <div className="mt-8 flex flex-col gap-1">
-                {LINKS.map((l) => (
-                  <a
-                    key={l.to}
-                    href={l.to === "/library" ? libraryLink : marketingHref(l.to, siteContext)}
-                    onClick={() => setOpen(false)}
-                    className={cn(
-                      "rounded-md px-3 py-3 text-base font-medium transition-colors hover:bg-muted",
-                      isActiveLink(l.to, pathname, siteContext.isLibraryHost) && "bg-muted text-foreground",
-                    )}
-                  >
-                    {l.label}
-                  </a>
-                ))}
-              </div>
-              <div className="mt-6 border-t border-border pt-6">
-                <SignedOut>
-                  <Button asChild variant="navy" className="w-full">
-                    <Link to="/login" onClick={() => setOpen(false)}>
-                      Sign in
-                    </Link>
-                  </Button>
-                </SignedOut>
-                <SignedIn>
-                  <Button asChild variant="outline" className="w-full">
-                    <Link to="/account" onClick={() => setOpen(false)}>
-                      Open account
-                    </Link>
-                  </Button>
-                </SignedIn>
+            <SheetContent side="right" className="w-full max-w-sm border-l border-border px-0">
+              <div className="flex h-full flex-col px-6 pb-6">
+                <div className="pr-10">
+                  <p className="text-xs tracking-[0.18em] text-muted-foreground uppercase">Menu</p>
+                  <p className="mt-2 font-display text-2xl">
+                    {library ? SITE.library : SITE.name}
+                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {library
+                      ? "Browse the shelf, review pricing, and open your reader."
+                      : "Library access, pricing, and community links."}
+                  </p>
+                </div>
+                <div className="mt-8 flex flex-1 flex-col gap-2">
+                  {LINKS.map((l) => (
+                    <a
+                      key={l.to}
+                      href={l.to === "/library" ? libraryLink : marketingHref(l.to, siteContext)}
+                      onClick={() => setOpen(false)}
+                      className={cn(
+                        "rounded-xl border border-transparent px-4 py-3 text-base font-medium transition-colors hover:bg-muted",
+                        isActiveLink(l.to, pathname, siteContext.isLibraryHost) &&
+                          "border-border bg-muted text-foreground",
+                      )}
+                    >
+                      {l.label}
+                    </a>
+                  ))}
+                </div>
+                <div className="mt-6 border-t border-border pt-6">
+                  <SignedOut>
+                    <Button asChild variant="navy" className="w-full">
+                      <a href={signInLink} onClick={() => setOpen(false)}>
+                        Sign in
+                      </a>
+                    </Button>
+                  </SignedOut>
+                  <SignedIn>
+                    <Button asChild variant="outline" className="w-full">
+                      <a href={accountLink} onClick={() => setOpen(false)}>
+                        Open account
+                      </a>
+                    </Button>
+                  </SignedIn>
+                </div>
               </div>
             </SheetContent>
           </Sheet>
