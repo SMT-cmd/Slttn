@@ -24,18 +24,18 @@ export const Route = createFileRoute("/")({
 const BENEFITS = [
   {
     icon: BookOpen,
-    title: "Books built for study",
-    text: "Practical trading books, secure online access, and material worth revisiting before the market opens.",
+    title: "Books worth studying",
+    text: "Straight trading books, serious online access, and material you will keep coming back to before the market opens.",
   },
   {
     icon: Shield,
     title: "Clear access and pricing",
-    text: "Members get their access. Public readers see the standard price upfront.",
+    text: "Members get their access. New readers see the price clearly from the start.",
   },
   {
     icon: Users,
     title: "A serious trading community",
-    text: "Telegram, WhatsApp, and market notes for traders who value discipline, accountability, and clean execution.",
+    text: "Telegram, WhatsApp, and market notes for traders who value discipline, accountability, and clear execution.",
   },
   {
     icon: Sparkles,
@@ -45,10 +45,22 @@ const BENEFITS = [
 ];
 
 const STEPS = [
-  { n: "01", t: "Sign in", d: "Use Deriv, Google, X, or email to open your account." },
-  { n: "02", t: "Confirm your access", d: "Tagged members can generate a coupon. Everyone else can choose a title or a pass." },
-  { n: "03", t: "Open your book", d: "Read inside the secure online reader with your access linked to every page." },
-  { n: "04", t: "Stay connected", d: "Use the community, notes, and optional alerts to stay sharp between sessions." },
+  { n: "01", t: "Sign in", d: "Sign in with Deriv, Google, X, or email." },
+  {
+    n: "02",
+    t: "Confirm your access",
+    d: "Eligible members can unlock access. Everyone else can choose a title or a pass.",
+  },
+  {
+    n: "03",
+    t: "Open your book",
+    d: "Read in the online library built for focused study and repeat review.",
+  },
+  {
+    n: "04",
+    t: "Stay connected",
+    d: "Use the community, notes, and optional alerts to stay sharp between sessions.",
+  },
 ];
 
 const QUOTES = [
@@ -91,11 +103,11 @@ function Home() {
               SLT Trade Hub
             </p>
             <h1 className="rise rise-2 mt-4 font-display text-5xl font-semibold text-navy dark:text-foreground sm:text-6xl lg:text-7xl">
-              Built for traders who take synthetic indices seriously.
+              For traders who protect capital and trade with intent.
             </h1>
             <p className="rise rise-3 mt-5 max-w-xl text-lg text-muted-foreground">
-              Get straight, practical books, secure online access, and a disciplined
-              community focused on Volatility, Boom & Crash, Step, Jump, and Range.
+              Study with practical books, serious access, and a disciplined community
+              focused on Volatility, Boom & Crash, Step, Jump, and Range.
             </p>
             <div className="rise rise-4 mt-6 flex flex-wrap gap-2 text-sm text-muted-foreground">
               <span className="rounded-full border border-border bg-card px-3 py-1">
@@ -127,7 +139,7 @@ function Home() {
                     The Trading Library
                   </p>
                   <h2 className="mt-3 font-display text-3xl text-navy dark:text-foreground">
-                    Clear material for serious trading work.
+                    Clear material for serious traders.
                   </h2>
                 </div>
                 <img
@@ -147,7 +159,7 @@ function Home() {
                   <p className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
                     Access
                   </p>
-                  <p className="mt-2 text-sm font-medium">Secure reader, member pricing, clean checkout</p>
+                  <p className="mt-2 text-sm font-medium">Online reader, member pricing, straightforward checkout</p>
                 </div>
                 <div className="rounded-2xl bg-muted px-4 py-4">
                   <p className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
@@ -169,12 +181,12 @@ function Home() {
       <section className="mx-auto max-w-6xl px-4 py-20">
         <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">What this is</p>
         <h2 className="mt-3 max-w-3xl font-display text-4xl sm:text-5xl">
-          SLT Trade Hub helps traders build structure before they press size.
+          SLT Trade Hub gives traders a stronger foundation before they put on risk.
         </h2>
         <p className="mt-5 max-w-2xl text-muted-foreground">
-          We publish books for traders who want cleaner entries, better sizing, and a
-          process they can trust. The library, reader, and community are there to support
-          real trading work.
+          We publish books for traders who want cleaner entries, better sizing, and
+          stronger control. The library and community are built to support serious
+          trading work.
         </p>
       </section>
 
@@ -248,7 +260,7 @@ function Home() {
             <MessageCircle className="size-5 text-primary" />
             <h3 className="mt-3 font-display text-2xl">Telegram</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              The main room for SLT members. Structured discussion, reviews, and session context.
+              The main room for SLT members. Market discussion, reviews, and session context.
             </p>
           </a>
           <a
@@ -294,8 +306,8 @@ function Home() {
         <div className="mx-auto max-w-4xl rounded-xl bg-navy px-6 py-14 text-center text-navy-foreground sm:px-12">
           <h2 className="font-display text-4xl sm:text-5xl">Open the library.</h2>
           <p className="mx-auto mt-4 max-w-lg text-navy-foreground/75">
-            Start with the title that matches your market and study inside a secure reading
-            experience built for focused work.
+            Start with the title that fits your market and study in a reading experience
+            built for focused work.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Button asChild size="lg">

@@ -44,11 +44,11 @@ export function LibraryCatalogContent({ books }: { books: LibraryBooks }) {
             The Trading Library
           </p>
           <h1 className="mt-3 font-display text-5xl sm:text-6xl">
-            Trading books for synthetic indices traders.
+            A serious library for synthetic indices traders.
           </h1>
           <p className="mt-4 max-w-xl text-muted-foreground">
-            Browse the shelf, filter by market, and open any title to view reading access,
-            pricing, and member options.
+            Browse the collection, filter by market, and open any title to see what it
+            covers, what it costs, and how to get access.
           </p>
         </div>
       </div>

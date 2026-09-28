@@ -181,20 +181,15 @@ function Home() {
 				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
 					/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 						className: "rise text-xs tracking-[0.22em] text-muted-foreground uppercase",
-						children: "A complete trading library"
+						children: "SLT Trade Hub"
 					}),
 					/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h1", {
 						className: "rise rise-2 mt-4 font-display text-5xl font-semibold text-navy dark:text-foreground sm:text-6xl lg:text-7xl",
-						children: "Become the trader who still has an account."
+						children: "For traders who protect capital and trade with intent."
 					}),
 					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", {
 						className: "rise rise-3 mt-5 max-w-xl text-lg text-muted-foreground",
-						children: [
-							"Exclusive books, a watermarked desk reader, and a community for synthetic indices — Volatility, Boom & Crash, Step, Jump, Range. Written by",
-							" ",
-							SITE.author,
-							"."
-						]
+						children: "Study with practical books, serious access, and a disciplined community focused on Volatility, Boom & Crash, Step, Jump, and Range."
 					}),
 					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 						className: "rise rise-4 mt-8 flex flex-col gap-3 sm:flex-row",
@@ -238,15 +233,11 @@ function Home() {
 				}),
 				/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", {
 					className: "mt-3 max-w-3xl font-display text-4xl sm:text-5xl",
-					children: "SLT Trade Hub is a trading desk with a library attached."
+					children: "SLT Trade Hub gives traders a stronger foundation before they put on risk."
 				}),
 				/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", {
 					className: "mt-5 max-w-2xl text-muted-foreground",
-					children: [
-						"We publish books for people who already know the chart can hurt them. No recycled gold-and-black funnels. Navy, paper, green, red — the colours the market actually uses. ",
-						SITE.tagline,
-						"."
-					]
+					children: "We publish books for traders who want cleaner entries, better sizing, and stronger control. The library and community are built to support serious trading work."
 				})
 			]
 		}),
@@ -260,7 +251,7 @@ function Home() {
 						children: "The Trading Library"
 					}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", {
 						className: "mt-2 font-display text-4xl",
-						children: "The shelf"
+						children: "Featured titles"
 					})] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Link, {
 						to: "/library",
 						className: "hidden text-sm font-medium text-primary sm:inline",
@@ -293,7 +284,7 @@ function Home() {
 				}),
 				/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", {
 					className: "mt-2 font-display text-4xl",
-					children: "What you actually get"
+					children: "What you get"
 				}),
 				/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
 					className: "mt-10 grid gap-6 sm:grid-cols-2",
@@ -325,7 +316,7 @@ function Home() {
 					}),
 					/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", {
 						className: "mt-2 font-display text-4xl",
-						children: "Four quiet steps"
+						children: "How access works"
 					}),
 					/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
 						className: "mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4",
@@ -352,7 +343,7 @@ function Home() {
 			children: [
 				/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 					className: "text-xs tracking-[0.2em] text-muted-foreground uppercase",
-					children: "Community & bots"
+					children: "Community"
 				}),
 				/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", {
 					className: "mt-2 font-display text-4xl",
@@ -372,7 +363,7 @@ function Home() {
 								}),
 								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 									className: "mt-2 text-sm text-muted-foreground",
-									children: "The main room for SLT members. Process talk, not miracle screenshots."
+									children: "The main room for SLT members. Market discussion, reviews, and session context."
 								})
 							]
 						}),
@@ -387,7 +378,7 @@ function Home() {
 								}),
 								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 									className: "mt-2 text-sm text-muted-foreground",
-									children: "Faster pings for session notes and desk reminders."
+									children: "Session notes, reminders, and trading-day updates."
 								})
 							]
 						}),
@@ -397,7 +388,7 @@ function Home() {
 								/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Bot, { className: "size-5 text-loss" }),
 								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", {
 									className: "mt-3 font-display text-2xl",
-									children: "Signal bots"
+									children: "Market alerts"
 								}),
 								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 									className: "mt-2 text-sm text-muted-foreground",
@@ -415,7 +406,7 @@ function Home() {
 				className: "mx-auto max-w-6xl overflow-hidden px-4",
 				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 					className: "text-xs tracking-[0.2em] text-muted-foreground uppercase",
-					children: "From the desk"
+					children: "Trader feedback"
 				}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
 					className: "marquee mt-8 items-stretch",
 					children: QUOTES.concat(QUOTES).map((t, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("blockquote", {
@@ -450,7 +441,7 @@ function Home() {
 					}),
 					/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 						className: "mx-auto mt-4 max-w-lg text-navy-foreground/75",
-						children: "Start with Synthetic Indices 101. Keep the account. That is the whole pitch."
+						children: "Start with the title that fits your market and study in a reading experience built for focused work."
 					}),
 					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 						className: "mt-8 flex flex-col justify-center gap-3 sm:flex-row",
