@@ -31,30 +31,30 @@ const BENEFITS = [
   {
     icon: BookOpen,
     title: "Books built for study",
-    text: "Practical trading books, a secure reader, and material worth revisiting before live sessions.",
+    text: "Practical trading books, secure online access, and material worth revisiting before the market opens.",
   },
   {
     icon: Shield,
     title: "Clear access and pricing",
-    text: "Tagged SLT members can use their member access. Public readers see the standard price clearly.",
+    text: "Members get their access. Public readers see the standard price upfront.",
   },
   {
     icon: Users,
     title: "A serious trading community",
-    text: "Telegram, WhatsApp, and market notes for traders who value process, accountability, and clean execution.",
+    text: "Telegram, WhatsApp, and market notes for traders who value discipline, accountability, and clean execution.",
   },
   {
     icon: Sparkles,
     title: "Focused on synthetic indices",
-    text: "Volatility, Boom & Crash, Step, Jump, and Range explained in language traders can use at the chart.",
+    text: "Volatility, Boom & Crash, Step, Jump, and Range explained in clear trading language.",
   },
 ];
 
 const STEPS = [
   { n: "01", t: "Sign in", d: "Use Deriv, Google, X, or email to open your account." },
   { n: "02", t: "Confirm your access", d: "Tagged members can generate a coupon. Everyone else can choose a title or a pass." },
-  { n: "03", t: "Open your book", d: "Read inside the secure online reader with your access tied to every page." },
-  { n: "04", t: "Stay connected", d: "Use the community, notes, and optional alerts to support an already-defined process." },
+  { n: "03", t: "Open your book", d: "Read inside the secure online reader with your access linked to every page." },
+  { n: "04", t: "Stay connected", d: "Use the community, notes, and optional alerts to stay sharp between sessions." },
 ];
 
 const QUOTES = [
@@ -97,12 +97,11 @@ function Home() {
               SLT Trade Hub
             </p>
             <h1 className="rise rise-2 mt-4 font-display text-5xl font-semibold text-navy dark:text-foreground sm:text-6xl lg:text-7xl">
-              Serious trading books for synthetic indices traders.
+              Built for traders who take synthetic indices seriously.
             </h1>
             <p className="rise rise-3 mt-5 max-w-xl text-lg text-muted-foreground">
-              Study the markets you actually trade with clear books, secure online reading,
-              and a disciplined community built around Volatility, Boom & Crash, Step,
-              Jump, and Range indices.
+              Get straight, practical books, secure online access, and a disciplined
+              community focused on Volatility, Boom & Crash, Step, Jump, and Range.
             </p>
             <div className="rise rise-4 mt-6 flex flex-wrap gap-2 text-sm text-muted-foreground">
               <span className="rounded-full border border-border bg-card px-3 py-1">
@@ -134,7 +133,7 @@ function Home() {
                     The Trading Library
                   </p>
                   <h2 className="mt-3 font-display text-3xl text-navy dark:text-foreground">
-                    Clear material for real trading work.
+                    Clear material for serious trading work.
                   </h2>
                 </div>
                 <img
@@ -176,11 +175,11 @@ function Home() {
       <section className="mx-auto max-w-6xl px-4 py-20">
         <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">What this is</p>
         <h2 className="mt-3 max-w-3xl font-display text-4xl sm:text-5xl">
-          SLT Trade Hub helps traders build structure before they add more risk.
+          SLT Trade Hub helps traders build structure before they press size.
         </h2>
         <p className="mt-5 max-w-2xl text-muted-foreground">
           We publish books for traders who want cleaner entries, better sizing, and a
-          process they can repeat. The library, reader, and community are built to support
+          process they can trust. The library, reader, and community are there to support
           real trading work.
         </p>
       </section>
@@ -272,7 +271,7 @@ function Home() {
             <Bot className="size-5 text-loss" />
             <h3 className="mt-3 font-display text-2xl">Market alerts</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Optional alerts that support your plan. They do not replace risk control.
+              Optional alerts that support your plan. They never replace risk control.
             </p>
           </div>
         </div>
@@ -301,8 +300,8 @@ function Home() {
         <div className="mx-auto max-w-4xl rounded-xl bg-navy px-6 py-14 text-center text-navy-foreground sm:px-12">
           <h2 className="font-display text-4xl sm:text-5xl">Open the library.</h2>
           <p className="mx-auto mt-4 max-w-lg text-navy-foreground/75">
-            Start with the title that matches your market and read inside a secure member
-            experience designed for focused study.
+            Start with the title that matches your market and study inside a secure reading
+            experience built for focused work.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Button asChild size="lg">
