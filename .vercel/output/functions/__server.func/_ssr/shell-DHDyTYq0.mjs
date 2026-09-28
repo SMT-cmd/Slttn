@@ -214,7 +214,7 @@ function Footer() {
 						/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Link, {
 							to: "/community",
 							className: "hover:underline",
-							children: "Community & bots"
+							children: "Community"
 						}),
 						/* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", {
 							href: SITE.telegram,

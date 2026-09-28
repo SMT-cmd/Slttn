@@ -57,7 +57,7 @@ function Community() {
 							}),
 							/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 								className: "mt-2 text-sm text-muted-foreground",
-								children: "Faster, smaller, and meant for people already in the library."
+								children: "Useful for trading-day reminders, session notes, and quick updates."
 							}),
 							/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Button, {
 								asChild: true,
@@ -76,11 +76,11 @@ function Community() {
 							/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Bot, { className: "size-5 text-loss" }),
 							/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", {
 								className: "mt-3 font-display text-3xl",
-								children: "Signal bots"
+								children: "Market alerts"
 							}),
 							/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 								className: "mt-2 text-sm text-muted-foreground",
-								children: "Optional. If a bot changes your lot size, the system is no longer yours. Access notes go out to members after they are tagged."
+								children: "Optional alerts only. They should support an existing plan, not create one. Access notes go out to tagged members after approval."
 							})
 						]
 					})
