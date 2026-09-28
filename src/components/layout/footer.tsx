@@ -1,5 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { SITE } from "@/lib/site";
+import {
+  libraryHomeHref,
+  mainSiteHref,
+  marketingHref,
+  useSiteContext,
+} from "@/lib/site-context";
 
 const LEGAL = [
   { to: "/privacy", label: "Privacy Policy" },
@@ -13,6 +19,9 @@ const LEGAL = [
 ] as const;
 
 export function Footer() {
+  const siteContext = useSiteContext();
+  const libraryLink = libraryHomeHref(siteContext);
+
   return (
     <footer className="mt-auto border-t border-border bg-navy text-navy-foreground">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 md:grid-cols-4">
@@ -27,22 +36,22 @@ export function Footer() {
             </div>
           </div>
           <p className="mt-4 max-w-md text-sm text-navy-foreground/75">
-            Exclusive books and a serious room for synthetic indices traders. Educational
-            content only — never a promise of profit.
+            Structured trading education, premium books, and a library built for traders
+            who want process, risk discipline, and clear market work.
           </p>
         </div>
         <div>
           <p className="text-xs tracking-[0.16em] uppercase text-navy-foreground/60">Library</p>
           <div className="mt-3 flex flex-col gap-2 text-sm">
-            <Link to="/library" className="hover:underline">
+            <a href={libraryLink} className="hover:underline">
               The Trading Library
-            </Link>
-            <Link to="/pricing" className="hover:underline">
+            </a>
+            <a href={marketingHref("/pricing", siteContext)} className="hover:underline">
               Pricing
-            </Link>
-            <Link to="/community" className="hover:underline">
-              Community & bots
-            </Link>
+            </a>
+            <a href={marketingHref("/community", siteContext)} className="hover:underline">
+              Community
+            </a>
             <a href={SITE.telegram} className="hover:underline">
               Telegram
             </a>
@@ -52,9 +61,13 @@ export function Footer() {
           <p className="text-xs tracking-[0.16em] uppercase text-navy-foreground/60">Legal</p>
           <div className="mt-3 flex flex-col gap-2 text-sm">
             {LEGAL.map((l) => (
-              <Link key={l.to} to={l.to} className="hover:underline">
+              <a
+                key={l.to}
+                href={siteContext.isLibraryHost ? mainSiteHref(l.to) : l.to}
+                className="hover:underline"
+              >
                 {l.label}
-              </Link>
+              </a>
             ))}
           </div>
         </div>
