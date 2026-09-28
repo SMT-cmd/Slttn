@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { marketingHref, useSiteContext } from "@/lib/site-context";
 
 const KEY = "slt-consent";
 
@@ -18,6 +18,9 @@ function gtag(...args: unknown[]) {
 
 export function CookieBanner() {
   const [open, setOpen] = useState(false);
+  const siteContext = useSiteContext();
+  const cookiesHref = marketingHref("/cookies", siteContext);
+  const privacyHref = marketingHref("/privacy", siteContext);
 
   useEffect(() => {
     window.dataLayer = window.dataLayer ?? [];
@@ -67,13 +70,13 @@ export function CookieBanner() {
       <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
           We use cookies for the site, and — after you agree — for Google AdSense. Read the{" "}
-          <Link to="/cookies" className="underline">
+          <a href={cookiesHref} className="underline">
             Cookie Policy
-          </Link>{" "}
+          </a>{" "}
           and{" "}
-          <Link to="/privacy" className="underline">
+          <a href={privacyHref} className="underline">
             Privacy Policy
-          </Link>
+          </a>
           .
         </p>
         <div className="flex gap-2">

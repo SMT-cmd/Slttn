@@ -1,9 +1,14 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { Shell } from "@/components/layout/shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getBook } from "@/lib/server/platform";
-import { libraryHomeHref, libraryReaderHref, useSiteContext } from "@/lib/site-context";
+import {
+  libraryHomeHref,
+  libraryReaderHref,
+  marketingHref,
+  useSiteContext,
+} from "@/lib/site-context";
 import { bookPageDescription, bookPageTitle, PRICING } from "@/lib/site";
 import { formatMoney } from "@/lib/utils";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -33,7 +38,6 @@ export const Route = createFileRoute("/library/$slug")({
 export function BookPage() {
   const book = Route.useLoaderData();
   const { user, isPending } = useCurrentUserState();
-  const navigate = useNavigate();
   const siteContext = useSiteContext();
 
   if (!book) {
@@ -57,10 +61,12 @@ export function BookPage() {
 
   function goRead() {
     if (!book) return;
+
     if (!user) {
-      navigate({ to: "/login" });
+      window.location.assign(marketingHref("/login", siteContext));
       return;
     }
+
     window.location.assign(libraryReaderHref(book.slug, siteContext));
   }
 
@@ -113,9 +119,9 @@ export function BookPage() {
               Open the reader
             </Button>
             <Button asChild variant="outline" size="lg">
-              <Link to="/checkout" search={{ slug: book.slug }}>
+              <a href={`${marketingHref("/checkout", siteContext)}?slug=${encodeURIComponent(book.slug)}`}>
                 See payment options
-              </Link>
+              </a>
             </Button>
           </div>
           <p className="mt-4 text-xs text-muted-foreground">
