@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { Shell } from "@/components/layout/shell";
 import { Button } from "@/components/ui/button";
 import { PRICING, SITE } from "@/lib/site";
@@ -53,7 +53,7 @@ function Pricing() {
           </li>
         </ul>
         <Button asChild variant="navy" className="mt-8">
-          <Link to="/library">Choose a title</Link>
+          <a href={SITE.libraryUrl}>Choose a title</a>
         </Button>
       </div>
     </Shell>

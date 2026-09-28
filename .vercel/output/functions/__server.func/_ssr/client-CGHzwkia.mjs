@@ -1,5 +1,5 @@
 import { o as __toESM, r as __exportAll } from "../_runtime.mjs";
-import { Q as require_react } from "../_libs/@tanstack/react-router+[...].mjs";
+import { Z as require_react } from "../_libs/@tanstack/react-router+[...].mjs";
 import { s as __exportAll$1 } from "./ssr.mjs";
 import { Bt as createFetch, Ut as capitalizeFirstLetter, Vt as isSafeUrlScheme, Wt as toKebabCase } from "../_libs/@better-auth/core+[...].mjs";
 import { n as PACKAGE_VERSION, r as getBaseURL, t as GENERIC_OAUTH_ERROR_CODES } from "./url-BE6YaD7r.mjs";

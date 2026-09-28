@@ -1,5 +1,5 @@
 import { o as __toESM } from "../_runtime.mjs";
-import { Q as require_react } from "./@tanstack/react-router+[...].mjs";
+import { Z as require_react } from "./@tanstack/react-router+[...].mjs";
 import { t as getNonce } from "./get-nonce.mjs";
 //#region node_modules/tslib/tslib.es6.mjs
 var import_react = /* @__PURE__ */ __toESM(require_react());

@@ -59,17 +59,16 @@
   </head>
   <body>
     <div class="page">
-      <header class="powered" aria-label="Powered by Grok">
-        <span class="powered-by">Powered by</span>
+      <header class="powered" aria-label="{{APP_NAME}}">
         <span class="powered-brand">
           <img
             class="grok-logo"
-            src="/__grok/install/assets/homescreen/logo-grok.svg"
-            width="14"
-            height="14"
-            alt=""
+            src="{{APP_ICON}}"
+            width="28"
+            height="28"
+            alt="{{APP_NAME}}"
           />
-          <span class="powered-grok">Grok</span>
+          <span class="powered-grok">{{APP_NAME}}</span>
         </span>
       </header>
 
@@ -93,6 +92,9 @@
 
         <section class="copy">
           <h1>Add {{APP_NAME}} to your&nbsp;Home&nbsp;Screen</h1>
+          <p class="desktop-note">
+            Install {{APP_NAME}} for faster access to your books, reading progress, and SLT Trade Hub content.
+          </p>
 
           <div class="steps">
             <p class="step step-tap step-ios27">
@@ -137,7 +139,7 @@
         <section class="copy">
           <h1>Open this link on your iPhone&nbsp;or&nbsp;iPad</h1>
           <p class="desktop-note">
-            This page shows how to add {{APP_NAME}} to an iOS Home Screen.
+            This page shows how to install {{APP_NAME}} on an iOS Home Screen.
           </p>
           <a class="desktop-open" href="{{APP_URL}}">Open {{APP_NAME}}</a>
         </section>

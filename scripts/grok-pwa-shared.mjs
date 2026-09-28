@@ -6,7 +6,23 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-export const DEFAULT_APP_NAME = "Grok App";
+const SITE_BRAND = {
+  name: "SLT Trade Hub",
+  library: "The Trading Library",
+  domain: "slttradehub.online",
+  libraryHost: "library.slttradehub.online",
+  url: "https://slttradehub.online",
+  libraryUrl: "https://library.slttradehub.online",
+  marketingTitle: "Synthetic Indices Trading Books, Education, and Community | SLT Trade Hub",
+  marketingDescription:
+    "SLT Trade Hub helps synthetic indices traders study Volatility, Boom & Crash, Step, Jump, and Range markets with practical trading books, secure online reading, and a focused community.",
+  libraryTitle: "Synthetic Indices Trading Book Library | The Trading Library",
+  libraryDescription:
+    "Browse The Trading Library for synthetic indices trading books on Volatility, Boom & Crash, Step, Jump, and Range, with secure online reading, clear pricing, and member access options.",
+  ogImagePath: "/og.png",
+};
+
+export const DEFAULT_APP_NAME = SITE_BRAND.name;
 export const OG_SERVICE_URL_DEFAULT = "https://og.grok.me";
 export const OG_SITE_REL_PATH = "src/lib/og/site.json";
 
@@ -37,6 +53,45 @@ export function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
+function normalizeHostName(hostHeader) {
+  return String(hostHeader ?? "")
+    .split(",")[0]
+    .trim()
+    .split(":")[0]
+    .toLowerCase();
+}
+
+function isLibraryHostName(hostHeader) {
+  const host = normalizeHostName(hostHeader);
+  return host === SITE_BRAND.libraryHost || host.startsWith("library.");
+}
+
+function originForHost(hostHeader) {
+  const host = normalizeHostName(hostHeader);
+  if (!host) return SITE_BRAND.url;
+  const protocol =
+    host === "localhost" || host === "127.0.0.1" || host.endsWith(".localhost")
+      ? "http"
+      : "https";
+  return `${protocol}://${host}`;
+}
+
+function brandForHost(hostHeader) {
+  const libraryHost = isLibraryHostName(hostHeader);
+  const origin = originForHost(hostHeader);
+  return {
+    appName: libraryHost ? SITE_BRAND.library : SITE_BRAND.name,
+    title: libraryHost ? SITE_BRAND.libraryTitle : SITE_BRAND.marketingTitle,
+    description: libraryHost
+      ? SITE_BRAND.libraryDescription
+      : SITE_BRAND.marketingDescription,
+    siteName: libraryHost ? SITE_BRAND.library : SITE_BRAND.name,
+    icon: libraryHost ? "/brand/trading-library.png" : "/brand/slt-logo.png",
+    startUrl: origin,
+    origin,
+  };
+}
+
 /** Inverse of escapeHtml. Decode &amp; last so a single pass undoes one encode. */
 function unescapeHtml(value) {
   return String(value)
@@ -60,25 +115,7 @@ function placeholderCardColor(site = {}) {
  * only — slugifying them produced internal names like "Hds Abc 3000 Xy".
  */
 export function appNameFromHost(hostHeader) {
-  const host = String(hostHeader ?? "")
-    .split(",")[0]
-    .trim()
-    .split(":")[0]
-    .toLowerCase();
-  if (!host.endsWith(".grok.me")) {
-    return DEFAULT_APP_NAME;
-  }
-  const slug = host.split(".")[0] ?? "";
-  if (!slug || slug === "www" || !/^[a-z0-9-]{1,63}$/.test(slug)) {
-    return DEFAULT_APP_NAME;
-  }
-  return (
-    slug
-      .split("-")
-      .filter(Boolean)
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(" ") || DEFAULT_APP_NAME
-  );
+  return brandForHost(hostHeader).appName;
 }
 
 /** True for Vercel system domains. Envoy rewrites origin Host to these; they SSO-protect `/og.jpg`. */
@@ -152,27 +189,45 @@ export function stripInstallParams(url) {
 }
 
 export function renderInstallPageHtml(template, { host, url } = {}) {
+  const brand = brandForHost(host);
   return String(template)
-    .replaceAll("{{APP_NAME}}", escapeHtml(appNameFromHost(host)))
-    .replaceAll("{{APP_URL}}", escapeHtml(stripInstallParams(url)));
+    .replaceAll("{{APP_NAME}}", escapeHtml(brand.appName))
+    .replaceAll("{{APP_URL}}", escapeHtml(stripInstallParams(url)))
+    .replaceAll("{{APP_ICON}}", escapeHtml(brand.icon));
 }
 
 export function renderWebManifest(hostHeader) {
-  const name = appNameFromHost(hostHeader);
+  const brand = brandForHost(hostHeader);
+  const startUrl = brand.startUrl.endsWith("/") ? brand.startUrl : `${brand.startUrl}/`;
   return JSON.stringify(
     {
-      name,
-      short_name: name,
-      id: "/",
-      start_url: "/",
-      scope: "/",
+      name: brand.appName,
+      short_name: brand.appName,
+      id: startUrl,
+      start_url: startUrl,
+      scope: startUrl,
       display: "standalone",
-      background_color: "#000000",
-      theme_color: "#000000",
+      background_color: "#0E2744",
+      theme_color: "#0E2744",
       icons: [
         {
-          src: "/__grok/icon-180.png",
+          src: "/favicon.ico",
+          sizes: "48x48",
+          type: "image/x-icon",
+        },
+        {
+          src: "/apple-touch-icon.png",
           sizes: "180x180",
+          type: "image/png",
+        },
+        {
+          src: "/icon-192.png",
+          sizes: "192x192",
+          type: "image/png",
+        },
+        {
+          src: "/icon-512.png",
+          sizes: "512x512",
           type: "image/png",
         },
       ],
@@ -187,7 +242,7 @@ export function grokPwaHeadTags(appName = DEFAULT_APP_NAME) {
     // Standalone display comes from the manifest ("display": "standalone");
     // the legacy *-web-app-capable metas it replaces are deliberately absent.
     ["manifest", '<link rel="manifest" href="/__grok/manifest.webmanifest">'],
-    ["apple-touch-icon", '<link rel="apple-touch-icon" href="/__grok/icon-180.png">'],
+    ["apple-touch-icon", '<link rel="apple-touch-icon" href="/apple-touch-icon.png">'],
     [
       "apple-mobile-web-app-title",
       `<meta name="apple-mobile-web-app-title" content="${escapeHtml(appName)}">`,
@@ -196,7 +251,7 @@ export function grokPwaHeadTags(appName = DEFAULT_APP_NAME) {
       "apple-mobile-web-app-status-bar-style",
       '<meta name="apple-mobile-web-app-status-bar-style" content="black">',
     ],
-    ["theme-color", '<meta name="theme-color" content="#000000">'],
+    ["theme-color", '<meta name="theme-color" content="#0E2744">'],
   ];
 }
 
@@ -340,18 +395,24 @@ export function grokOgHeadTags({
   documentTitle = "",
   cwd = process.cwd(),
 } = {}) {
-  const title = resolveOgTitle(site, appName, host, documentTitle);
+  const brand = brandForHost(host);
+  const title = brand.title || resolveOgTitle(site, appName, host, documentTitle);
   const publicHost = resolvePublicHost(host);
   const tags = [
     `<meta name="twitter:card" content="summary_large_image">`,
     `<meta property="og:title" content="${escapeHtml(title)}">`,
+    `<meta property="og:site_name" content="${escapeHtml(brand.siteName)}">`,
   ];
-  const description = String(site.description ?? "").trim();
+  const description = brand.description || String(site.description ?? "").trim();
   if (description) {
     tags.push(`<meta property="og:description" content="${escapeHtml(description)}">`);
+    tags.push(`<meta name="twitter:description" content="${escapeHtml(description)}">`);
   }
+  tags.push(`<meta name="twitter:title" content="${escapeHtml(title)}">`);
   if (String(site.type ?? "").toLowerCase() === "x:game") {
     tags.push(`<meta property="og:type" content="x:game">`);
+  } else {
+    tags.push('<meta property="og:type" content="website">');
   }
   if (publicHost) {
     const asset = resolveOgCardAsset(site, cwd);
@@ -361,6 +422,9 @@ export function grokOgHeadTags({
       : `${ogServiceUrl()}/v1/card.png?host=${encodeURIComponent(publicHost)}&title=${encodeURIComponent(title)}`;
     const color = !custom ? placeholderCardColor(site) : "";
     if (color) image += `&color=${encodeURIComponent(color)}`;
+    const shareUrl = `https://${publicHost}/`;
+    tags.push(`<meta property="og:url" content="${escapeHtml(shareUrl)}">`);
+    tags.push(`<meta name="twitter:url" content="${escapeHtml(shareUrl)}">`);
     tags.push(`<meta property="og:image" content="${escapeHtml(image)}">`);
     tags.push(`<meta property="og:image:width" content="1200">`);
     tags.push(`<meta property="og:image:height" content="630">`);
@@ -410,7 +474,7 @@ export function normalizeHeadContext(ctx = {}) {
     ctx.site !== undefined ? ctx.site : snapshotOgIdentity(cwd).site,
     cwd,
   );
-  const appName = resolveOgTitle(site, ctx.appName ?? DEFAULT_APP_NAME, ctx.host ?? "");
+  const appName = brandForHost(ctx.host ?? "").appName;
   return {
     appName,
     projectId: ctx.projectId ?? readGrokProjectId(),

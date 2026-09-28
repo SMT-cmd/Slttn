@@ -72,19 +72,21 @@ export function mainSiteHref(path = "/") {
 }
 
 export function libraryHomeHref(siteContext: SiteContextValue) {
-  return siteContext.isLibraryHost ? "/" : "/library";
+  return siteContext.isLibraryHost ? "/" : SITE.libraryUrl;
 }
 
 export function libraryBookHref(slug: string, siteContext: SiteContextValue) {
   const cleanSlug = slug.replace(/^\/+/, "");
-  return siteContext.isLibraryHost ? `/${cleanSlug}` : `/library/${cleanSlug}`;
+  return siteContext.isLibraryHost
+    ? `/${cleanSlug}`
+    : `${SITE.libraryUrl}/${cleanSlug}`;
 }
 
 export function libraryReaderHref(slug: string, siteContext: SiteContextValue) {
   const cleanSlug = slug.replace(/^\/+/, "");
   return siteContext.isLibraryHost
     ? `/read/${cleanSlug}`
-    : `/library/read/${cleanSlug}`;
+    : `${SITE.libraryUrl}/read/${cleanSlug}`;
 }
 
 export function marketingHref(path: string, siteContext: SiteContextValue) {

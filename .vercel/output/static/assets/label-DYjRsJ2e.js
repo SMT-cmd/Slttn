@@ -1,0 +1,1 @@
+import{r as e}from"./rolldown-runtime-hePW80VL.js";import{a as t}from"./client-CMAaIEkX.js";import{L as n,u as r}from"./dist-BPsDme5f.js";var i=e(t(),1),a=n(),o=(0,i.forwardRef)(({className:e,...t},n)=>(0,a.jsx)(`label`,{ref:n,className:r(`text-sm font-medium text-foreground`,e),...t}));o.displayName=`Label`;export{o as t};

@@ -11,7 +11,11 @@ import appCss from "../styles.css?url";
 export const Route = createRootRoute({
   loader: () => getSiteContext(),
   head: ({ loaderData }) => {
-    const siteContext = loaderData;
+    const siteContext = loaderData ?? {
+      isLibraryHost: false,
+      currentUrl: SITE.url,
+      origin: SITE.url,
+    };
     const title = siteContext.isLibraryHost ? SITE.libraryTitle : SITE.marketingTitle;
     const description = siteContext.isLibraryHost
       ? SITE.libraryDescription
@@ -50,9 +54,11 @@ export const Route = createRootRoute({
       links: [
         { rel: "canonical", href: shareUrl },
         { rel: "icon", href: "/favicon.ico", sizes: "any" },
-        { rel: "icon", type: "image/svg+xml", href: "/favicon.svg", sizes: "any" },
+        { rel: "shortcut icon", href: "/favicon.ico" },
         { rel: "icon", type: "image/png", sizes: "16x16", href: "/favicon-16x16.png" },
         { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32x32.png" },
+        { rel: "icon", type: "image/png", sizes: "192x192", href: "/icon-192.png" },
+        { rel: "icon", type: "image/png", sizes: "512x512", href: "/icon-512.png" },
         { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" },
         { rel: "manifest", href: "/__grok/manifest.webmanifest" },
         { rel: "stylesheet", href: appCss },
