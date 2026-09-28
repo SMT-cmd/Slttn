@@ -19,7 +19,6 @@ const LINKS = [
   { to: "/community", label: "Community" },
   { to: "/pricing", label: "Pricing" },
   { to: "/about", label: "About" },
-  { to: "/contact", label: "Contact" },
 ] as const;
 
 function isActiveLink(
@@ -45,9 +44,9 @@ export function Header({ library }: { library?: boolean }) {
   const accountLink = marketingHref("/account", siteContext);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/95 backdrop-blur">
-      <div className="mx-auto flex min-h-16 max-w-6xl items-center gap-3 px-4 py-2">
-        <a href={homeLink} className="flex min-w-0 items-center gap-3">
+    <header className="sticky top-0 z-40 border-b border-border bg-background">
+      <div className="mx-auto flex min-h-16 max-w-6xl items-center gap-2 px-4 py-2 sm:gap-3">
+        <a href={homeLink} className="flex min-w-0 flex-1 items-center gap-3 pr-2">
           <img
             src={library ? "/brand/trading-library.png" : "/brand/slt-logo.png"}
             alt={library ? SITE.library : SITE.name}
@@ -59,7 +58,7 @@ export function Header({ library }: { library?: boolean }) {
             )}
           />
           <span className="min-w-0 leading-tight">
-            <span className="block font-display text-lg font-semibold tracking-tight">
+            <span className="block truncate font-display text-base font-semibold tracking-tight sm:text-lg">
               {library ? SITE.library : SITE.name}
             </span>
             <span className="hidden text-[10px] tracking-[0.18em] text-muted-foreground uppercase xl:block">
@@ -75,6 +74,9 @@ export function Header({ library }: { library?: boolean }) {
             <a
               key={l.to}
               href={l.to === "/library" ? libraryLink : marketingHref(l.to, siteContext)}
+              aria-current={
+                isActiveLink(l.to, pathname, siteContext.isLibraryHost) ? "page" : undefined
+              }
               className={cn(
                 "whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
                 isActiveLink(l.to, pathname, siteContext.isLibraryHost) &&
@@ -86,11 +88,11 @@ export function Header({ library }: { library?: boolean }) {
           ))}
         </nav>
 
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           <button
             type="button"
             onClick={toggle}
-            className="grid size-11 place-items-center rounded-md hover:bg-muted"
+            className="grid size-10 place-items-center rounded-md hover:bg-muted sm:size-11"
             aria-label="Toggle theme"
           >
             {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
@@ -119,7 +121,7 @@ export function Header({ library }: { library?: boolean }) {
             <SheetTrigger asChild>
               <button
                 type="button"
-                className="grid size-11 place-items-center rounded-md hover:bg-muted lg:hidden"
+                className="grid size-10 place-items-center rounded-md hover:bg-muted sm:size-11 lg:hidden"
                 aria-label="Open menu"
               >
                 <Menu className="size-5" />
@@ -144,6 +146,11 @@ export function Header({ library }: { library?: boolean }) {
                       key={l.to}
                       href={l.to === "/library" ? libraryLink : marketingHref(l.to, siteContext)}
                       onClick={() => setOpen(false)}
+                      aria-current={
+                        isActiveLink(l.to, pathname, siteContext.isLibraryHost)
+                          ? "page"
+                          : undefined
+                      }
                       className={cn(
                         "rounded-xl border border-transparent px-4 py-3 text-base font-medium transition-colors hover:bg-muted",
                         isActiveLink(l.to, pathname, siteContext.isLibraryHost) &&
