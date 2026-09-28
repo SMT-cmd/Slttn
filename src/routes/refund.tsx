@@ -10,7 +10,7 @@ export const Route = createFileRoute("/refund")({
         opened.
       </p>
       <p>
-        If a payment was taken twice by mistake, write to hello@slttradehub.online within seven
+        If a payment was taken twice by mistake, write to hello@slttradehub.trade within seven
         days with the receipt. Duplicate charges are the only case we reverse.
       </p>
     </Legal>

@@ -1,7 +1,6 @@
 import { SITE } from "@/lib/site";
 import {
   libraryHomeHref,
-  mainSiteHref,
   marketingHref,
   useSiteContext,
 } from "@/lib/site-context";
@@ -14,6 +13,8 @@ const LEGAL = [
   { to: "/cookies", label: "Cookie Policy" },
   { to: "/copyright", label: "Copyright / DMCA" },
   { to: "/about", label: "About" },
+  { to: "/support", label: "Support" },
+  { to: "/faq", label: "FAQ" },
   { to: "/contact", label: "Contact" },
 ] as const;
 
@@ -73,7 +74,7 @@ export function Footer({ library }: { library?: boolean }) {
             {LEGAL.map((l) => (
               <a
                 key={l.to}
-                href={siteContext.isLibraryHost ? mainSiteHref(l.to) : l.to}
+                href={marketingHref(l.to, siteContext)}
                 className="hover:underline"
               >
                 {l.label}

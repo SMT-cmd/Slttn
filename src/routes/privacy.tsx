@@ -4,7 +4,7 @@ import { Legal } from "@/components/layout/legal";
 export const Route = createFileRoute("/privacy")({
   component: () => (
     <Legal title="Privacy Policy">
-      <p>Last updated 26 September 2026. SLT Trade Hub (“we”) runs slttradehub.online and library.slttradehub.online.</p>
+      <p>Last updated 26 September 2026. SLT Trade Hub (“we”) runs slttradehub.trade and library.slttradehub.trade.</p>
       <p>
         We collect the name, email, and authentication identifiers you give us when you sign in
         with Google, X, or email, plus any Deriv CR number you link, coupon use, purchases, and
@@ -20,7 +20,7 @@ export const Route = createFileRoute("/privacy")({
         numbers. Hosting is on Vercel. You may request a copy of your data or deletion from your
         account page.
       </p>
-      <p>Write to hello@slttradehub.online for privacy questions.</p>
+      <p>Write to hello@slttradehub.trade for privacy questions.</p>
     </Legal>
   ),
 });

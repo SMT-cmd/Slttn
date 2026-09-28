@@ -21,8 +21,16 @@ export const Route = createRootRoute({
       ? SITE.libraryDescription
       : SITE.marketingDescription;
     const siteName = siteContext.isLibraryHost ? SITE.library : SITE.name;
-    const shareUrl = siteContext.currentUrl;
-    const ogImage = `${siteContext.origin}${SITE.ogImagePath}`;
+    const origin = siteContext.isLibraryHost ? SITE.libraryUrl : SITE.url;
+    const shareUrl = (() => {
+      try {
+        const current = new URL(siteContext.currentUrl);
+        return `${origin}${current.pathname}${current.search}${current.hash}`;
+      } catch {
+        return origin;
+      }
+    })();
+    const ogImage = `${origin}${SITE.ogImagePath}`;
 
     return {
       meta: [
@@ -53,7 +61,7 @@ export const Route = createRootRoute({
       ],
       links: [
         { rel: "canonical", href: shareUrl },
-        { rel: "icon", href: "/favicon.ico", sizes: "any" },
+        { rel: "icon", type: "image/x-icon", href: "/favicon.ico", sizes: "any" },
         { rel: "shortcut icon", href: "/favicon.ico" },
         { rel: "icon", type: "image/png", sizes: "16x16", href: "/favicon-16x16.png" },
         { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32x32.png" },
