@@ -107,7 +107,10 @@ test("platform chrome overwrites share-card metas and always sets og:title", () 
     '<html><head><title>Hello World</title><meta property="og:title" content="Old"><meta name="twitter:card" content="summary"></head></html>';
   const out = injectGrokPwaHead(html, { appName: "Wild Race" });
   assert.match(out, /name="twitter:card" content="summary_large_image"/);
-  assert.match(out, /property="og:title" content="Hello World"/);
+  assert.match(
+    out,
+    /property="og:title" content="Synthetic Indices Trading Books, Education, and Community \| SLT Trade Hub"/,
+  );
   assert.doesNotMatch(out, /content="Old"/);
   assert.doesNotMatch(out, /content="summary"/);
   assert.equal(out.split('name="twitter:card"').length - 1, 1);
@@ -140,7 +143,11 @@ test("baked identity does not need a workspace filesystem", () => {
     cwd: empty,
     site: { title: "Pixel Nova", type: "x:game", card: "custom" },
   });
-  assert.match(out, /property="og:title" content="Pixel Nova"/);
+  assert.match(
+    out,
+    /property="og:title" content="Synthetic Indices Trading Books, Education, and Community \| SLT Trade Hub"/,
+  );
+  assert.match(out, /apple-mobile-web-app-title" content="SLT Trade Hub"/);
   assert.match(out, /property="og:type" content="x:game"/);
   assert.match(out, /property="og:image" content="https:\/\/wild-race\.grok\.me\/og\.jpg"/);
   assert.doesNotMatch(out, /og\.grok\.me/);
@@ -148,16 +155,16 @@ test("baked identity does not need a workspace filesystem", () => {
 
 test("a public card file wins over a baked site without card=custom", () => {
   // Deploy middleware always passes a baked `site`. If that snapshot missed
-  // the file, public/og.jpg must still beat the og.grok.me placeholder.
+  // the file, a public share card must still beat the og.grok.me placeholder.
   const root = mkdtempSync(join(tmpdir(), "grok-og-card-"));
   mkdirSync(join(root, "public"));
-  writeFileSync(join(root, "public/og.jpg"), "x");
+  writeFileSync(join(root, "public/og.png"), "x");
   const out = injectGrokPwaHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
     cwd: root,
     site: {},
   });
-  assert.match(out, /property="og:image" content="https:\/\/wild-race\.grok\.me\/og\.jpg"/);
+  assert.match(out, /property="og:image" content="https:\/\/wild-race\.grok\.me\/og\.png"/);
   assert.doesNotMatch(out, /og\.grok\.me/);
 });
 
@@ -184,18 +191,20 @@ test("resolveOgCardAsset: disk file, then bake, then empty (placeholder)", () =>
 
   const root = mkdtempSync(join(tmpdir(), "grok-og-disk-"));
   mkdirSync(join(root, "public"));
+  writeFileSync(join(root, "public/og.png"), "x");
   writeFileSync(join(root, "public/og.jpg"), "x");
-  assert.equal(resolveOgCardAsset({}, root), "/og.jpg");
-  assert.equal(resolveOgCardAsset({ card: "custom", image: "/other.png" }, root), "/og.jpg");
+  assert.equal(resolveOgCardAsset({}, root), "/og.png");
+  assert.equal(resolveOgCardAsset({ card: "custom", image: "/other.png" }, root), "/og.png");
 });
 
 test("snapshotOgIdentity stamps card=custom from a public card file", () => {
   const root = mkdtempSync(join(tmpdir(), "grok-og-snap-"));
   mkdirSync(join(root, "public"));
+  writeFileSync(join(root, "public/og.png"), "x");
   writeFileSync(join(root, "public/og.jpg"), "x");
   const { site } = snapshotOgIdentity(root);
   assert.equal(site.card, "custom");
-  assert.equal(site.image, "/og.jpg");
+  assert.equal(site.image, "/og.png");
   assert.equal(site.banner, undefined);
 });
 
@@ -235,19 +244,26 @@ test("does not emit x:game:image without a public host or banner", () => {
   assert.doesNotMatch(noBanner, /x:game:image/);
 });
 
-test("site title Grok App is a real name, not a sentinel", () => {
+test("site titles do not override the host app name", () => {
   const out = injectGrokPwaHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
     site: { title: "Grok App" },
   });
-  assert.match(out, /property="og:title" content="Grok App"/);
+  assert.match(out, /apple-mobile-web-app-title" content="SLT Trade Hub"/);
+  assert.match(
+    out,
+    /property="og:title" content="Synthetic Indices Trading Books, Education, and Community \| SLT Trade Hub"/,
+  );
 });
 
-test("published grok.me slug is still a title fallback", () => {
+test("published hosts use the SLT marketing OG title fallback", () => {
   const out = injectGrokPwaHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
   });
-  assert.match(out, /property="og:title" content="Wild Race"/);
+  assert.match(
+    out,
+    /property="og:title" content="Synthetic Indices Trading Books, Education, and Community \| SLT Trade Hub"/,
+  );
 });
 
 test("rejects Vercel system hosts as og:image origins", () => {
@@ -267,7 +283,7 @@ test("published VITE_PUBLIC_HOSTNAME wins over request Host for og:image", () =>
     });
     assert.match(
       vercelHost,
-      /property="og:image" content="https:\/\/plum-plaza-reef-dream\.grok\.me\/og\.jpg"/,
+      /property="og:image" content="https:\/\/plum-plaza-reef-dream\.grok\.me\/og\.png"/,
     );
     assert.doesNotMatch(vercelHost, /vercel\.app/);
 
@@ -277,7 +293,7 @@ test("published VITE_PUBLIC_HOSTNAME wins over request Host for og:image", () =>
     });
     assert.match(
       otherPublicHost,
-      /property="og:image" content="https:\/\/plum-plaza-reef-dream\.grok\.me\/og\.jpg"/,
+      /property="og:image" content="https:\/\/plum-plaza-reef-dream\.grok\.me\/og\.png"/,
     );
     assert.doesNotMatch(otherPublicHost, /custom\.example\.com/);
   } finally {
@@ -303,69 +319,87 @@ test("vercel Host without a public hostname emits no og:image", () => {
 });
 
 test("emits og:image for a public host and prefers a custom card", () => {
+  const empty = mkdtempSync(join(tmpdir(), "grok-og-public-host-"));
   const placeholder = injectGrokPwaHead("<html><head></head></html>", {
     appName: "Wild Race",
     host: "wild-race.grok.me",
+    cwd: empty,
     site: { title: "Wild Race" },
   });
   assert.match(
     placeholder,
-    /property="og:image" content="https:\/\/og\.grok\.me\/v1\/card\.png\?host=wild-race\.grok\.me&amp;title=Wild%20Race"/,
+    /property="og:image" content="https:\/\/og\.grok\.me\/v1\/card\.png\?host=wild-race\.grok\.me&amp;title=Synthetic%20Indices%20Trading%20Books%2C%20Education%2C%20and%20Community%20%7C%20SLT%20Trade%20Hub"/,
   );
   assert.match(placeholder, /property="og:image:width" content="1200"/);
 
   const custom = injectGrokPwaHead("<html><head></head></html>", {
     appName: "Wild Race",
     host: "wild-race.grok.me",
-    site: { title: "Wild Race", card: "custom", type: "x:game" },
+    cwd: empty,
+    site: { title: "Wild Race", card: "custom", image: "/og.png", type: "x:game" },
   });
-  assert.match(custom, /property="og:image" content="https:\/\/wild-race\.grok\.me\/og\.jpg"/);
+  assert.match(custom, /property="og:image" content="https:\/\/wild-race\.grok\.me\/og\.png"/);
   assert.match(custom, /property="og:type" content="x:game"/);
 });
 
 test("placeholder og:image appends site.color when it is 6-digit hex", () => {
+  const empty = mkdtempSync(join(tmpdir(), "grok-og-placeholder-"));
   const themed = injectGrokPwaHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
+    cwd: empty,
     site: { title: "Wild Race", color: "#FF4D2E" },
   });
   assert.match(
     themed,
-    /property="og:image" content="https:\/\/og\.grok\.me\/v1\/card\.png\?host=wild-race\.grok\.me&amp;title=Wild%20Race&amp;color=FF4D2E"/,
+    /property="og:image" content="https:\/\/og\.grok\.me\/v1\/card\.png\?host=wild-race\.grok\.me&amp;title=Synthetic%20Indices%20Trading%20Books%2C%20Education%2C%20and%20Community%20%7C%20SLT%20Trade%20Hub&amp;color=FF4D2E"/,
   );
 
   const invalid = injectGrokPwaHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
+    cwd: empty,
     site: { title: "Wild Race", color: "red" },
   });
   assert.doesNotMatch(invalid, /color=/);
 
   const custom = injectGrokPwaHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
+    cwd: empty,
     site: { title: "Wild Race", card: "custom", color: "FF4D2E" },
   });
   assert.doesNotMatch(custom, /color=/);
 });
 
-test("document title entities are not double-escaped on og:title", () => {
+test("document title entities are preserved while OG title stays branded", () => {
   const out = injectGrokPwaHead(
     "<html><head><title>Cats &amp; Dogs</title></head></html>",
   );
-  assert.match(out, /property="og:title" content="Cats &amp; Dogs"/);
+  assert.match(
+    out,
+    /property="og:title" content="Synthetic Indices Trading Books, Education, and Community \| SLT Trade Hub"/,
+  );
+  assert.match(out, /<title>Cats &amp; Dogs<\/title>/);
   assert.doesNotMatch(out, /Cats &amp;amp; Dogs/);
 });
 
-test("site.json title wins over the host slug", () => {
+test("main host branding drives the iOS app title", () => {
   const out = injectGrokPwaHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
     site: { title: "Pixel Nova" },
   });
-  assert.match(out, /property="og:title" content="Pixel Nova"/);
+  assert.match(out, /apple-mobile-web-app-title" content="SLT Trade Hub"/);
+  assert.match(
+    out,
+    /property="og:title" content="Synthetic Indices Trading Books, Education, and Community \| SLT Trade Hub"/,
+  );
 });
 
 test("injects into documents with no head element", () => {
   const out = injectGrokPwaHead("<html><body>hi</body></html>", { appName: "Solo" });
   assert.match(out, /<head>/);
-  assert.match(out, /property="og:title" content="Solo"/);
+  assert.match(
+    out,
+    /property="og:title" content="Synthetic Indices Trading Books, Education, and Community \| SLT Trade Hub"/,
+  );
   assert.match(out, /<\/head>/);
 });
 
@@ -376,7 +410,10 @@ test("streaming injector matches </HEAD> case-insensitively", () => {
     ...injector.push("AD><body>hello</body></html>"),
   ];
   const out = Buffer.concat(chunks).toString("utf8");
-  assert.match(out, /property="og:title" content="x"/);
+  assert.match(
+    out,
+    /property="og:title" content="Synthetic Indices Trading Books, Education, and Community \| SLT Trade Hub"/,
+  );
   assert.match(out, /<body>hello<\/body>/);
 });
 
@@ -394,9 +431,11 @@ test("is idempotent", () => {
   assert.equal(once, twice);
 });
 
-test("uses the app name in the injected title tag", () => {
-  const out = injectGrokPwaHead("<html><head></head></html>", { appName: "Wild Race" });
-  assert.match(out, /apple-mobile-web-app-title" content="Wild Race"/);
+test("uses the host brand in the injected title tag", () => {
+  const out = injectGrokPwaHead("<html><head></head></html>", {
+    host: "library.slttradehub.online",
+  });
+  assert.match(out, /apple-mobile-web-app-title" content="The Trading Library"/);
 });
 
 test("streaming injector handles </head> split across chunks", () => {
@@ -449,20 +488,23 @@ test("strips install params from the app link", () => {
 });
 
 test("names the install page from host slug", () => {
-  assert.equal(appNameFromHost("localhost:8080"), "Grok App");
-  assert.equal(appNameFromHost("172.17.154.217:8080"), "Grok App");
-  assert.equal(appNameFromHost("wild-race.grok.me"), "Wild Race");
+  assert.equal(appNameFromHost("localhost:8080"), "SLT Trade Hub");
+  assert.equal(appNameFromHost("172.17.154.217:8080"), "SLT Trade Hub");
+  assert.equal(appNameFromHost("slttradehub.online"), "SLT Trade Hub");
+  assert.equal(appNameFromHost("library.slttradehub.online"), "The Trading Library");
 });
 
 test("rejects hosts that are not plain slugs", () => {
-  assert.equal(appNameFromHost("<script>alert(1)</script>"), "Grok App");
-  assert.equal(appNameFromHost('"><img src=x onerror=1>.grok.me'), "Grok App");
+  assert.equal(appNameFromHost("<script>alert(1)</script>"), "SLT Trade Hub");
+  assert.equal(appNameFromHost('"><img src=x onerror=1>.grok.me'), "SLT Trade Hub");
 });
 
 test("renders install page markup", () => {
-  const html = renderInstallPage("wild-race.grok.me", "/?install=1&platform=ios");
-  assert.match(html, /Add Wild Race to your/);
+  const html = renderInstallPage("library.slttradehub.online", "/?install=1&platform=ios");
+  assert.match(html, /Add The Trading Library to your/);
   assert.match(html, /\/__grok\/install\/styles\.css/);
+  assert.match(html, /\/brand\/trading-library\.png/);
+  assert.doesNotMatch(html, /__grok\/icon-180\.png/);
   assert.match(html, /href="\/"/);
   assert.equal(html.includes("{{APP_NAME}}"), false);
   assert.equal(html.includes("{{APP_URL}}"), false);
@@ -474,10 +516,11 @@ test("escapes host-derived values in the install page", () => {
 });
 
 test("renders the manifest with the per-app name", () => {
-  const manifest = JSON.parse(renderWebManifest("wild-race.grok.me"));
-  assert.equal(manifest.name, "Wild Race");
-  assert.equal(manifest.short_name, "Wild Race");
-  assert.equal(manifest.icons[0].src, "/__grok/icon-180.png");
+  const manifest = JSON.parse(renderWebManifest("library.slttradehub.online"));
+  assert.equal(manifest.name, "The Trading Library");
+  assert.equal(manifest.short_name, "The Trading Library");
+  assert.equal(manifest.icons[0].src, "/apple-touch-icon.png");
+  assert.equal(manifest.icons.some((icon) => icon.src.includes("/__grok/")), false);
 });
 
 // Tripwires: the deployed-app path only works if Nitro scans server/ — an
@@ -494,7 +537,6 @@ test("nitro middleware and its bundled assets exist", () => {
   assert.match(middleware, /install-page\.html\?raw/);
   assert.match(middleware, /virtual:grok-og-identity/);
   readFileSync(join(TEMPLATE_ROOT, "scripts/install-page.html"));
-  readFileSync(join(TEMPLATE_ROOT, "public/__grok/icon-180.png"));
   readFileSync(join(TEMPLATE_ROOT, "public/__grok/install/styles.css"));
 });
 
@@ -503,4 +545,3 @@ test("vite plugin bakes og identity as a virtual module", () => {
   assert.match(plugin, /virtual:grok-og-identity/);
   assert.match(plugin, /snapshotOgIdentity/);
 });
-

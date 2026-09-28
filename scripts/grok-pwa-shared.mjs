@@ -211,11 +211,6 @@ export function renderWebManifest(hostHeader) {
       theme_color: "#0E2744",
       icons: [
         {
-          src: "/favicon.ico",
-          sizes: "48x48",
-          type: "image/x-icon",
-        },
-        {
           src: "/apple-touch-icon.png",
           sizes: "180x180",
           type: "image/png",
@@ -309,8 +304,8 @@ export function readOgSite(cwd = process.cwd()) {
 
 /** Public path of an on-disk share card, or "" if neither file exists. */
 export function ogCardPublicPath(cwd = process.cwd()) {
-  if (existsSync(join(cwd, "public/og.jpg"))) return "/og.jpg";
   if (existsSync(join(cwd, "public/og.png"))) return "/og.png";
+  if (existsSync(join(cwd, "public/og.jpg"))) return "/og.jpg";
   return "";
 }
 
@@ -373,7 +368,7 @@ export function siteHasCustomCard(site = {}) {
 }
 
 /**
- * Preview: public/og.jpg|png on disk.
+ * Preview: public/og.png|jpg on disk.
  * Vercel: the bake (`card=custom` / `image`) because the function cannot stat public/.
  * Otherwise empty — caller emits the og.grok.me placeholder.
  */
@@ -488,20 +483,14 @@ export function normalizeHeadContext(ctx = {}) {
 
 export function injectGrokPwaHead(html, ctx = {}) {
   if (typeof html !== "string") return html;
-  const { site, projectId, creator, creatorId, host, cwd } = normalizeHeadContext(ctx);
+  const { site, projectId, creator, creatorId, host, cwd, appName } = normalizeHeadContext(ctx);
   const documentTitle = titleFromDocument(html);
-  const appName = resolveOgTitle(
-    site,
-    ctx.appName ?? DEFAULT_APP_NAME,
-    host,
-    documentTitle,
-  );
   let next = stripShareMetaTags(html);
 
   const missing = grokPwaHeadTags(appName)
     .filter(([key]) => {
       if (key === "manifest") return !next.includes('href="/__grok/manifest.webmanifest"');
-      if (key === "apple-touch-icon") return !next.includes('href="/__grok/icon-180.png"');
+      if (key === "apple-touch-icon") return !next.includes('href="/apple-touch-icon.png"');
       return !next.includes(`name="${key}"`);
     })
     .map(([, tag]) => tag);
