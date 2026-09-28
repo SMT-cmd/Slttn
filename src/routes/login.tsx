@@ -7,13 +7,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Shell } from "@/components/layout/shell";
 import { SITE } from "@/lib/site";
+import { useSiteContext } from "@/lib/site-context";
 
-export const Route = createFileRoute("/login")({ component: Login });
+export const Route = createFileRoute("/login")({
+  head: () => ({
+    meta: [
+      { title: `Sign In | ${SITE.name}` },
+      {
+        name: "description",
+        content:
+          "Sign in to access The Trading Library, manage your account, and unlock member pricing when your trading account is tagged.",
+      },
+    ],
+  }),
+  component: Login,
+});
 
 const derivProvider = AUTH_PROVIDERS.find((provider) => provider.label === "Deriv");
 const secondaryProviders = AUTH_PROVIDERS.filter((provider) => provider.label !== "Deriv");
 
 function Login() {
+  const siteContext = useSiteContext();
   const [mode, setMode] = useState<"in" | "up">("in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,15 +54,15 @@ function Login() {
   }
 
   return (
-    <Shell>
+    <Shell library={siteContext.isLibraryHost}>
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 lg:grid-cols-2">
         <div>
           <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">Sign in</p>
-          <h1 className="mt-3 font-display text-5xl">Come in through the front door.</h1>
+          <h1 className="mt-3 font-display text-5xl">Sign in to your library account.</h1>
           <p className="mt-4 max-w-md text-muted-foreground">
-            Use Deriv first if that is your main trading account. We check the partnership
-            tag after sign-in, keep Google and email/password available, and you can still
-            link or relink Deriv later from your account page.
+            If Deriv is your main account, start there. We check your partnership tag after
+            sign-in, keep Google and email available, and you can still link or relink
+            Deriv later from your account page.
           </p>
           <img
             src="/brand/trading-library-powered.png"
@@ -74,8 +88,8 @@ function Login() {
                     Login with Deriv
                   </Button>
                   <p className="mt-3 text-sm text-muted-foreground">
-                    Best for existing Deriv clients. We will check the partnership tag after
-                    login and sync it to your account.
+                    Best for existing Deriv clients. We will check your partnership tag
+                    after sign-in and sync it to your account.
                   </p>
                 </div>
               ) : null}
@@ -95,7 +109,7 @@ function Login() {
               </div>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Sign-in is being connected.</p>
+            <p className="text-sm text-muted-foreground">Sign-in is being prepared.</p>
           )}
 
           <div className="my-6 flex items-center gap-3 text-xs tracking-[0.16em] text-muted-foreground uppercase">

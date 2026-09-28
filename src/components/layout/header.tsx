@@ -19,7 +19,19 @@ const LINKS = [
   { to: "/community", label: "Community" },
   { to: "/pricing", label: "Pricing" },
   { to: "/about", label: "About" },
+  { to: "/contact", label: "Contact" },
 ] as const;
+
+function isActiveLink(
+  to: (typeof LINKS)[number]["to"],
+  pathname: string,
+  libraryHost: boolean,
+) {
+  if (to === "/library") {
+    return libraryHost || pathname === "/library" || pathname.startsWith("/library/");
+  }
+  return pathname === to || pathname.startsWith(`${to}/`);
+}
 
 export function Header({ library }: { library?: boolean }) {
   const { theme, toggle } = useTheme();
@@ -30,34 +42,35 @@ export function Header({ library }: { library?: boolean }) {
   const libraryLink = libraryHomeHref(siteContext);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
+    <header className="sticky top-0 z-40 border-b border-border/80 bg-background/95 backdrop-blur-md">
+      <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-3 px-4 py-2">
         <a href={library ? libraryLink : "/"} className="flex items-center gap-3">
           <img
             src={library ? "/brand/trading-library-powered.png" : "/brand/slt-logo.png"}
-            alt=""
-            className={cn("object-contain", library ? "h-10 w-10" : "h-10 w-10 rounded-full")}
+            alt={library ? SITE.library : SITE.name}
+            className={cn(
+              "shrink-0 object-contain",
+              library ? "h-10 w-10 rounded-md" : "h-10 w-10 rounded-full",
+            )}
           />
           <span className="leading-tight">
             <span className="block font-display text-lg font-semibold tracking-tight">
               {library ? SITE.library : SITE.name}
             </span>
-            <span className="hidden text-[10px] tracking-[0.18em] text-muted-foreground uppercase sm:block">
-              {library ? "Powered by SLT Trade Hub" : "Structured trading education"}
+            <span className="hidden text-[10px] tracking-[0.18em] text-muted-foreground uppercase lg:block">
+              {library ? "Premium books for synthetic indices traders" : "Structured trading education"}
             </span>
           </span>
         </a>
 
-        <nav className="hidden items-center gap-6 md:flex">
+        <nav className="hidden items-center gap-5 lg:flex">
           {LINKS.map((l) => (
             <a
               key={l.to}
               href={l.to === "/library" ? libraryLink : marketingHref(l.to, siteContext)}
               className={cn(
-                "text-sm font-medium text-muted-foreground hover:text-foreground",
-                (l.to === "/library"
-                  ? pathname === "/" || pathname.startsWith("/library")
-                  : pathname.startsWith(l.to)) && "text-foreground",
+                "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground",
+                isActiveLink(l.to, pathname, siteContext.isLibraryHost) && "text-foreground",
               )}
             >
               {l.label}
@@ -79,18 +92,18 @@ export function Header({ library }: { library?: boolean }) {
           ) : (
             <>
               <SignedOut>
-                <Button asChild size="sm" variant="navy" className="hidden sm:inline-flex">
+                <Button asChild size="sm" variant="navy" className="hidden md:inline-flex">
                   <Link to="/login">Sign in</Link>
                 </Button>
               </SignedOut>
               <SignedIn>
                 <Link
                   to="/account"
-                  className="hidden text-sm font-medium text-muted-foreground hover:text-foreground sm:inline"
+                  className="hidden text-sm font-medium text-muted-foreground hover:text-foreground md:inline"
                 >
                   {user?.displayName?.split(" ")[0] ?? "Account"}
                 </Link>
-                <UserButton />
+                <UserButton compact />
               </SignedIn>
             </>
           )}
@@ -104,22 +117,46 @@ export function Header({ library }: { library?: boolean }) {
                 <Menu className="size-5" />
               </button>
             </SheetTrigger>
-            <SheetContent>
-              <p className="font-display text-2xl">{library ? SITE.library : SITE.name}</p>
-              <div className="mt-8 flex flex-col gap-4">
+            <SheetContent className="border-l border-border">
+              <div className="pr-8">
+                <p className="text-xs tracking-[0.18em] text-muted-foreground uppercase">Menu</p>
+                <p className="mt-2 font-display text-2xl">{library ? SITE.library : SITE.name}</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {library
+                    ? "Books, pricing, and access for serious traders."
+                    : "Library access, community, and trader education."}
+                </p>
+              </div>
+              <div className="mt-8 flex flex-col gap-1">
                 {LINKS.map((l) => (
                   <a
                     key={l.to}
                     href={l.to === "/library" ? libraryLink : marketingHref(l.to, siteContext)}
                     onClick={() => setOpen(false)}
-                    className="text-lg"
+                    className={cn(
+                      "rounded-md px-3 py-3 text-base font-medium transition-colors hover:bg-muted",
+                      isActiveLink(l.to, pathname, siteContext.isLibraryHost) && "bg-muted text-foreground",
+                    )}
                   >
                     {l.label}
                   </a>
                 ))}
-                <Link to="/login" onClick={() => setOpen(false)} className="text-lg">
-                  Sign in
-                </Link>
+              </div>
+              <div className="mt-6 border-t border-border pt-6">
+                <SignedOut>
+                  <Button asChild variant="navy" className="w-full">
+                    <Link to="/login" onClick={() => setOpen(false)}>
+                      Sign in
+                    </Link>
+                  </Button>
+                </SignedOut>
+                <SignedIn>
+                  <Button asChild variant="outline" className="w-full">
+                    <Link to="/account" onClick={() => setOpen(false)}>
+                      Open account
+                    </Link>
+                  </Button>
+                </SignedIn>
               </div>
             </SheetContent>
           </Sheet>

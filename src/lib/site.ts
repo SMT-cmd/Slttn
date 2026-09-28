@@ -2,7 +2,7 @@ export const SITE = {
   name: "SLT Trade Hub",
   library: "The Trading Library",
   tagline: "Profitability is the Culture",
-  headline: "The market that never sleeps. The library that keeps you ready.",
+  headline: "Built for traders who want structure, not noise.",
   domain: "slttradehub.online",
   libraryHost: "library.slttradehub.online",
   email: "hello@slttradehub.online",
@@ -11,6 +11,12 @@ export const SITE = {
   telegram: "https://t.me/slttradehub",
   whatsapp: "https://chat.whatsapp.com/slttradehub",
   url: "https://slttradehub.online",
+  marketingTitle: "SLT Trade Hub | Trading Library for Synthetic Indices Traders",
+  marketingDescription:
+    "SLT Trade Hub gives serious synthetic indices traders a premium library, structured trading education, and a trader-first community.",
+  libraryTitle: "The Trading Library | Premium Books for Synthetic Indices Traders",
+  libraryDescription:
+    "The Trading Library gives serious synthetic indices traders premium books, a secure reader, and structured education built for live market work.",
 };
 
 export const PRICING = {
