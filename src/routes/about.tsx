@@ -31,13 +31,12 @@ function About() {
           <p>
             SLT Trade Hub is a trading education desk built around The Trading Library.
             We publish books for synthetic indices traders — Volatility, Boom & Crash,
-            Step, Jump, Range — and keep a community that treats profitability as a
-            culture, not a slogan on a gold card.
+            Step, Jump, Range — and keep a community built around discipline,
+            preparation, and repeatable execution.
           </p>
           <p>
             The library is written by {SITE.author}, {SITE.authorRole}. The covers you
-            see are the real series: paper, navy, green and red candles. No black-and-gold
-            funnel art.
+            see are the real series and the books are written to be studied, not skimmed.
           </p>
           <p>
             This is education. It is not a broker, not a signal service, and not financial

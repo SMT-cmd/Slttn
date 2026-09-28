@@ -27,9 +27,10 @@ function Contact() {
     <Shell>
       <div className="mx-auto max-w-xl px-4 py-16">
         <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">Contact</p>
-        <h1 className="mt-3 font-display text-5xl">Write the desk</h1>
+        <h1 className="mt-3 font-display text-5xl">Contact the desk</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          {SITE.email}. We read slowly on purpose.
+          {SITE.email}. For library access, pricing, or general support, send a clear note
+          and we will respond.
         </p>
         <form
           className="mt-8 space-y-3"
