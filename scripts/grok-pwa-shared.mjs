@@ -9,10 +9,10 @@ import { join } from "node:path";
 const SITE_BRAND = {
   name: "SLT Trade Hub",
   library: "The Trading Library",
-  domain: "slttradehub.online",
-  libraryHost: "library.slttradehub.online",
-  url: "https://slttradehub.online",
-  libraryUrl: "https://library.slttradehub.online",
+  domain: "slttradehub.trade",
+  libraryHost: "library.slttradehub.trade",
+  url: "https://slttradehub.trade",
+  libraryUrl: "https://library.slttradehub.trade",
   marketingTitle: "Synthetic Indices Trading Books, Education, and Community | SLT Trade Hub",
   marketingDescription:
     "SLT Trade Hub helps synthetic indices traders study Volatility, Boom & Crash, Step, Jump, and Range markets with practical trading books, secure online reading, and a focused community.",
@@ -309,8 +309,8 @@ export function readOgSite(cwd = process.cwd()) {
 
 /** Public path of an on-disk share card, or "" if neither file exists. */
 export function ogCardPublicPath(cwd = process.cwd()) {
-  if (existsSync(join(cwd, "public/og.jpg"))) return "/og.jpg";
   if (existsSync(join(cwd, "public/og.png"))) return "/og.png";
+  if (existsSync(join(cwd, "public/og.jpg"))) return "/og.jpg";
   return "";
 }
 
@@ -488,20 +488,14 @@ export function normalizeHeadContext(ctx = {}) {
 
 export function injectGrokPwaHead(html, ctx = {}) {
   if (typeof html !== "string") return html;
-  const { site, projectId, creator, creatorId, host, cwd } = normalizeHeadContext(ctx);
+  const { site, projectId, creator, creatorId, host, cwd, appName } = normalizeHeadContext(ctx);
   const documentTitle = titleFromDocument(html);
-  const appName = resolveOgTitle(
-    site,
-    ctx.appName ?? DEFAULT_APP_NAME,
-    host,
-    documentTitle,
-  );
   let next = stripShareMetaTags(html);
 
-  const missing = grokPwaHeadTags(appName)
+  const missing = grokPwaHeadTags(ctx.appName ?? appName)
     .filter(([key]) => {
       if (key === "manifest") return !next.includes('href="/__grok/manifest.webmanifest"');
-      if (key === "apple-touch-icon") return !next.includes('href="/__grok/icon-180.png"');
+      if (key === "apple-touch-icon") return !next.includes('href="/apple-touch-icon.png"');
       return !next.includes(`name="${key}"`);
     })
     .map(([, tag]) => tag);

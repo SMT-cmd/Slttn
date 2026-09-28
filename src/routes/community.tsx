@@ -58,6 +58,16 @@ function Community() {
               Access notes go out to tagged members after approval.
             </p>
           </div>
+          <div className="rounded-xl border border-border bg-card p-6">
+            <h2 className="font-display text-3xl">Need help?</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              If you need help with access, pricing, or linking your account, go straight to
+              the support desk.
+            </p>
+            <Button asChild variant="navy" className="mt-4">
+              <a href="/support">Open support</a>
+            </Button>
+          </div>
         </div>
       </div>
     </Shell>

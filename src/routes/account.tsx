@@ -52,7 +52,7 @@ function Account() {
 
         {me?.banned ? (
           <p className="mt-6 rounded-md border border-loss/30 bg-loss/10 p-4 text-loss">
-            This account has been suspended. Write to hello@slttradehub.online if you think that is a mistake.
+            This account has been suspended. Write to hello@slttradehub.trade if you think that is a mistake.
           </p>
         ) : null}
 

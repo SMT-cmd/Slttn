@@ -18,6 +18,7 @@ const LINKS = [
   { to: "library", label: "Library" },
   { to: "/community", label: "Community" },
   { to: "/pricing", label: "Pricing" },
+  { to: "/support", label: "Support" },
   { to: "/about", label: "About" },
 ] as const;
 

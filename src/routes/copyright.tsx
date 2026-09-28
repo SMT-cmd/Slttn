@@ -11,7 +11,7 @@ export const Route = createFileRoute("/copyright")({
       </p>
       <p>
         If you believe your work appears here without permission, send a DMCA notice to
-        hello@slttradehub.online with: your contact details, the work, the URL, a statement of
+        hello@slttradehub.trade with: your contact details, the work, the URL, a statement of
         good faith, and your signature. We will look at complete notices promptly.
       </p>
     </Legal>
