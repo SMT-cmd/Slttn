@@ -122,9 +122,9 @@ function Home() {
             </div>
             <div className="rise rise-4 mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild variant="navy" size="lg">
-                <Link to="/library">
+                <a href={SITE.libraryUrl}>
                   Explore The Trading Library <ArrowRight className="size-4" />
-                </Link>
+                </a>
               </Button>
               <Button asChild variant="outline" size="lg">
                 <Link to="/community">Join the Community</Link>
@@ -196,9 +196,9 @@ function Home() {
             <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">The Trading Library</p>
             <h2 className="mt-2 font-display text-4xl">Featured titles</h2>
           </div>
-          <Link to="/library" className="hidden text-sm font-medium text-primary sm:inline">
+          <a href={SITE.libraryUrl} className="hidden text-sm font-medium text-primary sm:inline">
             Browse all titles
-          </Link>
+          </a>
         </div>
         <div className="mt-8 overflow-hidden">
           <div className="marquee px-4">
@@ -311,7 +311,7 @@ function Home() {
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Button asChild size="lg">
-              <Link to="/library">Enter The Trading Library</Link>
+              <a href={SITE.libraryUrl}>Enter The Trading Library</a>
             </Button>
             <Button
               asChild

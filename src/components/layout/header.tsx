@@ -15,7 +15,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
-  { to: "/library", label: "Library" },
+  { to: "library", label: "Library" },
   { to: "/community", label: "Community" },
   { to: "/pricing", label: "Pricing" },
   { to: "/about", label: "About" },
@@ -26,8 +26,8 @@ function isActiveLink(
   pathname: string,
   libraryHost: boolean,
 ) {
-  if (to === "/library") {
-    return libraryHost || pathname === "/library" || pathname.startsWith("/library/");
+  if (to === "library") {
+    return libraryHost;
   }
   return pathname === to || pathname.startsWith(`${to}/`);
 }
@@ -73,7 +73,7 @@ export function Header({ library }: { library?: boolean }) {
           {LINKS.map((l) => (
             <a
               key={l.to}
-              href={l.to === "/library" ? libraryLink : marketingHref(l.to, siteContext)}
+              href={l.to === "library" ? libraryLink : marketingHref(l.to, siteContext)}
               aria-current={
                 isActiveLink(l.to, pathname, siteContext.isLibraryHost) ? "page" : undefined
               }
@@ -144,7 +144,7 @@ export function Header({ library }: { library?: boolean }) {
                   {LINKS.map((l) => (
                     <a
                       key={l.to}
-                      href={l.to === "/library" ? libraryLink : marketingHref(l.to, siteContext)}
+                      href={l.to === "library" ? libraryLink : marketingHref(l.to, siteContext)}
                       onClick={() => setOpen(false)}
                       aria-current={
                         isActiveLink(l.to, pathname, siteContext.isLibraryHost)
