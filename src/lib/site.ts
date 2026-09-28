@@ -2,7 +2,7 @@ export const SITE = {
   name: "SLT Trade Hub",
   library: "The Trading Library",
   tagline: "Profitability is the Culture",
-  headline: "Built for traders who want structure, not noise.",
+  headline: "Structured trading education for synthetic indices traders.",
   domain: "slttradehub.online",
   libraryHost: "library.slttradehub.online",
   email: "hello@slttradehub.online",
@@ -11,13 +11,25 @@ export const SITE = {
   telegram: "https://t.me/slttradehub",
   whatsapp: "https://chat.whatsapp.com/slttradehub",
   url: "https://slttradehub.online",
-  marketingTitle: "SLT Trade Hub | Trading Library for Synthetic Indices Traders",
+  marketingTitle: "SLT Trade Hub | Trading Education and Premium Books for Synthetic Indices Traders",
   marketingDescription:
-    "SLT Trade Hub gives serious synthetic indices traders a premium library, structured trading education, and a trader-first community.",
-  libraryTitle: "The Trading Library | Premium Books for Synthetic Indices Traders",
+    "SLT Trade Hub helps synthetic indices traders study with premium books, practical trading education, and a focused community built around process, risk, and execution.",
+  libraryTitle: "The Trading Library | Premium Trading Books for Synthetic Indices Traders",
   libraryDescription:
-    "The Trading Library gives serious synthetic indices traders premium books, a secure reader, and structured education built for live market work.",
+    "The Trading Library helps synthetic indices traders study Volatility, Boom & Crash, Step, Jump, and Range markets with practical books, a secure reader, and straightforward member access.",
+  ogImagePath: "/og.png",
+  ogImageAlt: "SLT Trade Hub share card with trading book and market branding",
 };
+
+export function bookPageTitle(title: string, subtitle?: string | null) {
+  const suffix = subtitle?.trim() ? `: ${subtitle.trim()}` : "";
+  return `${title}${suffix} | ${SITE.library}`;
+}
+
+export function bookPageDescription(description?: string | null) {
+  const summary = description?.trim();
+  return summary && summary.length > 40 ? summary : SITE.libraryDescription;
+}
 
 export const PRICING = {
   downloadPrelaunch: 69,
