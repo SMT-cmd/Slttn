@@ -143,12 +143,34 @@ function authPopupPlugin(): Plugin {
   };
 }
 
+function shouldIgnoreUseClientDirectiveWarning(
+  warning: { code?: string; id?: string; message?: string },
+): boolean {
+  const normalizedId = warning.id?.replace(/^\u0000/, "");
+
+  return (
+    warning.code === "MODULE_LEVEL_DIRECTIVE" &&
+    normalizedId?.endsWith("node_modules/@tanstack/react-router/dist/esm/Transitioner.js") === true &&
+    warning.message?.includes('"use client"') === true
+  );
+}
+
 const tslibRuntimePath = fileURLToPath(new URL("./node_modules/tslib/tslib.es6.mjs", import.meta.url));
 
 // `0.0.0.0:8080` is the live-preview contract — don't change host/port.
 // The dev server starts once `src/router.tsx` and `src/routes/` exist — see
 // AGENTS.md § "First scaffold".
 export default defineConfig(({ command, isPreview }) => ({
+  build: {
+    rolldownOptions: {
+      onwarn(warning, warn) {
+        if (shouldIgnoreUseClientDirectiveWarning(warning)) {
+          return;
+        }
+        warn(warning);
+      },
+    },
+  },
   server: {
     host: "0.0.0.0",
     port: 8080,
