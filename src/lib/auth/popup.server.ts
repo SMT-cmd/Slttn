@@ -96,7 +96,7 @@ export async function handleAuthPopupRequest(request: Request): Promise<Response
     if (!apiRes.ok) {
       const detail = await apiRes.text().catch(() => "");
       return completionResponse({
-        source: "grok-auth-popup",
+        source: "app-auth-popup",
         token: null,
         error: detail || `oauth_init_failed_${apiRes.status}`,
       });
@@ -108,7 +108,7 @@ export async function handleAuthPopupRequest(request: Request): Promise<Response
     const location = body?.url;
     if (!location) {
       return completionResponse({
-        source: "grok-auth-popup",
+        source: "app-auth-popup",
         token: null,
         error: "oauth_init_missing_url",
       });
@@ -124,7 +124,7 @@ export async function handleAuthPopupRequest(request: Request): Promise<Response
   } catch (err) {
     const message = err instanceof Error ? err.message : "oauth_init_threw";
     return completionResponse({
-      source: "grok-auth-popup",
+      source: "app-auth-popup",
       token: null,
       error: message,
     });
@@ -160,10 +160,10 @@ function completionHtml(message: PopupMessage): string {
 </head>
 <body>
 <main><p>Signing you in…</p></main>
-<script type="application/json" id="grok-auth-popup-msg">${payload}</script>
+<script type="application/json" id="app-auth-popup-msg">${payload}</script>
 <script>
 (function () {
-  var el = document.getElementById("grok-auth-popup-msg");
+  var el = document.getElementById("app-auth-popup-msg");
   var msg = { source: "app-auth-popup", token: null };
   try { if (el && el.textContent) msg = JSON.parse(el.textContent); } catch (e) {}
   try {
