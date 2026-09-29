@@ -19,10 +19,12 @@ import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CookiesRouteImport } from './routes/cookies'
 import { Route as CopyrightRouteImport } from './routes/copyright'
 import { Route as DisclaimerRouteImport } from './routes/disclaimer'
+import { Route as FaqRouteImport } from './routes/faq'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RefundRouteImport } from './routes/refund'
+import { Route as SupportRouteImport } from './routes/support'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as LibraryIndexRouteImport } from './routes/library/index'
@@ -81,6 +83,11 @@ const DisclaimerRoute = DisclaimerRouteImport.update({
   path: '/disclaimer',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FaqRoute = FaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -99,6 +106,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const RefundRoute = RefundRouteImport.update({
   id: '/refund',
   path: '/refund',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TermsRoute = TermsRouteImport.update({
@@ -148,10 +160,12 @@ export interface FileRoutesByFullPath {
   '/cookies': typeof CookiesRoute
   '/copyright': typeof CopyrightRoute
   '/disclaimer': typeof DisclaimerRoute
+  '/faq': typeof FaqRoute
   '/login': typeof LoginRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
+  '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/library/$slug': typeof LibrarySlugRoute
   '/read/$slug': typeof ReadSlugRoute
@@ -171,10 +185,12 @@ export interface FileRoutesByTo {
   '/cookies': typeof CookiesRoute
   '/copyright': typeof CopyrightRoute
   '/disclaimer': typeof DisclaimerRoute
+  '/faq': typeof FaqRoute
   '/login': typeof LoginRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
+  '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/library/$slug': typeof LibrarySlugRoute
   '/read/$slug': typeof ReadSlugRoute
@@ -195,10 +211,12 @@ export interface FileRoutesById {
   '/cookies': typeof CookiesRoute
   '/copyright': typeof CopyrightRoute
   '/disclaimer': typeof DisclaimerRoute
+  '/faq': typeof FaqRoute
   '/login': typeof LoginRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
+  '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/library/$slug': typeof LibrarySlugRoute
   '/read/$slug': typeof ReadSlugRoute
@@ -220,10 +238,12 @@ export interface FileRouteTypes {
     | '/cookies'
     | '/copyright'
     | '/disclaimer'
+    | '/faq'
     | '/login'
     | '/pricing'
     | '/privacy'
     | '/refund'
+    | '/support'
     | '/terms'
     | '/library/$slug'
     | '/read/$slug'
@@ -243,10 +263,12 @@ export interface FileRouteTypes {
     | '/cookies'
     | '/copyright'
     | '/disclaimer'
+    | '/faq'
     | '/login'
     | '/pricing'
     | '/privacy'
     | '/refund'
+    | '/support'
     | '/terms'
     | '/library/$slug'
     | '/read/$slug'
@@ -266,10 +288,12 @@ export interface FileRouteTypes {
     | '/cookies'
     | '/copyright'
     | '/disclaimer'
+    | '/faq'
     | '/login'
     | '/pricing'
     | '/privacy'
     | '/refund'
+    | '/support'
     | '/terms'
     | '/library/$slug'
     | '/read/$slug'
@@ -290,10 +314,12 @@ export interface RootRouteChildren {
   CookiesRoute: typeof CookiesRoute
   CopyrightRoute: typeof CopyrightRoute
   DisclaimerRoute: typeof DisclaimerRoute
+  FaqRoute: typeof FaqRoute
   LoginRoute: typeof LoginRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
   RefundRoute: typeof RefundRoute
+  SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
   LibrarySlugRoute: typeof LibrarySlugRoute
   ReadSlugRoute: typeof ReadSlugRoute
@@ -375,6 +401,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DisclaimerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/faq': {
+      id: '/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof FaqRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -401,6 +434,13 @@ declare module '@tanstack/react-router' {
       path: '/refund'
       fullPath: '/refund'
       preLoaderRoute: typeof RefundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -466,10 +506,12 @@ const rootRouteChildren: RootRouteChildren = {
   CookiesRoute: CookiesRoute,
   CopyrightRoute: CopyrightRoute,
   DisclaimerRoute: DisclaimerRoute,
+  FaqRoute: FaqRoute,
   LoginRoute: LoginRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
   RefundRoute: RefundRoute,
+  SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
   LibrarySlugRoute: LibrarySlugRoute,
   ReadSlugRoute: ReadSlugRoute,
