@@ -6,8 +6,8 @@
  * document — no React shell:
  *
  *   Phase 1 (`?providerId=…`): start OAuth server-side and 302 straight to the
- *     broker / upstream login page. The popup never paints the app.
- *   Phase 2 (`?done=1`): after the broker round-trip, emit a tiny HTML page that
+ *     upstream login page. The popup never paints the app.
+ *   Phase 2 (`?done=1`): after the OAuth round-trip, emit a tiny HTML page that
  *     posts the session token to the opener and closes. No SPA hydrate, no
  *     server-fn round-trip.
  *
@@ -17,10 +17,11 @@
  * `client.ts` (`signIn` → `openSignInPopup`).
  */
 import { auth, SESSION_TOKEN_COOKIE } from "./server";
+import { getAuthProvider } from "./providers";
 
 /** Message shape the popup posts to the opener (must match `client.ts`). */
 type PopupMessage = {
-  source: "grok-auth-popup";
+  source: "app-auth-popup";
   token: string | null;
   error?: string;
 };
@@ -37,7 +38,7 @@ export async function handleAuthPopupRequest(request: Request): Promise<Response
     const errored = url.searchParams.has("error");
     const token = errored ? null : readCookie(request, SESSION_TOKEN_COOKIE);
     const message: PopupMessage = {
-      source: "grok-auth-popup",
+      source: "app-auth-popup",
       token,
       ...(errored ? { error: url.searchParams.get("error") ?? "sign_in_failed" } : {}),
     };
@@ -58,21 +59,39 @@ export async function handleAuthPopupRequest(request: Request): Promise<Response
       headers: { "content-type": "text/plain; charset=utf-8" },
     });
   }
+  const provider = getAuthProvider(providerId);
+  if (!provider) {
+    return new Response("Unknown providerId", {
+      status: 400,
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    });
+  }
 
   // Stay first-party for the callback so the session cookie lands in THIS popup.
   const back = `${url.origin}/auth/popup?done=1`;
   try {
-    const apiRes = await auth.api.signInWithOAuth2({
-      body: {
-        providerId,
-        callbackURL: back,
-        errorCallbackURL: `${back}&error=1`,
-      },
-      // Forward the preview host so Better Auth derives the correct baseURL /
-      // redirect_uri for the dynamic `*.grok-sandbox.com` origin.
-      headers: request.headers,
-      asResponse: true,
-    });
+    const apiRes =
+      provider.kind === "social"
+        ? await auth.api.signInSocial({
+            body: {
+              provider: provider.providerId,
+              callbackURL: back,
+              errorCallbackURL: `${back}&error=1`,
+            },
+            headers: request.headers,
+            asResponse: true,
+          })
+        : await auth.api.signInWithOAuth2({
+            body: {
+              providerId: provider.providerId,
+              callbackURL: back,
+              errorCallbackURL: `${back}&error=1`,
+            },
+            // Forward the preview host so Better Auth derives the correct baseURL /
+            // redirect_uri for the dynamic `*.grok-sandbox.com` origin.
+            headers: request.headers,
+            asResponse: true,
+          });
 
     if (!apiRes.ok) {
       const detail = await apiRes.text().catch(() => "");
@@ -95,7 +114,7 @@ export async function handleAuthPopupRequest(request: Request): Promise<Response
       });
     }
 
-    // 302 to the broker (which headlessly forwards to Google/X). Forward any
+    // 302 to the provider flow. Forward any
     // Set-Cookie (OAuth state / PKCE) so the callback can complete in this popup.
     const headers = new Headers({ location, "cache-control": "no-store" });
     for (const cookie of apiRes.headers.getSetCookie()) {
@@ -145,7 +164,7 @@ function completionHtml(message: PopupMessage): string {
 <script>
 (function () {
   var el = document.getElementById("grok-auth-popup-msg");
-  var msg = { source: "grok-auth-popup", token: null };
+  var msg = { source: "app-auth-popup", token: null };
   try { if (el && el.textContent) msg = JSON.parse(el.textContent); } catch (e) {}
   try {
     if (window.opener) window.opener.postMessage(msg, window.location.origin);
