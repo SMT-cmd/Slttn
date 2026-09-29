@@ -1,6 +1,6 @@
 const DERIV_API_BASE = "https://api.derivws.com";
 
-export const DERIV_PROVIDER_ID = "grok-deriv";
+export const DERIV_PROVIDER_ID = "deriv";
 
 type DerivCheckResponse = {
   data?: Array<{

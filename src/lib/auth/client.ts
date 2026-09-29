@@ -1,7 +1,7 @@
 import { genericOAuthClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 import { runPreSignInSignOut, runSignOut } from "../../../scripts/sign-out-plan.mjs";
-import { AUTH_PROVIDERS } from "./providers";
+import { AUTH_PROVIDERS, getAuthProvider } from "./providers";
 
 /**
  * Better Auth client for this React SPA (browser-side).
@@ -45,7 +45,7 @@ export { AUTH_PROVIDERS };
 // bearer token in sessionStorage and attach it to every Better Auth request (and
 // to server functions, via `@/lib/auth/middleware`). Empty everywhere except the
 // preview after a popup sign-in, so the cookie path is untouched elsewhere.
-const BEARER_KEY = "grok-auth.bearer-token";
+const BEARER_KEY = "app-auth.bearer-token";
 
 /** The stored preview bearer token, or null. */
 export function getBearerToken(): string | null {
@@ -80,18 +80,18 @@ function inLivePreview(): boolean {
 }
 
 /** Message the popup posts back to the opener once sign-in completes. */
-type PopupMessage = { source: "grok-auth-popup"; token: string | null; error?: string };
+type PopupMessage = { source: "app-auth-popup"; token: string | null; error?: string };
 
 /**
  * Start sign-in with one upstream provider (`providerId` from `AUTH_PROVIDERS`),
- * federating through the shared auth broker.
+ * using either Better Auth social providers or direct generic OAuth.
  *
  * - **Live preview** (`*.grok-sandbox.com` iframe): opens a POPUP to
  *   `/auth/popup`, served by the template Vite plugin (see `vite.config.ts` +
- *   `popup.server.ts`) — 302s to the broker/upstream login (no app chrome) and,
+ *   `popup.server.ts`) — 302s to the upstream login (no app chrome) and,
  *   on return, posts the session bearer token back. We store it and refresh the
  *   session; no top-level navigation of the iframe to the broker.
- * - **Deployed** (and local non-iframe): a normal full-page redirect into the broker.
+ * - **Deployed** (and local non-iframe): a normal full-page redirect into the provider.
  *
  * Either way it clears any existing local session FIRST so switching providers
  * actually switches identity.
@@ -100,6 +100,8 @@ export async function signIn(
   providerId: string,
   opts: { callbackURL?: string; errorCallbackURL?: string } = {},
 ): Promise<void> {
+  const provider = getAuthProvider(providerId);
+  if (!provider) throw new Error(`Unsupported auth provider: ${providerId}`);
   const callbackURL = opts.callbackURL ?? "/";
   const errorCallbackURL = opts.errorCallbackURL ?? "/";
 
@@ -143,11 +145,19 @@ export async function signIn(
     return;
   }
 
-  const { data, error } = await authClient.signIn.oauth2({
-    providerId,
-    callbackURL,
-    errorCallbackURL,
-  });
+  const result =
+    provider.kind === "social"
+      ? await authClient.signIn.social({
+          provider: provider.providerId,
+          callbackURL,
+          errorCallbackURL,
+        })
+      : await authClient.signIn.oauth2({
+          providerId: provider.providerId,
+          callbackURL,
+          errorCallbackURL,
+        });
+  const { data, error } = result;
   if (error) throw new Error(error.message ?? "Sign-in failed");
   if (data?.url) window.location.href = data.url;
 }
@@ -187,7 +197,7 @@ function waitForPopupToken(popup: Window): Promise<string | null> {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== origin) return;
       const data = event.data as PopupMessage | undefined;
-      if (!data || data.source !== "grok-auth-popup") return;
+      if (!data || data.source !== "app-auth-popup") return;
       settle(data.token ?? null);
     };
     // Fallback when the user dismisses the popup. Grace period lets the

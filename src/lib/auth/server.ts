@@ -5,21 +5,18 @@
  * local email/password, flip the flag in `./email-password` only (see auth skill).
  *
  * The app runs its own Better Auth at `/api/auth/*`, so the session cookie stays
- * on this app's own origin. Sign-in federates to the shared auth broker
- * (`AUTH_BROKER_ISSUER`) via the `genericOAuth` plugin — the broker brokers the
- * upstream sign-in methods (Google, X, …) and holds their shared secrets; this
- * app only holds its own client id/secret and names the upstream it wants via
- * each provider's `idp` hint.
+ * on this app's own origin. Email/password is handled locally. Google uses
+ * Better Auth's native social provider, and Deriv uses a direct PKCE OAuth flow
+ * via the `genericOAuth` plugin.
  *
  * Tri-mode:
- *   - Deployed: the deployer injects a per-app `AUTH_BROKER_*` + `BETTER_AUTH_URL`
- *     + `DATABASE_URL`, so real federated auth is persisted in Postgres.
- *   - Sandbox live preview: no injection -> falls back to the shared **preview
- *     client** (`./preview`) and derives the preview's `https://*.grok-sandbox.com`
- *     origin from the request, so real sign-in works (no demo users). Sessions
- *     and identities persist in the embedded PGLite DB (same DB as app data);
- *     the process restart wipes both. Live-preview iframe clients use a bearer
- *     token (partitioned cookies) — see `client.ts`.
+ *   - Deployed: the deployer injects `BETTER_AUTH_URL` + `DATABASE_URL`, so
+ *     auth is persisted in Postgres.
+ *   - Sandbox live preview: derives the preview's `https://*.grok-sandbox.com`
+ *     origin from the request. Sessions and identities persist in the embedded
+ *     PGLite DB (same DB as app data); the process restart wipes both. Live-
+ *     preview iframe clients use a bearer token (partitioned cookies) — see
+ *     `client.ts`.
  *   - Off (`VITE_AUTH_ENABLED=false`, the shipped default): no providers;
  *     `requireUserId` resolves a dev user with no database configured, and
  *     throws fail-closed once `DATABASE_URL` is set (see `verify.server.ts`).
@@ -37,16 +34,12 @@ import { randomBytes } from "node:crypto";
 import { Pool } from "pg";
 import { ensureDbReady, getPglite } from "../db";
 import { createPostgresPoolConfig } from "../postgres-config.js";
+import { DERIV_PROVIDER_ID } from "../deriv";
 import { emailAndPasswordEnabled } from "./email-password";
 import { GATE_PROVIDER_ID, gateIdentitySessions } from "./gate-session.server";
 import { AUTH_PROVIDERS } from "./providers";
 import { pgliteDialect } from "./pglite-dialect";
-import {
-  AUTH_BROKER_ISSUER_DEFAULT,
-  PREVIEW_ALLOWED_HOSTS,
-  PREVIEW_CLIENT_ID,
-  PREVIEW_CLIENT_SECRET,
-} from "./preview";
+import { PREVIEW_ALLOWED_HOSTS } from "./preview";
 
 // Kick (and share) PGLite bootstrap as soon as the auth server module loads.
 void ensureDbReady();
@@ -58,11 +51,11 @@ void ensureDbReady();
  * restart clears both the secret and PGLite together.
  */
 const globalAuthRef = globalThis as typeof globalThis & {
-  __grokAuthPreviewSecret__?: string;
+  __appAuthPreviewSecret__?: string;
 };
 function previewAuthSecret(): string {
-  globalAuthRef.__grokAuthPreviewSecret__ ??= randomBytes(32).toString("hex");
-  return globalAuthRef.__grokAuthPreviewSecret__;
+  globalAuthRef.__appAuthPreviewSecret__ ??= randomBytes(32).toString("hex");
+  return globalAuthRef.__appAuthPreviewSecret__;
 }
 
 /** Read an env var, treating empty/whitespace as unset. */
@@ -74,27 +67,18 @@ const env = (key: string): string | undefined => {
 // Explicit off-switch. The deployer sets `VITE_AUTH_ENABLED=true` when it
 // provisions auth; set it to "false" to force auth off everywhere (dev user).
 const authDisabled = env("VITE_AUTH_ENABLED") === "false";
+const googleClientId = env("GOOGLE_CLIENT_ID");
+const googleClientSecret = env("GOOGLE_CLIENT_SECRET");
+const derivAppId = env("DERIV_APP_ID");
 
-// Broker federation creds: the deployer injects a per-app client when deployed;
-// otherwise fall back to the shared live-preview client, which the broker accepts
-// for any `*.grok-sandbox.com` callback (see `./preview`).
-const authBrokerIssuer =
-  env("AUTH_BROKER_ISSUER") ?? AUTH_BROKER_ISSUER_DEFAULT;
-const authBrokerClientId =
-  env("AUTH_BROKER_CLIENT_ID") ?? PREVIEW_CLIENT_ID;
-const authBrokerClientSecret =
-  env("AUTH_BROKER_CLIENT_SECRET") ?? PREVIEW_CLIENT_SECRET;
-
-/** True when federated sign-in is active (real auth is enforced). */
-export const authConfigured =
-  !authDisabled && Boolean(authBrokerClientId && authBrokerClientSecret);
+/** True when real auth is enforced. */
+export const authConfigured = !authDisabled;
 
 // This app's own Better Auth origin. When deployed the deployer injects the
 // public URL. In the sandbox live preview there's no fixed URL (each preview gets
 // a dynamic `*.grok-sandbox.com` host), so we hand Better Auth a dynamic baseURL:
 // it derives the origin per-request from the (proxied) host, validated against the
-// preview allowlist, which makes the OAuth `redirect_uri` the concrete preview URL
-// the broker's preview client accepts.
+// preview allowlist, which makes the OAuth redirect use the concrete preview URL.
 const explicitBaseURL = env("BETTER_AUTH_URL");
 // Explicit `string[]` (not a readonly tuple) — Better Auth's DynamicBaseURLConfig
 // requires a mutable `allowedHosts: string[]`.
@@ -131,15 +115,6 @@ const trustedOrigins: string[] = explicitBaseURL
 
 const databaseUrl = env("DATABASE_URL");
 
-// Static broker OAuth endpoints (skip OIDC discovery on every sign-in / callback).
-// Discovery would cost an extra network hop to the broker before the popup can
-// even redirect to Google/X — the live-preview popup felt stuck on the app for
-// that whole round-trip. These paths match the broker's discovery document.
-const issuerBase = authBrokerIssuer.replace(/\/+$/, "");
-const authBrokerAuthorizationUrl = `${issuerBase}/api/auth/oauth2/authorize`;
-const authBrokerTokenUrl = `${issuerBase}/api/auth/oauth2/token`;
-const authBrokerUserInfoUrl = `${issuerBase}/api/auth/oauth2/userinfo`;
-
 // Real Postgres when `DATABASE_URL` is set (deployed apps), else the app's
 // embedded PGLite (preview) via a Kysely dialect — so Better Auth persists to the
 // SAME DB as app data, including email/password users. Both use the Better Auth
@@ -150,31 +125,179 @@ const database = databaseUrl
   : { dialect: pgliteDialect(() => getPglite()), type: "postgres" as const };
 
 /** Session token cookie name — also read by the live-preview popup completion page. */
-export const SESSION_TOKEN_COOKIE = "__Host-grok-auth.session_token";
+export const SESSION_TOKEN_COOKIE = "__Host-app-auth.session_token";
+
+const DERIV_AUTHORIZATION_URL = "https://auth.deriv.com/oauth2/auth";
+const DERIV_TOKEN_URL = "https://auth.deriv.com/oauth2/token";
+const DERIV_API_BASE = "https://api.derivws.com";
+const DERIV_SCOPES = ["trade", "account_manage"];
+
+type DerivIdentity = {
+  accountId: string;
+  name: string | null;
+};
+
+function normalizeDerivAccountId(value: string): string {
+  return value.trim().toUpperCase();
+}
+
+function firstString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function readObjectString(
+  payload: Record<string, unknown>,
+  keys: readonly string[],
+): string | null {
+  for (const key of keys) {
+    const value = firstString(payload[key]);
+    if (value) return value;
+  }
+  return null;
+}
+
+function extractDerivAccountId(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  if (Array.isArray(payload)) {
+    for (const entry of payload) {
+      const found = extractDerivAccountId(entry);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  const record = payload as Record<string, unknown>;
+  const direct = readObjectString(record, [
+    "loginid",
+    "loginId",
+    "client_id",
+    "clientId",
+    "account_id",
+    "accountId",
+    "cr",
+    "id",
+  ]);
+  if (direct) return normalizeDerivAccountId(direct);
+
+  const loginids = record.loginids;
+  if (loginids && typeof loginids === "object" && !Array.isArray(loginids)) {
+    const key = Object.keys(loginids as Record<string, unknown>).find((candidate) =>
+      Boolean(candidate.trim()),
+    );
+    if (key) return normalizeDerivAccountId(key);
+  }
+
+  for (const value of Object.values(record)) {
+    const found = extractDerivAccountId(value);
+    if (found) return found;
+  }
+  return null;
+}
+
+function extractDerivName(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  if (Array.isArray(payload)) {
+    for (const entry of payload) {
+      const found = extractDerivName(entry);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  const record = payload as Record<string, unknown>;
+  const direct = readObjectString(record, ["nickname", "name", "full_name", "fullName"]);
+  if (direct) return direct;
+
+  for (const value of Object.values(record)) {
+    const found = extractDerivName(value);
+    if (found) return found;
+  }
+  return null;
+}
+
+async function fetchJson(
+  url: string,
+  init: RequestInit,
+): Promise<unknown | null> {
+  const response = await fetch(url, init);
+  if (!response.ok) {
+    if (response.status === 404 || response.status === 409) return null;
+    const detail = await response.text().catch(() => "");
+    throw new Error(detail || `Request failed: ${response.status}`);
+  }
+  return response.json().catch(() => null);
+}
+
+async function fetchDerivIdentity(accessToken: string): Promise<DerivIdentity> {
+  if (!derivAppId) throw new Error("DERIV_APP_ID is not configured");
+
+  const headers = {
+    accept: "application/json",
+    Authorization: `Bearer ${accessToken}`,
+    "Deriv-App-ID": derivAppId,
+  };
+  const [legacyAccounts, optionAccounts, nickname] = await Promise.all([
+    fetchJson(`${DERIV_API_BASE}/trading/v1/options/legacy/accounts`, {
+      headers,
+    }),
+    fetchJson(`${DERIV_API_BASE}/trading/v1/options/accounts`, {
+      headers,
+    }),
+    fetchJson(`${DERIV_API_BASE}/account/v1/nickname`, {
+      headers,
+    }).catch(() => null),
+  ]);
+
+  const accountId =
+    extractDerivAccountId(legacyAccounts) ?? extractDerivAccountId(optionAccounts);
+  if (!accountId) {
+    throw new Error("Could not resolve a Deriv account identifier from OAuth");
+  }
+
+  return {
+    accountId,
+    name: extractDerivName(nickname) ?? `Deriv ${accountId}`,
+  };
+}
+
+const socialProviders =
+  googleClientId && googleClientSecret
+    ? {
+        google: {
+          clientId: googleClientId,
+          clientSecret: googleClientSecret,
+        },
+      }
+    : undefined;
 
 // Built separately so the `betterAuth({...})` call stays easy to edit without
-// breaking brackets (models often trip on the conditional plugin spread).
-const authBrokerOAuthPlugin = authConfigured
-  ? genericOAuth({
-      config: AUTH_PROVIDERS.map(({ providerId, idp }) => ({
-        providerId,
-        clientId: authBrokerClientId as string,
-        clientSecret: authBrokerClientSecret as string,
-        // Prefer static endpoints over `discoveryUrl` so initiating (and
-        // completing) OAuth does not wait on a broker discovery fetch.
-        authorizationUrl: authBrokerAuthorizationUrl,
-        tokenUrl: authBrokerTokenUrl,
-        userInfoUrl: authBrokerUserInfoUrl,
-        scopes: ["openid", "profile", "email"],
-        // `prompt: "login"` forces the broker to re-authenticate against the
-        // upstream on every sign-in instead of silently reusing an existing
-        // broker session. Combined with the broker sending Google
-        // `prompt=select_account`, the user always gets the account chooser
-        // and can pick (or switch) which account to sign in with.
-        authorizationUrlParams: { idp, prompt: "login" },
-      })),
-    })
-  : null;
+// breaking brackets.
+const derivOAuthPlugin =
+  derivAppId && !authDisabled
+    ? genericOAuth({
+        config: [
+          {
+            providerId: DERIV_PROVIDER_ID,
+            clientId: derivAppId,
+            // Deriv's OAuth app uses App ID + PKCE as a public client.
+            clientSecret: "",
+            authorizationUrl: DERIV_AUTHORIZATION_URL,
+            tokenUrl: DERIV_TOKEN_URL,
+            scopes: DERIV_SCOPES,
+            pkce: true,
+            getUserInfo: async (tokens) => {
+              const identity = await fetchDerivIdentity(tokens.accessToken);
+              const email = `${identity.accountId.toLowerCase()}@deriv.local`;
+              return {
+                id: identity.accountId,
+                email,
+                name: identity.name,
+              };
+            },
+          },
+        ],
+      })
+    : null;
 
 export const auth = betterAuth({
   baseURL,
