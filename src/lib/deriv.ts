@@ -19,13 +19,13 @@ type DerivCheckResponse = {
   checked_count?: number;
 };
 
-function readEnv(name: "DERIV_PARTNER_TOKEN" | "DERIV_API_TOKEN" | "DERIV_APP_ID") {
+function readEnv(name: "DERIV_PARTNER_TOKEN" | "DERIV_APP_ID") {
   const value = typeof process !== "undefined" ? process.env[name]?.trim() : undefined;
   return value ? value : undefined;
 }
 
 export function getDerivPartnerToken() {
-  return readEnv("DERIV_PARTNER_TOKEN") ?? readEnv("DERIV_API_TOKEN");
+  return readEnv("DERIV_PARTNER_TOKEN");
 }
 
 export function getDerivAppId() {

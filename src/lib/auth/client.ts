@@ -69,7 +69,7 @@ function setBearerToken(token: string | null): void {
 
 /**
  * The sandbox live preview runs this app inside an iframe on a `*.grok-sandbox.com`
- * host, where a full-page redirect to the broker can't work — so sign-in uses a
+ * host, where a full-page redirect to the provider callback can't work — so sign-in uses a
  * popup there and a normal redirect everywhere else.
  */
 function inLivePreview(): boolean {
@@ -90,7 +90,7 @@ type PopupMessage = { source: "app-auth-popup"; token: string | null; error?: st
  *   `/auth/popup`, served by the template Vite plugin (see `vite.config.ts` +
  *   `popup.server.ts`) — 302s to the upstream login (no app chrome) and,
  *   on return, posts the session bearer token back. We store it and refresh the
- *   session; no top-level navigation of the iframe to the broker.
+ *   session; no top-level navigation of the iframe to an external auth host.
  * - **Deployed** (and local non-iframe): a normal full-page redirect into the provider.
  *
  * Either way it clears any existing local session FIRST so switching providers
@@ -175,7 +175,7 @@ function openSignInPopup(providerId: string): Window | null {
   const origin = window.location.origin;
   const url = `${origin}/auth/popup?providerId=${encodeURIComponent(providerId)}`;
   // Unique name per attempt so a prior attempt stuck on the SPA is not reused.
-  const name = `grok-signin-${Date.now()}`;
+  const name = `app-signin-${Date.now()}`;
   return window.open(url, name, "popup,width=500,height=650");
 }
 

@@ -45,7 +45,7 @@ const BENEFITS = [
 ];
 
 const STEPS = [
-  { n: "01", t: "Sign in", d: "Sign in with Deriv, Google, X, or email." },
+  { n: "01", t: "Sign in", d: "Sign in with Deriv, Google, or email and password." },
   {
     n: "02",
     t: "Confirm your access",

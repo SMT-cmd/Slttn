@@ -7,8 +7,8 @@ export const Route = createFileRoute("/privacy")({
       <p>Last updated 26 September 2026. SLT Trade Hub (“we”) runs slttradehub.trade and library.slttradehub.trade.</p>
       <p>
         We collect the name, email, and authentication identifiers you give us when you sign in
-        with Google, X, or email, plus any Deriv CR number you link, coupon use, purchases, and
-        reading activity (which book and page, when).
+        with Google, Deriv, or email and password, plus any Deriv CR number you link, coupon
+        use, purchases, and reading activity (which book and page, when).
       </p>
       <p>
         Google AdSense may use cookies to serve ads after you consent. We use Google Consent Mode

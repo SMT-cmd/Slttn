@@ -16,7 +16,7 @@ export const Route = createFileRoute("/login")({
       {
         name: "description",
         content:
-          "Sign in to access The Trading Library, manage your account, and unlock member pricing when your trading account is tagged.",
+          "Sign in with Deriv, Google, or email and password to access The Trading Library and unlock member pricing when your Deriv account is tagged.",
       },
     ],
   }),
@@ -60,9 +60,9 @@ function Login() {
           <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">Sign in</p>
           <h1 className="mt-3 font-display text-5xl">Sign in to your library account.</h1>
           <p className="mt-4 max-w-md text-muted-foreground">
-            If Deriv is your main account, start there. We check your partnership tag after
-            sign-in, keep Google and email available, and you can still link or relink
-            Deriv later from your account page.
+            Start with Deriv if that is your main trading account. We check your partnership
+            tag after sign-in, keep Google and email/password available, and you can still
+            link or relink Deriv later from your account page.
           </p>
           <img
             src="/brand/trading-library-powered.png"
@@ -85,11 +85,11 @@ function Login() {
                     className="mt-3 w-full"
                     onClick={() => signIn(derivProvider.providerId, { callbackURL: "/account" })}
                   >
-                    Login with Deriv
+                    Continue with Deriv
                   </Button>
                   <p className="mt-3 text-sm text-muted-foreground">
-                    Best for existing Deriv clients. We will check your partnership tag
-                    after sign-in and sync it to your account.
+                    Best for existing Deriv clients. We check your partnership tag after
+                    sign-in and sync it to your account.
                   </p>
                 </div>
               ) : null}
@@ -114,7 +114,7 @@ function Login() {
 
           <div className="my-6 flex items-center gap-3 text-xs tracking-[0.16em] text-muted-foreground uppercase">
             <span className="h-px flex-1 bg-border" />
-            Email
+            Email and password
             <span className="h-px flex-1 bg-border" />
           </div>
 
@@ -164,7 +164,11 @@ function Login() {
               />
             </div>
             <Button type="submit" variant="navy" className="w-full" disabled={busy}>
-              {busy ? "Please wait…" : mode === "up" ? "Create account" : "Sign in with email"}
+              {busy
+                ? "Please wait…"
+                : mode === "up"
+                  ? "Create account"
+                  : "Continue with email"}
             </Button>
           </form>
           <p className="mt-4 text-xs text-muted-foreground">

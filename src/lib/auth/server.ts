@@ -286,12 +286,15 @@ const derivOAuthPlugin =
             scopes: DERIV_SCOPES,
             pkce: true,
             getUserInfo: async (tokens) => {
-              const identity = await fetchDerivIdentity(tokens.accessToken);
+              const accessToken = tokens.accessToken;
+              if (!accessToken) throw new Error("Deriv OAuth did not return an access token");
+              const identity = await fetchDerivIdentity(accessToken);
               const email = `${identity.accountId.toLowerCase()}@deriv.local`;
               return {
                 id: identity.accountId,
                 email,
-                name: identity.name,
+                emailVerified: true,
+                ...(identity.name ? { name: identity.name } : {}),
               };
             },
           },
@@ -311,12 +314,11 @@ export const auth = betterAuth({
   // local loopback variants, or clients get "Invalid origin".
   trustedOrigins,
 
-  // Encrypt broker-issued OAuth tokens at rest, and treat the broker's upstreams
-  // as trusted first-party identities. The broker owns identity and X emails are
-  // synthetic/unverified, so WITHOUT this a login can fail with
-  // `account_not_linked` (Better Auth refuses to attach an untrusted, unverified
-  // identity to an existing user). Google and X carry DISTINCT emails, so this
-  // never merges them into one user — they stay separate identities.
+  socialProviders,
+
+  // Encrypt OAuth tokens at rest, and treat this app's configured upstream
+  // providers as trusted identities so linking can succeed without forcing a
+  // separate local-email verification step first.
   account: {
     encryptOAuthTokens: true,
     accountLinking: {
@@ -325,8 +327,8 @@ export const auth = betterAuth({
         ...AUTH_PROVIDERS.map((p) => p.providerId),
         GATE_PROVIDER_ID,
       ],
-      // X's synthetic email is never "verified", so don't gate linking on the
-      // local user's email-verified state.
+      // Allow linking across configured providers without forcing a prior local
+      // email verification step.
       requireLocalEmailVerified: false,
     },
   },
@@ -352,18 +354,17 @@ export const auth = betterAuth({
     defaultCookieAttributes: { secure: true, sameSite: "lax", path: "/" },
     cookies: {
       session_token: { name: SESSION_TOKEN_COOKIE },
-      session_data: { name: "__Host-grok-auth.session_data" },
-      account_data: { name: "__Host-grok-auth.account_data" },
-      dont_remember: { name: "__Host-grok-auth.dont_remember" },
+      session_data: { name: "__Host-app-auth.session_data" },
+      account_data: { name: "__Host-app-auth.account_data" },
+      dont_remember: { name: "__Host-app-auth.dont_remember" },
     },
   },
 
   plugins: [
     gateIdentitySessions(),
 
-    // One genericOAuth provider per upstream (when auth is on), all federating
-    // to the broker with the SAME client and differing only by the `idp` hint.
-    ...(authBrokerOAuthPlugin ? [authBrokerOAuthPlugin] : []),
+    // Direct PKCE OAuth provider for Deriv when auth is enabled.
+    ...(derivOAuthPlugin ? [derivOAuthPlugin] : []),
 
     // Accept `Authorization: Bearer <session-token>` as an alternative to the
     // cookie. Needed for the LIVE PREVIEW: the app runs in an embedded iframe
