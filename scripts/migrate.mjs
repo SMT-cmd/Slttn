@@ -13,39 +13,81 @@
  * the same files at startup instead (see src/lib/db.ts).
  */
 import { readdir, readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-import pg from "pg";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { dirname, join, resolve } from "node:path";
 import { pendingMigrations } from "./migration-plan.mjs";
 import { createPostgresPoolConfig } from "../src/lib/postgres-config.js";
 
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) {
-  console.log(
-    "[migrate] DATABASE_URL not set — skipping (the PGLite fallback migrates itself).",
-  );
-  process.exit(0);
-}
-
 const migrationsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "migrations");
 
-async function main() {
+const TRANSIENT_DB_ERROR_CODES = new Set(["ENETUNREACH", "ECONNREFUSED", "ETIMEDOUT"]);
+const TRANSIENT_DB_ERROR_PATTERNS = [
+  /\bconnect(?:ion)?\b.*\btime(?:d)? out\b/i,
+  /\btime(?:d)? out\b.*\bconnect(?:ion)?\b/i,
+  /\bconnection timeout\b/i,
+  /\btimeout expired\b/i,
+];
+
+export function isTransientBuildConnectivityError(err) {
+  for (let current = err; current; current = current.cause) {
+    const code = typeof current?.code === "string" ? current.code.toUpperCase() : "";
+    if (TRANSIENT_DB_ERROR_CODES.has(code)) return true;
+
+    const message = typeof current?.message === "string" ? current.message : "";
+    if (
+      message &&
+      !/\bstatement timeout\b/i.test(message) &&
+      TRANSIENT_DB_ERROR_PATTERNS.some((pattern) => pattern.test(message))
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function logErrorDetails(err, error = console.error) {
+  error("[migrate] failed:", err?.message || err);
+  // pg errors carry the context needed to debug a bad SQL file.
+  for (const key of ["code", "detail", "hint", "position", "where"]) {
+    if (err?.[key] != null) error(`[migrate]   ${key}: ${err[key]}`);
+  }
+}
+
+async function createDefaultPool(config) {
+  const { default: pg } = await import("pg");
+  return new pg.Pool(config);
+}
+
+export async function runMigrations({
+  databaseUrl = process.env.DATABASE_URL,
+  migrationsDirectory = migrationsDir,
+  createPool = createDefaultPool,
+  listDir = readdir,
+  readMigrationFile = readFile,
+  log = console.log,
+} = {}) {
+  if (!databaseUrl) {
+    log("[migrate] DATABASE_URL not set — skipping.");
+    return 0;
+  }
+
   let entries;
   try {
-    entries = await readdir(migrationsDir);
+    entries = await listDir(migrationsDirectory);
   } catch {
-    console.log("[migrate] no migrations/ directory — nothing to do.");
-    return;
+    log("[migrate] no migrations/ directory — nothing to do.");
+    return 0;
   }
   // An app with no schema of its own must not pay for a database connection.
   if (pendingMigrations(entries, []).length === 0) {
-    console.log("[migrate] no migrations — nothing to do.");
-    return;
+    log("[migrate] no migrations — nothing to do.");
+    return 0;
   }
 
-  const pool = new pg.Pool(createPostgresPoolConfig(databaseUrl, { max: 1 }));
-  const client = await pool.connect();
+  const pool = await createPool(createPostgresPoolConfig(databaseUrl, { max: 1 }));
+  let client;
   try {
+    client = await pool.connect();
     await client.query(
       "CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())",
     );
@@ -55,7 +97,7 @@ async function main() {
 
     let count = 0;
     for (const { name } of pendingMigrations(entries, applied)) {
-      const text = await readFile(join(migrationsDir, name), "utf8");
+      const text = await readMigrationFile(join(migrationsDirectory, name), "utf8");
       try {
         await client.query("BEGIN");
         // pg's simple-query protocol runs a whole multi-statement file at once.
@@ -71,21 +113,33 @@ async function main() {
         }
         throw err;
       }
-      console.log(`[migrate] applied ${name}`);
+      log(`[migrate] applied ${name}`);
       count += 1;
     }
-    console.log(count ? `[migrate] done — ${count} migration(s) applied.` : "[migrate] up to date.");
+    log(count ? `[migrate] done — ${count} migration(s) applied.` : "[migrate] up to date.");
+    return 0;
   } finally {
-    client.release();
+    client?.release();
     await pool.end();
   }
 }
 
-main().catch((err) => {
-  console.error("[migrate] failed:", err?.message || err);
-  // pg errors carry the context needed to debug a bad SQL file.
-  for (const key of ["code", "detail", "hint", "position", "where"]) {
-    if (err?.[key] != null) console.error(`[migrate]   ${key}: ${err[key]}`);
+export async function main(options = {}) {
+  const error = options.error ?? console.error;
+  try {
+    return await runMigrations(options);
+  } catch (err) {
+    if (isTransientBuildConnectivityError(err)) {
+      error("[migrate] transient DB connectivity problem during build — skipping migrations so deploy can continue.");
+      logErrorDetails(err, error);
+      return 0;
+    }
+
+    logErrorDetails(err, error);
+    return 1;
   }
-  process.exit(1);
-});
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === fileURLToPath(pathToFileURL(resolve(process.argv[1])))) {
+  process.exit(await main());
+}
