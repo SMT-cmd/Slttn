@@ -1,5 +1,6 @@
 import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { Navigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { AUTH_PROVIDERS, authEnabled, signIn, signOut } from "./client";
 import { hasGateSessionMarker } from "./gate-session-marker";
 import { resolveSignInGateState } from "./sign-in-gate";
@@ -112,7 +113,7 @@ export function UserButton({ compact = false }: { compact?: boolean }) {
           {label.charAt(0).toUpperCase()}
         </span>
       )}
-      <span className={compact ? "hidden text-sm font-medium lg:inline" : "text-sm font-medium"}>
+      <span className={compact ? "hidden text-sm font-medium xl:inline" : "text-sm font-medium"}>
         {label}
       </span>
       {authEnabled && !gateSession && (
@@ -122,11 +123,14 @@ export function UserButton({ compact = false }: { compact?: boolean }) {
           onClick={() => {
             setSigningOut(true);
             // Success navigates away; on failure re-enable so it can be retried.
-            void signOut().catch(() => setSigningOut(false));
+            void signOut().catch(() => {
+              setSigningOut(false);
+              toast.error("We couldn't sign you out just yet. Please try again.");
+            });
           }}
           className={
             compact
-              ? "hidden cursor-pointer text-sm underline-offset-4 opacity-70 hover:underline disabled:cursor-wait disabled:no-underline lg:inline"
+              ? "hidden cursor-pointer text-sm underline-offset-4 opacity-70 hover:underline disabled:cursor-wait disabled:no-underline md:inline"
               : "cursor-pointer text-sm underline-offset-4 opacity-70 hover:underline disabled:cursor-wait disabled:no-underline"
           }
         >

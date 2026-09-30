@@ -1,8 +1,11 @@
 import { useRouterState } from "@tanstack/react-router";
 import { Menu, Moon, Sun } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { signOut } from "@/lib/auth/client";
 import { SignedIn, SignedOut, UserButton } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { getMe } from "@/lib/server/platform";
 import { SITE } from "@/lib/site";
 import {
   libraryHomeHref,
@@ -39,10 +42,31 @@ export function Header({ library }: { library?: boolean }) {
   const siteContext = useSiteContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [menuSigningOut, setMenuSigningOut] = useState(false);
   const libraryLink = libraryHomeHref(siteContext);
   const homeLink = library ? libraryLink : marketingHref("/", siteContext);
   const signInLink = marketingHref("/login", siteContext);
   const accountLink = marketingHref("/account", siteContext);
+  const adminLink = marketingHref("/admin", siteContext);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (isPending || !user) {
+      setIsAdmin(false);
+      return;
+    }
+    getMe()
+      .then((profile) => {
+        if (!cancelled) setIsAdmin(profile.role === "admin");
+      })
+      .catch(() => {
+        if (!cancelled) setIsAdmin(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isPending, user]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background">
@@ -108,6 +132,14 @@ export function Header({ library }: { library?: boolean }) {
                 </Button>
               </SignedOut>
               <SignedIn>
+                {isAdmin ? (
+                  <a
+                    href={adminLink}
+                    className="hidden text-sm font-medium text-muted-foreground hover:text-foreground md:inline"
+                  >
+                    Admin
+                  </a>
+                ) : null}
                 <a
                   href={accountLink}
                   className="hidden text-sm font-medium text-muted-foreground hover:text-foreground md:inline"
@@ -161,6 +193,15 @@ export function Header({ library }: { library?: boolean }) {
                       {l.label}
                     </a>
                   ))}
+                  {isAdmin ? (
+                    <a
+                      href={adminLink}
+                      onClick={() => setOpen(false)}
+                      className="rounded-xl border border-transparent px-4 py-3 text-base font-medium transition-colors hover:bg-muted"
+                    >
+                      Admin
+                    </a>
+                  ) : null}
                 </div>
                 <div className="mt-6 border-t border-border pt-6">
                   <SignedOut>
@@ -171,11 +212,28 @@ export function Header({ library }: { library?: boolean }) {
                     </Button>
                   </SignedOut>
                   <SignedIn>
-                    <Button asChild variant="outline" className="w-full">
-                      <a href={accountLink} onClick={() => setOpen(false)}>
-                        Open account
-                      </a>
-                    </Button>
+                    <div className="space-y-3">
+                      <Button asChild variant="outline" className="w-full">
+                        <a href={accountLink} onClick={() => setOpen(false)}>
+                          Open account
+                        </a>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="w-full"
+                        disabled={menuSigningOut}
+                        onClick={() => {
+                          setMenuSigningOut(true);
+                          void signOut("/login").catch(() => {
+                            setMenuSigningOut(false);
+                            toast.error("We couldn't sign you out just yet. Please try again.");
+                          });
+                        }}
+                      >
+                        {menuSigningOut ? "Signing out…" : "Sign out"}
+                      </Button>
+                    </div>
                   </SignedIn>
                 </div>
               </div>
