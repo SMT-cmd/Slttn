@@ -16,6 +16,7 @@
  */
 import installPageTemplate from "../../scripts/install-page.html?raw";
 import { grokOgIdentity } from "virtual:grok-og-identity";
+import { renderSitemapXml } from "../../src/lib/server/sitemap";
 import {
   acceptsHtml,
   createHeadInjector,
@@ -69,6 +70,15 @@ export default async function grokPwaMiddleware(
 
   const path = event.url.pathname;
   const urlWithQuery = path + event.url.search;
+
+  if (path === "/sitemap.xml") {
+    return new Response(await renderSitemapXml(), {
+      headers: {
+        "content-type": "application/xml; charset=utf-8",
+        "cache-control": "no-cache",
+      },
+    });
+  }
 
   if (path === "/__grok/manifest.webmanifest" || path === "/__grok/manifest.json") {
     return new Response(renderWebManifest(requestHost(event)), {
