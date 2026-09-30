@@ -68,7 +68,9 @@ function AdminLogin() {
           return;
         }
         setAccessState("blocked");
-        setAccessMessage(result.message ?? "This account does not have admin access.");
+        setAccessMessage(
+          result.message ?? "This signed-in account is not assigned the admin role.",
+        );
       })
       .catch((error: unknown) => {
         if (cancelled) return;
@@ -101,7 +103,9 @@ function AdminLogin() {
         return;
       }
       setAccessState("blocked");
-      setAccessMessage(access.message ?? "This account does not have admin access.");
+      setAccessMessage(
+        access.message ?? "This signed-in account is not assigned the admin role.",
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Something went wrong signing in.");
     } finally {
@@ -125,7 +129,7 @@ function AdminLogin() {
               </h1>
               <p className="mt-5 max-w-md text-sm text-slate-300">
                 Use your admin account to open the dashboard, review users, and manage the
-                trading library without stepping through the member desk.
+                trading library without stepping through reader onboarding.
               </p>
             </div>
             <div className="rounded-2xl border border-teal-400/20 bg-teal-400/10 p-5">
@@ -144,13 +148,10 @@ function AdminLogin() {
                   <p className="text-xs tracking-[0.28em] text-slate-400 uppercase">Admin desk</p>
                   <h2 className="mt-3 font-display text-3xl text-white">Sign in</h2>
                 </div>
-                <Link to="/login" className="text-sm text-slate-300 underline-offset-4 hover:underline">
-                  Member login
-                </Link>
               </div>
 
               <p className="mt-4 text-sm text-slate-300">
-                Use your admin email and password. Member access stays on the standard desk.
+                Use an admin account to open the platform dashboard and management tools.
               </p>
 
               {!authEnabled ? (
@@ -165,7 +166,7 @@ function AdminLogin() {
                     This account does not have admin access.
                   </p>
                   <p className="mt-2 text-sm text-slate-200">
-                    {accessMessage || "Sign out and try another account if you need the admin desk."}
+                    {accessMessage || "Sign out and continue with an admin account."}
                   </p>
                   {user ? (
                     <Button
@@ -249,9 +250,6 @@ function AdminLogin() {
               <div className="mt-8 flex flex-wrap items-center gap-4 text-sm text-slate-400">
                 <Link to="/" className="underline-offset-4 hover:underline">
                   Back to site
-                </Link>
-                <Link to="/account" className="underline-offset-4 hover:underline">
-                  Member desk
                 </Link>
               </div>
             </div>

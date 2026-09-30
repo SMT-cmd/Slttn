@@ -49,6 +49,8 @@ export function Header({ library }: { library?: boolean }) {
   const signInLink = marketingHref("/login", siteContext);
   const accountLink = marketingHref("/account", siteContext);
   const adminLink = marketingHref("/admin", siteContext);
+  const isAdminRoute = pathname.startsWith("/admin");
+  const signOutRedirectPath = isAdminRoute ? "/admin/login" : "/login";
 
   useEffect(() => {
     let cancelled = false;
@@ -140,12 +142,14 @@ export function Header({ library }: { library?: boolean }) {
                     Admin
                   </a>
                 ) : null}
-                <a
-                  href={accountLink}
-                  className="hidden text-sm font-medium text-muted-foreground hover:text-foreground md:inline"
-                >
-                  {user?.displayName?.split(" ")[0] ?? "Account"}
-                </a>
+                {isAdminRoute && isAdmin ? null : (
+                  <a
+                    href={accountLink}
+                    className="hidden text-sm font-medium text-muted-foreground hover:text-foreground md:inline"
+                  >
+                    {user?.displayName?.split(" ")[0] ?? "Account"}
+                  </a>
+                )}
                 <UserButton compact />
               </SignedIn>
             </>
@@ -199,7 +203,7 @@ export function Header({ library }: { library?: boolean }) {
                       onClick={() => setOpen(false)}
                       className="rounded-xl border border-transparent px-4 py-3 text-base font-medium transition-colors hover:bg-muted"
                     >
-                      Admin
+                      Admin desk
                     </a>
                   ) : null}
                 </div>
@@ -213,11 +217,19 @@ export function Header({ library }: { library?: boolean }) {
                   </SignedOut>
                   <SignedIn>
                     <div className="space-y-3">
-                      <Button asChild variant="outline" className="w-full">
-                        <a href={accountLink} onClick={() => setOpen(false)}>
-                          Open account
-                        </a>
-                      </Button>
+                      {isAdminRoute && isAdmin ? (
+                        <Button asChild variant="outline" className="w-full">
+                          <a href={adminLink} onClick={() => setOpen(false)}>
+                            Open admin desk
+                          </a>
+                        </Button>
+                      ) : (
+                        <Button asChild variant="outline" className="w-full">
+                          <a href={accountLink} onClick={() => setOpen(false)}>
+                            Open account
+                          </a>
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         variant="ghost"
@@ -225,7 +237,7 @@ export function Header({ library }: { library?: boolean }) {
                         disabled={menuSigningOut}
                         onClick={() => {
                           setMenuSigningOut(true);
-                          void signOut("/login").catch(() => {
+                          void signOut(signOutRedirectPath).catch(() => {
                             setMenuSigningOut(false);
                             toast.error("We couldn't sign you out just yet. Please try again.");
                           });

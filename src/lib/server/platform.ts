@@ -347,14 +347,45 @@ async function syncProfileFromAuthUser(
   return syncDerivFromOAuth(db, profile);
 }
 
-async function resolveProfileForSession(db: SupabaseAdmin, userId: string) {
+async function syncProfileIdentityFromAuthUser(
+  db: SupabaseAdmin,
+  authUser: AuthUserRow,
+  profile: ProfileRecord,
+) {
+  const updates: Record<string, string | null> = {};
+  if (authUser.email && authUser.email !== profile.email) updates.email = authUser.email;
+  if (authUser.name && !profile.full_name) updates.full_name = authUser.name;
+  if (Object.keys(updates).length === 0) {
+    return normalizeProfile(profile);
+  }
+
+  const refreshed = assertSupabase(
+    await db
+      .from("profiles")
+      .update(updates)
+      .eq("user_id", profile.user_id)
+      .select("*")
+      .limit(1)
+      .single(),
+  ) as ProfileRecord;
+  return normalizeProfile(refreshed);
+}
+
+async function resolveProfileForSession(
+  db: SupabaseAdmin,
+  userId: string,
+  options?: { syncDeriv?: boolean },
+) {
+  const shouldSyncDeriv = options?.syncDeriv ?? true;
   const authUser = await getAuthUser(db, userId);
   const existing = assertSupabase(
     await db.from("profiles").select("*").eq("user_id", userId).limit(1),
   ) as ProfileRecord[] | null;
 
   if (existing?.[0]) {
-    return syncProfileFromAuthUser(db, authUser, existing[0]);
+    return shouldSyncDeriv
+      ? syncProfileFromAuthUser(db, authUser, existing[0])
+      : syncProfileIdentityFromAuthUser(db, authUser, existing[0]);
   }
 
   if (!authUser.email) {
@@ -381,7 +412,9 @@ async function resolveProfileForSession(db: SupabaseAdmin, userId: string) {
           .single(),
       ) as ProfileRecord);
 
-  return syncProfileFromAuthUser(db, authUser, adopted);
+  return shouldSyncDeriv
+    ? syncProfileFromAuthUser(db, authUser, adopted)
+    : syncProfileIdentityFromAuthUser(db, authUser, adopted);
 }
 
 async function syncDerivFromOAuth(db: SupabaseAdmin, profile: ProfileRecord) {
@@ -433,7 +466,7 @@ async function syncDerivFromOAuth(db: SupabaseAdmin, profile: ProfileRecord) {
 }
 
 async function ensureProfile(db: SupabaseAdmin, userId: string) {
-  const existing = await resolveProfileForSession(db, userId);
+  const existing = await resolveProfileForSession(db, userId, { syncDeriv: true });
   if (existing) {
     return existing;
   }
@@ -459,7 +492,7 @@ async function ensureProfile(db: SupabaseAdmin, userId: string) {
 }
 
 async function requireAdmin(db: SupabaseAdmin, userId: string) {
-  const profile = await resolveProfileForSession(db, userId);
+  const profile = await resolveProfileForSession(db, userId, { syncDeriv: false });
   if (!profile || profile.role !== "admin") {
     throw new Error("This account does not have admin access.");
   }
@@ -748,11 +781,15 @@ export const adminAccess = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const db = getSupabaseAdmin();
-    const profile = await resolveProfileForSession(db, context.userId);
+    const profile = await resolveProfileForSession(db, context.userId, { syncDeriv: false });
     return {
       allowed: profile?.role === "admin",
       message:
-        profile?.role === "admin" ? null : "This account does not have admin access.",
+        profile?.role === "admin"
+          ? null
+          : profile
+            ? "This signed-in account is not assigned the admin role."
+            : "We found your session, but this account is not configured for admin access.",
       profile,
     };
   });
