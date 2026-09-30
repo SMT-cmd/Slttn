@@ -23,11 +23,11 @@ test("matches allowlisted admin emails case-insensitively", () => {
 
 test("returns the admin access result when the check resolves in time", async () => {
   const result = await runAdminAccessCheck(
-    async () => ({ allowed: true, message: null }),
+    async () => ({ allowed: true, message: null, role: "admin" }),
     50,
   );
 
-  assert.deepEqual(result, { allowed: true, message: null });
+  assert.deepEqual(result, { allowed: true, message: null, role: "admin" });
 });
 
 test("fails fast when the admin access check never settles", async () => {

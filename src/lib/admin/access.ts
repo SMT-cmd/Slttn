@@ -1,9 +1,10 @@
 export type AdminAccessPayload = {
   allowed: boolean;
   message: string | null;
+  role: string | null;
 };
 
-export const ADMIN_ACCESS_TIMEOUT_MS = 10_000;
+export const ADMIN_ACCESS_TIMEOUT_MS = 8_000;
 
 function normalizeAdminEmail(email: string) {
   return email.trim().toLowerCase();
