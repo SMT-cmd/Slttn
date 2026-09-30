@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { signOut } from "@/lib/auth/client";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import {
@@ -28,6 +29,7 @@ function Account() {
   const [cr, setCr] = useState("");
   const [partner, setPartner] = useState("");
   const [code, setCode] = useState("");
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     if (isPending || !user) return;
@@ -49,6 +51,26 @@ function Account() {
         <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">Account</p>
         <h1 className="mt-2 font-display text-5xl">Your desk</h1>
         <p className="mt-2 text-muted-foreground">{user.primaryEmail}</p>
+        <div className="mt-5 flex flex-wrap gap-3">
+          {me?.role === "admin" ? (
+            <Button asChild variant="outline">
+              <Link to="/admin">Open admin</Link>
+            </Button>
+          ) : null}
+          <Button
+            variant="ghost"
+            disabled={signingOut}
+            onClick={() => {
+              setSigningOut(true);
+              void signOut("/login").catch(() => {
+                setSigningOut(false);
+                toast.error("We couldn't sign you out just yet. Please try again.");
+              });
+            }}
+          >
+            {signingOut ? "Signing out…" : "Sign out"}
+          </Button>
+        </div>
 
         {me?.banned ? (
           <p className="mt-6 rounded-md border border-loss/30 bg-loss/10 p-4 text-loss">
@@ -161,12 +183,6 @@ function Account() {
             </Button>
           </div>
         </section>
-
-        {me?.role === "admin" ? (
-          <Link to="/admin" className="mt-6 inline-block text-sm text-primary underline">
-            Open the admin desk
-          </Link>
-        ) : null}
 
         <section className="mt-10 border-t border-border pt-8">
           <h2 className="font-display text-2xl">Your data</h2>
