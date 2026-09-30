@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
+import { ADMIN_ACCESS_TIMEOUT_MS, runAdminAccessCheck } from "@/lib/admin/access";
 import { signOut } from "@/lib/auth/client";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -31,8 +32,6 @@ import { Shell } from "@/components/layout/shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/utils";
-
-const ADMIN_ACCESS_TIMEOUT_MS = 10_000;
 
 export const Route = createFileRoute("/admin/")({ component: Admin });
 
@@ -191,23 +190,14 @@ function Admin() {
     setAccessState("checking");
     setAccessMessage("");
 
-    const timer = window.setTimeout(() => {
-      if (cancelled) return;
-      cancelled = true;
-      setAccessState("error");
-      setAccessMessage("Admin access check timed out. Reload your session or return to admin login.");
-    }, ADMIN_ACCESS_TIMEOUT_MS);
-
-    adminAccess()
+    runAdminAccessCheck(() => adminAccess())
       .then((result) => {
         if (cancelled) return;
-        window.clearTimeout(timer);
         setAccessState(result.allowed ? "allowed" : "locked");
         setAccessMessage(result.message ?? "");
       })
       .catch((error: unknown) => {
         if (cancelled) return;
-        window.clearTimeout(timer);
         setAccessState("error");
         setAccessMessage(
           error instanceof Error && error.message
@@ -218,7 +208,6 @@ function Admin() {
 
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
     };
   }, [isPending, user]);
 

@@ -2,6 +2,7 @@ import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { AUTH_PROVIDERS, authClient, authEnabled, signIn, signOut } from "@/lib/auth/client";
+import { ADMIN_ACCESS_TIMEOUT_MS, runAdminAccessCheck } from "@/lib/admin/access";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { adminAccess, authUiConfig } from "@/lib/server/platform";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/admin/login")({
   component: AdminLogin,
 });
 
-type AccessState = "idle" | "checking" | "blocked";
+type AccessState = "idle" | "checking" | "blocked" | "error";
 
 function AdminLogin() {
   const { user, isPending } = useCurrentUserState();
@@ -47,8 +48,14 @@ function AdminLogin() {
 
   useEffect(() => {
     if (isPending) {
-      return;
+      const timer = window.setTimeout(() => {
+        setAccessState("error");
+        setAccessMessage("Admin session check timed out. Reload or sign in again to continue.");
+      }, ADMIN_ACCESS_TIMEOUT_MS);
+      return () => window.clearTimeout(timer);
     }
+
+    setRedirectToAdmin(false);
 
     if (!user) {
       setAccessState("idle");
@@ -60,7 +67,7 @@ function AdminLogin() {
     setAccessState("checking");
     setAccessMessage("");
 
-    adminAccess()
+    runAdminAccessCheck(() => adminAccess())
       .then((result) => {
         if (cancelled) return;
         if (result.allowed) {
@@ -74,11 +81,11 @@ function AdminLogin() {
       })
       .catch((error: unknown) => {
         if (cancelled) return;
-        setAccessState("blocked");
+        setAccessState("error");
         setAccessMessage(
           error instanceof Error && error.message
             ? error.message
-            : "This account does not have admin access.",
+            : "We could not confirm admin access.",
         );
       });
 
@@ -97,7 +104,7 @@ function AdminLogin() {
       if (result.error) {
         throw new Error(result.error.message || "Email or password is not right.");
       }
-      const access = await adminAccess();
+      const access = await runAdminAccessCheck(() => adminAccess());
       if (access.allowed) {
         setRedirectToAdmin(true);
         return;
@@ -107,7 +114,11 @@ function AdminLogin() {
         access.message ?? "This signed-in account is not assigned the admin role.",
       );
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Something went wrong signing in.");
+      const message =
+        error instanceof Error ? error.message : "Something went wrong signing in.";
+      setAccessState("error");
+      setAccessMessage(message);
+      toast.error(message);
     } finally {
       setBusy(false);
     }
@@ -185,6 +196,44 @@ function AdminLogin() {
                       {signingOut ? "Signing out…" : "Sign out"}
                     </Button>
                   ) : null}
+                </div>
+              ) : null}
+
+              {accessState === "error" ? (
+                <div className="mt-6 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4">
+                  <p className="text-sm font-medium text-amber-100">
+                    We could not confirm admin access yet.
+                  </p>
+                  <p className="mt-2 text-sm text-slate-200">
+                    {accessMessage || "Reload this page or sign in again to continue."}
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="border-white/20 bg-transparent text-white hover:bg-white/10"
+                      onClick={() => window.location.reload()}
+                    >
+                      Reload this page
+                    </Button>
+                    {user ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="border-white/20 bg-transparent text-white hover:bg-white/10"
+                        disabled={signingOut}
+                        onClick={() => {
+                          setSigningOut(true);
+                          void signOut("/admin/login").catch(() => {
+                            setSigningOut(false);
+                            toast.error("We couldn't sign you out just yet. Please try again.");
+                          });
+                        }}
+                      >
+                        {signingOut ? "Signing out…" : "Sign out"}
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               ) : null}
 
