@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { isAllowlistedAdminEmail } from "@/lib/admin/access";
 import { authMiddleware } from "@/lib/auth/middleware";
 import {
   getCatalogBookBySlug,
@@ -51,7 +50,7 @@ type AccountRecord = {
 
 type SettingRecord = {
   key: string;
-  value: string;
+  value: unknown;
 };
 
 type CouponRecord = {
@@ -142,20 +141,16 @@ export type BookRow = {
 };
 
 const PREVIEW_PAGES = 3;
-const DEFAULT_SETTINGS: Record<string, string> = {
-  global_prelaunch: "true",
+const DEFAULT_SETTINGS: Record<string, unknown> = {
+  global_prelaunch: true,
   partner_code: "SLT-PARTNER",
   support_email: SITE.email,
   telegram_url: SITE.telegram,
   whatsapp_url: SITE.whatsapp,
-  community_links: JSON.stringify(
-    [
-      { label: "Telegram", url: SITE.telegram },
-      { label: "WhatsApp", url: SITE.whatsapp },
-    ],
-    null,
-    2,
-  ),
+  community_links: [
+    { label: "Telegram", url: SITE.telegram },
+    { label: "WhatsApp", url: SITE.whatsapp },
+  ],
 };
 
 function normalizeLaunchMode(mode: string | null | undefined): LaunchModeValue {
@@ -182,6 +177,35 @@ function randomCode(prefix: string) {
 
 function requireNumber(value: number | null | undefined, fallback = 0) {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function normalizeEmail(email: string | null | undefined) {
+  return email?.trim().toLowerCase() ?? null;
+}
+
+function settingToString(value: unknown, fallback = "") {
+  if (typeof value === "string") return value;
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (value === null || value === undefined) return fallback;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return fallback;
+  }
+}
+
+function parseSettingInput(key: string, value: string) {
+  if (key === "global_prelaunch") {
+    return value === "true";
+  }
+  if (key === "community_links") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      throw new Error("Community links must be valid JSON.");
+    }
+  }
+  return value;
 }
 
 function normalizeProfile(record: ProfileRecord): Profile {
@@ -247,7 +271,7 @@ function assertSupabase<T>(result: { data: T; error: { message: string } | null 
 
 async function seedDefaultSettings(db: SupabaseAdmin) {
   const rows = assertSupabase(
-    await db.from("site_settings").select("key, value"),
+    await db.from("settings").select("key, value"),
   ) as SettingRecord[] | null;
   const existing = new Set((rows ?? []).map((row) => row.key));
   const missing = Object.entries(DEFAULT_SETTINGS)
@@ -255,7 +279,7 @@ async function seedDefaultSettings(db: SupabaseAdmin) {
     .map(([key, value]) => ({ key, value }));
   if (missing.length > 0) {
     assertSupabase(
-      await db.from("site_settings").upsert(missing, { onConflict: "key" }),
+      await db.from("settings").upsert(missing, { onConflict: "key" }),
     );
   }
 }
@@ -263,9 +287,9 @@ async function seedDefaultSettings(db: SupabaseAdmin) {
 async function getSettingsMap(db: SupabaseAdmin) {
   await seedDefaultSettings(db);
   const rows = assertSupabase(
-    await db.from("site_settings").select("key, value"),
+    await db.from("settings").select("key, value"),
   ) as SettingRecord[] | null;
-  const map: Record<string, string> = { ...DEFAULT_SETTINGS };
+  const map: Record<string, unknown> = { ...DEFAULT_SETTINGS };
   for (const row of rows ?? []) {
     map[row.key] = row.value;
   }
@@ -274,7 +298,7 @@ async function getSettingsMap(db: SupabaseAdmin) {
 
 async function getSetting(db: SupabaseAdmin, key: string, fallback = "") {
   const settings = await getSettingsMap(db);
-  return settings[key] ?? fallback;
+  return settingToString(settings[key], fallback);
 }
 
 async function hitRate(db: SupabaseAdmin, key: string, max: number, windowMs = 60 * 60 * 1000) {
@@ -393,8 +417,13 @@ async function resolveProfileForSession(
     return null;
   }
 
+  const normalizedEmail = normalizeEmail(authUser.email);
+  if (!normalizedEmail) {
+    return null;
+  }
+
   const fallback = assertSupabase(
-    await db.from("profiles").select("*").eq("email", authUser.email).limit(1),
+    await db.from("profiles").select("*").ilike("email", normalizedEmail).limit(1),
   ) as ProfileRecord[] | null;
   const matched = fallback?.[0];
   if (!matched) {
@@ -501,17 +530,15 @@ async function resolveAdminAccess(db: SupabaseAdmin, userId: string) {
   const authUser = await getAuthUser(db, userId);
   const sessionEmail = authUser.email?.trim() ?? null;
   const profile = await resolveProfileForSession(db, userId, { syncDeriv: false });
+  const resolvedRole = profile?.role ?? null;
 
-  if (isAllowlistedAdminEmail(sessionEmail)) {
+  if (resolvedRole === "admin") {
     return {
       allowed: true,
       message: null,
       profile,
+      role: resolvedRole,
     };
-  }
-
-  if (profile?.role === "admin") {
-    return { allowed: true, message: null, profile };
   }
 
   if (!sessionEmail) {
@@ -519,6 +546,7 @@ async function resolveAdminAccess(db: SupabaseAdmin, userId: string) {
       allowed: false,
       message: "We found your session, but this account email could not be verified for admin access.",
       profile,
+      role: resolvedRole,
     };
   }
 
@@ -526,6 +554,7 @@ async function resolveAdminAccess(db: SupabaseAdmin, userId: string) {
     allowed: false,
     message: "This signed-in email is not allowed to open the admin desk.",
     profile,
+    role: resolvedRole,
   };
 }
 
@@ -1601,7 +1630,9 @@ export const adminSaveSetting = createServerFn({ method: "POST" })
     const db = getSupabaseAdmin();
     await requireAdmin(db, context.userId);
     assertSupabase(
-      await db.from("site_settings").upsert({ key: data.key, value: data.value }, { onConflict: "key" }),
+      await db
+        .from("settings")
+        .upsert({ key: data.key, value: parseSettingInput(data.key, data.value) }, { onConflict: "key" }),
     );
     return { ok: true };
   });

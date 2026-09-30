@@ -1,9 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
-import { ADMIN_ACCESS_TIMEOUT_MS, runAdminAccessCheck } from "@/lib/admin/access";
+import { ADMIN_ACCESS_TIMEOUT_MS } from "@/lib/admin/access";
+import { useAdminGate } from "@/lib/admin/gate";
 import { signOut } from "@/lib/auth/client";
-import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import {
   adminAccess,
@@ -66,6 +66,36 @@ type BookDraft = {
   cover_url: string;
 };
 
+type QueryState<T> =
+  | { status: "loading"; data: null; error: string }
+  | { status: "ready"; data: T; error: string }
+  | { status: "error"; data: null; error: string };
+
+function createLoadingState<T>(): QueryState<T> {
+  return { status: "loading", data: null, error: "" };
+}
+
+function createReadyState<T>(data: T): QueryState<T> {
+  return { status: "ready", data, error: "" };
+}
+
+function createErrorState<T>(error: unknown, fallback: string): QueryState<T> {
+  return {
+    status: "error",
+    data: null,
+    error: error instanceof Error && error.message ? error.message : fallback,
+  };
+}
+
+function getJsonString(value: unknown, fallback: unknown) {
+  const safeValue = value ?? fallback;
+  try {
+    return JSON.stringify(safeValue, null, 2);
+  } catch {
+    return JSON.stringify(fallback, null, 2);
+  }
+}
+
 type NewBookForm = {
   title: string;
   subtitle: string;
@@ -104,15 +134,40 @@ function createBookDraft(book: BookRow): BookDraft {
   };
 }
 
-function normalizeSettings(settings: Record<string, string>): SettingsForm {
+function normalizeSettings(settings: Record<string, unknown>): SettingsForm {
   return {
-    global_prelaunch: settings.global_prelaunch !== "false",
-    partner_code: settings.partner_code ?? "",
-    support_email: settings.support_email ?? "",
-    telegram_url: settings.telegram_url ?? "",
-    whatsapp_url: settings.whatsapp_url ?? "",
-    community_links: settings.community_links ?? "[]",
+    global_prelaunch:
+      typeof settings.global_prelaunch === "boolean" ? settings.global_prelaunch : true,
+    partner_code: typeof settings.partner_code === "string" ? settings.partner_code : "",
+    support_email: typeof settings.support_email === "string" ? settings.support_email : "",
+    telegram_url: typeof settings.telegram_url === "string" ? settings.telegram_url : "",
+    whatsapp_url: typeof settings.whatsapp_url === "string" ? settings.whatsapp_url : "",
+    community_links: getJsonString(settings.community_links, []),
   };
+}
+
+function PanelStateCard({
+  title,
+  message,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  message: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-5">
+      <h2 className="font-display text-2xl">{title}</h2>
+      <p className="mt-3 text-sm text-muted-foreground">{message}</p>
+      {actionLabel && onAction ? (
+        <Button type="button" variant="outline" className="mt-4" onClick={onAction}>
+          {actionLabel}
+        </Button>
+      ) : null}
+    </div>
+  );
 }
 
 function TabButton({
@@ -165,63 +220,28 @@ async function uploadFile(file: File, signed: SignedUpload) {
 function Admin() {
   const { user, isPending } = useCurrentUserState();
   const [tab, setTab] = useState<TabKey>("overview");
-  const [accessState, setAccessState] = useState<"checking" | "allowed" | "locked" | "error">(
-    "checking",
-  );
-  const [accessMessage, setAccessMessage] = useState("");
   const [signingOut, setSigningOut] = useState(false);
+  const checkAccess = useCallback(() => adminAccess(), []);
+  const { state: gate, retry } = useAdminGate({
+    isPending,
+    userId: user?.id ?? null,
+    checkAccess,
+    timeoutMs: ADMIN_ACCESS_TIMEOUT_MS,
+  });
 
-  useEffect(() => {
-    if (isPending) {
-      const timer = window.setTimeout(() => {
-        setAccessState("error");
-        setAccessMessage("Admin session check timed out. Reload or sign in again to continue.");
-      }, ADMIN_ACCESS_TIMEOUT_MS);
-      return () => window.clearTimeout(timer);
-    }
+  if (gate.status === "denied") {
+    return <Navigate to="/admin/login" />;
+  }
 
-    if (!user) {
-      setAccessState("checking");
-      setAccessMessage("");
-      return;
-    }
-
-    let cancelled = false;
-    setAccessState("checking");
-    setAccessMessage("");
-
-    runAdminAccessCheck(() => adminAccess())
-      .then((result) => {
-        if (cancelled) return;
-        setAccessState(result.allowed ? "allowed" : "locked");
-        setAccessMessage(result.message ?? "");
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        setAccessState("error");
-        setAccessMessage(
-          error instanceof Error && error.message
-            ? error.message
-            : "We could not confirm your admin access.",
-        );
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isPending, user]);
-
-  if (accessState === "error") {
+  if (gate.status === "error") {
     return (
       <Shell>
         <div className="mx-auto max-w-lg px-4 py-24 text-center">
           <h1 className="font-display text-4xl">We could not confirm admin access yet.</h1>
-          <p className="mt-3 text-muted-foreground">
-            {accessMessage || "Please refresh your sign-in session and try again."}
-          </p>
+          <p className="mt-3 text-muted-foreground">{gate.message}</p>
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-            <Button type="button" variant="outline" onClick={() => window.location.reload()}>
-              Reload this page
+            <Button type="button" variant="outline" onClick={retry}>
+              Retry
             </Button>
             <Button asChild variant="navy">
               <Link to="/admin/login">Go to admin login</Link>
@@ -231,44 +251,8 @@ function Admin() {
       </Shell>
     );
   }
-  if (!user && !isPending) return <RedirectToSignIn to="/admin/login" />;
-  if (accessState === "locked") {
-    return (
-      <Shell>
-        <div className="mx-auto max-w-lg px-4 py-24 text-center">
-          <h1 className="font-display text-4xl">Admin access required.</h1>
-          <p className="mt-3 text-muted-foreground">
-            {accessMessage || "This account does not have admin access."}
-          </p>
-          <p className="mt-3 text-sm text-muted-foreground">
-            Sign in with an approved admin account or ask the owner to add your email to the
-            admin allowlist.
-          </p>
-          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-            <Button asChild variant="navy">
-              <Link to="/admin/login">Use another account</Link>
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={signingOut}
-              onClick={() => {
-                setSigningOut(true);
-                void signOut("/admin/login").catch(() => {
-                  setSigningOut(false);
-                  toast.error("We couldn't sign you out just yet. Please try again.");
-                });
-              }}
-            >
-              {signingOut ? "Signing out…" : "Sign out"}
-            </Button>
-          </div>
-        </div>
-      </Shell>
-    );
-  }
-  if (isPending || accessState === "checking") {
-    return <div className="grid min-h-dvh place-items-center">Checking admin access…</div>;
+  if (gate.status === "checking") {
+    return <div className="grid min-h-dvh place-items-center">{gate.message}</div>;
   }
 
   return (
@@ -324,21 +308,50 @@ function Admin() {
 }
 
 function HomePanel() {
-  const [data, setData] = useState<OverviewData | null>(null);
+  const [overviewState, setOverviewState] = useState<QueryState<OverviewData>>(() =>
+    createLoadingState(),
+  );
   const [form, setForm] = useState<SettingsForm | null>(null);
 
-  useEffect(() => {
-    adminOverview()
-      .then((payload) => {
-        setData(payload);
-        setForm(normalizeSettings(payload.settings));
-      })
-      .catch((error: unknown) =>
-        toast.error(error instanceof Error ? error.message : "Could not load admin overview."),
-      );
+  const loadOverview = useCallback(async () => {
+    setOverviewState(createLoadingState());
+    try {
+      const payload = await adminOverview();
+      setOverviewState(createReadyState(payload));
+      setForm(normalizeSettings(payload.settings));
+    } catch (error: unknown) {
+      setOverviewState(createErrorState(error, "Could not load admin overview."));
+      setForm(null);
+    }
   }, []);
 
-  if (!data || !form) return <p>Loading…</p>;
+  useEffect(() => {
+    void loadOverview();
+  }, [loadOverview]);
+
+  if (overviewState.status === "loading") {
+    return (
+      <PanelStateCard
+        title="Loading overview"
+        message="Fetching purchases, profiles, and settings for the admin desk."
+      />
+    );
+  }
+
+  if (overviewState.status === "error" || !form) {
+    return (
+      <PanelStateCard
+        title="Overview failed to load"
+        message={overviewState.error || "Could not load admin overview."}
+        actionLabel="Retry"
+        onAction={() => {
+          void loadOverview();
+        }}
+      />
+    );
+  }
+
+  const data = overviewState.data;
 
   return (
     <div className="grid gap-4 xl:grid-cols-4">
@@ -370,6 +383,7 @@ function HomePanel() {
             await Promise.all(
               saves.map(([key, value]) => adminSaveSetting({ data: { key, value } })),
             );
+            await loadOverview();
             toast.success("Settings saved.");
           } catch (error) {
             toast.error(error instanceof Error ? error.message : "Could not save settings.");
@@ -822,18 +836,40 @@ function BookEditor({ book, onReload }: { book: BookRow; onReload: () => Promise
 }
 
 function UsersPanel() {
-  const [rows, setRows] = useState<UsersData>([]);
+  const [usersState, setUsersState] = useState<QueryState<UsersData>>(() => createLoadingState());
 
-  const reload = async () => {
-    const users = await adminUsers();
-    setRows(users);
-  };
+  const reload = useCallback(async () => {
+    setUsersState(createLoadingState());
+    try {
+      const users = await adminUsers();
+      setUsersState(createReadyState(users));
+    } catch (error: unknown) {
+      setUsersState(createErrorState(error, "Could not load users."));
+    }
+  }, []);
 
   useEffect(() => {
-    reload().catch((error: unknown) =>
-      toast.error(error instanceof Error ? error.message : "Could not load users."),
+    void reload();
+  }, [reload]);
+
+  if (usersState.status === "loading") {
+    return <PanelStateCard title="Loading users" message="Fetching profiles for the admin desk." />;
+  }
+
+  if (usersState.status === "error") {
+    return (
+      <PanelStateCard
+        title="Users failed to load"
+        message={usersState.error}
+        actionLabel="Retry"
+        onAction={() => {
+          void reload();
+        }}
+      />
     );
-  }, []);
+  }
+
+  const rows = usersState.data;
 
   return (
     <div className="overflow-x-auto rounded-xl border border-border bg-card p-4">
@@ -869,8 +905,16 @@ function UsersPanel() {
                   size="sm"
                   variant="outline"
                   onClick={async () => {
-                    await adminSetTagged({ data: { userId: user.user_id, tagged: !user.deriv_tagged } });
-                    await reload();
+                    try {
+                      await adminSetTagged({
+                        data: { userId: user.user_id, tagged: !user.deriv_tagged },
+                      });
+                      await reload();
+                    } catch (error) {
+                      toast.error(
+                        error instanceof Error ? error.message : "Could not update tagged status.",
+                      );
+                    }
                   }}
                 >
                   Toggle tag
@@ -879,8 +923,14 @@ function UsersPanel() {
                   size="sm"
                   variant={user.banned ? "profit" : "loss"}
                   onClick={async () => {
-                    await adminSetBan({ data: { userId: user.user_id, banned: !user.banned } });
-                    await reload();
+                    try {
+                      await adminSetBan({ data: { userId: user.user_id, banned: !user.banned } });
+                      await reload();
+                    } catch (error) {
+                      toast.error(
+                        error instanceof Error ? error.message : "Could not update ban status.",
+                      );
+                    }
                   }}
                 >
                   {user.banned ? "Unban" : "Ban"}
@@ -895,23 +945,53 @@ function UsersPanel() {
 }
 
 function CouponsPanel() {
-  const [rows, setRows] = useState<CouponsData>([]);
-  const [books, setBooks] = useState<BookRow[]>([]);
+  const [couponState, setCouponState] = useState<QueryState<{ rows: CouponsData; books: BookRow[] }>>(
+    () => createLoadingState(),
+  );
   const [code, setCode] = useState("");
   const [uses, setUses] = useState("20");
   const [bookId, setBookId] = useState("");
 
-  const reload = async () => {
-        const [couponRows, bookRows] = await Promise.all([adminCoupons(), adminBooks()]);
-        setRows(couponRows ?? []);
-    setBooks(bookRows);
-  };
+  const reload = useCallback(async () => {
+    setCouponState(createLoadingState());
+    try {
+      const [couponRows, bookRows] = await Promise.all([adminCoupons(), adminBooks()]);
+      setCouponState(
+        createReadyState({
+          rows: couponRows ?? [],
+          books: bookRows,
+        }),
+      );
+    } catch (error: unknown) {
+      setCouponState(createErrorState(error, "Could not load coupons."));
+    }
+  }, []);
 
   useEffect(() => {
-    reload().catch((error: unknown) =>
-      toast.error(error instanceof Error ? error.message : "Could not load coupons."),
+    void reload();
+  }, [reload]);
+
+  if (couponState.status === "loading") {
+    return (
+      <PanelStateCard title="Loading coupons" message="Fetching coupons and book scopes." />
     );
-  }, []);
+  }
+
+  if (couponState.status === "error") {
+    return (
+      <PanelStateCard
+        title="Coupons failed to load"
+        message={couponState.error}
+        actionLabel="Retry"
+        onAction={() => {
+          void reload();
+        }}
+      />
+    );
+  }
+
+  const rows = couponState.data.rows;
+  const books = couponState.data.books;
 
   return (
     <div className="space-y-6">
@@ -989,26 +1069,54 @@ function CouponsPanel() {
 }
 
 function SalesPanel() {
-  const [sales, setSales] = useState<SalesData>([]);
-  const [logs, setLogs] = useState<LogsData>([]);
+  const [salesState, setSalesState] = useState<QueryState<SalesData>>(() => createLoadingState());
+  const [logsState, setLogsState] = useState<QueryState<LogsData>>(() => createLoadingState());
+
+  const loadSales = useCallback(async () => {
+    setSalesState(createLoadingState());
+    try {
+      const saleRows = await adminSales();
+      setSalesState(createReadyState(saleRows ?? []));
+    } catch (error: unknown) {
+      setSalesState(createErrorState(error, "Could not load purchases."));
+    }
+  }, []);
+
+  const loadLogs = useCallback(async () => {
+    setLogsState(createLoadingState());
+    try {
+      const logRows = await adminLogs();
+      setLogsState(createReadyState(logRows ?? []));
+    } catch (error: unknown) {
+      setLogsState(createErrorState(error, "Could not load reading logs."));
+    }
+  }, []);
 
   useEffect(() => {
-    Promise.all([adminSales(), adminLogs()])
-      .then(([saleRows, logRows]) => {
-        setSales(saleRows ?? []);
-        setLogs(logRows ?? []);
-      })
-      .catch((error: unknown) =>
-        toast.error(error instanceof Error ? error.message : "Could not load sales."),
-      );
-  }, []);
+    void loadSales();
+    void loadLogs();
+  }, [loadLogs, loadSales]);
 
   return (
     <div className="grid gap-8 lg:grid-cols-2">
       <div>
         <h2 className="font-display text-2xl">Sales overview</h2>
-        <ul className="mt-3 space-y-2 text-sm">
-          {sales.map((sale) => (
+        {salesState.status === "loading" ? (
+          <p className="mt-3 text-sm text-muted-foreground">Loading purchases…</p>
+        ) : null}
+        {salesState.status === "error" ? (
+          <PanelStateCard
+            title="Purchases failed to load"
+            message={salesState.error}
+            actionLabel="Retry"
+            onAction={() => {
+              void loadSales();
+            }}
+          />
+        ) : null}
+        {salesState.status === "ready" ? (
+          <ul className="mt-3 space-y-2 text-sm">
+            {salesState.data.map((sale) => (
             <li key={sale.id} className="rounded-md border border-border bg-card px-3 py-2">
               <p className="font-medium">
                 {sale.kind} · {formatMoney(sale.amount_cents / 100)}
@@ -1017,20 +1125,40 @@ function SalesPanel() {
                 {sale.provider} · {sale.status} · ref {sale.reference ?? "pending"}
               </p>
             </li>
-          ))}
-          {sales.length === 0 ? <li className="text-muted-foreground">No sales yet.</li> : null}
-        </ul>
+            ))}
+            {salesState.data.length === 0 ? (
+              <li className="text-muted-foreground">No sales yet.</li>
+            ) : null}
+          </ul>
+        ) : null}
       </div>
       <div>
         <h2 className="font-display text-2xl">Reader activity</h2>
-        <ul className="mt-3 space-y-2 text-sm">
-          {logs.map((log, index) => (
+        {logsState.status === "loading" ? (
+          <p className="mt-3 text-sm text-muted-foreground">Loading reading logs…</p>
+        ) : null}
+        {logsState.status === "error" ? (
+          <PanelStateCard
+            title="Reading logs failed to load"
+            message={logsState.error}
+            actionLabel="Retry"
+            onAction={() => {
+              void loadLogs();
+            }}
+          />
+        ) : null}
+        {logsState.status === "ready" ? (
+          <ul className="mt-3 space-y-2 text-sm">
+            {logsState.data.map((log, index) => (
             <li key={`${log.user_id}-${log.book_id}-${index}`} className="rounded-md border border-border bg-card px-3 py-2">
               {log.user_id.slice(0, 8)} · book {log.book_id} · page {log.page_index + 1}
             </li>
-          ))}
-          {logs.length === 0 ? <li className="text-muted-foreground">No pages opened yet.</li> : null}
-        </ul>
+            ))}
+            {logsState.data.length === 0 ? (
+              <li className="text-muted-foreground">No pages opened yet.</li>
+            ) : null}
+          </ul>
+        ) : null}
       </div>
     </div>
   );
