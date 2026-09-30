@@ -34,7 +34,7 @@ import { formatMoney } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/")({ component: Admin });
 
-type TabKey = "home" | "books" | "users" | "coupons" | "sales";
+type TabKey = "overview" | "books" | "users" | "coupons" | "sales";
 type OverviewData = Awaited<ReturnType<typeof adminOverview>>;
 type UsersData = Awaited<ReturnType<typeof adminUsers>>;
 type CouponsData = NonNullable<Awaited<ReturnType<typeof adminCoupons>>>;
@@ -163,7 +163,7 @@ async function uploadFile(file: File, signed: SignedUpload) {
 
 function Admin() {
   const { user, isPending } = useCurrentUserState();
-  const [tab, setTab] = useState<TabKey>("home");
+  const [tab, setTab] = useState<TabKey>("overview");
   const [accessState, setAccessState] = useState<"checking" | "allowed" | "locked" | "error">(
     "checking",
   );
@@ -221,26 +221,19 @@ function Admin() {
 
   if (!user && !isPending) return <RedirectToSignIn to="/admin/login" />;
   if (isPending || accessState === "checking") {
-    return <div className="grid min-h-dvh place-items-center">Checking the desk…</div>;
+    return <div className="grid min-h-dvh place-items-center">Checking admin access…</div>;
   }
   if (accessState === "error") {
     return (
       <Shell>
         <div className="mx-auto max-w-lg px-4 py-24 text-center">
-          <h1 className="font-display text-4xl">We could not confirm this desk yet.</h1>
+          <h1 className="font-display text-4xl">We could not confirm admin access yet.</h1>
           <p className="mt-3 text-muted-foreground">
             {accessMessage || "Please refresh your sign-in session and try again."}
-          </p>
-          <p className="mt-3 text-sm text-muted-foreground">
-            If your session looks fine, open your account first and then return to the admin
-            desk.
           </p>
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
             <Button asChild variant="navy">
               <Link to="/admin/login">Go to admin login</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link to="/account">Open account</Link>
             </Button>
           </div>
         </div>
@@ -286,16 +279,45 @@ function Admin() {
   return (
     <Shell>
       <div className="mx-auto max-w-6xl px-4 py-12">
-        <h1 className="font-display text-5xl">Admin</h1>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-xs tracking-[0.18em] uppercase text-muted-foreground">
+              Admin desk
+            </p>
+            <h1 className="mt-2 font-display text-5xl">Platform dashboard</h1>
+            <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
+              Manage books, users, coupons, sales, and site settings without reader onboarding
+              checks.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={signingOut}
+            onClick={() => {
+              setSigningOut(true);
+              void signOut("/admin/login").catch(() => {
+                setSigningOut(false);
+                toast.error("We couldn't sign you out just yet. Please try again.");
+              });
+            }}
+          >
+            {signingOut ? "Signing out…" : "Sign out"}
+          </Button>
+        </div>
         <div className="mt-6 flex flex-wrap gap-2">
-          <TabButton active={tab === "home"} label="home" onClick={() => setTab("home")} />
+          <TabButton
+            active={tab === "overview"}
+            label="overview"
+            onClick={() => setTab("overview")}
+          />
           <TabButton active={tab === "books"} label="books" onClick={() => setTab("books")} />
           <TabButton active={tab === "users"} label="users" onClick={() => setTab("users")} />
           <TabButton active={tab === "coupons"} label="coupons" onClick={() => setTab("coupons")} />
           <TabButton active={tab === "sales"} label="sales" onClick={() => setTab("sales")} />
         </div>
         <div className="mt-8">
-          {tab === "home" ? <HomePanel /> : null}
+          {tab === "overview" ? <HomePanel /> : null}
           {tab === "books" ? <BooksPanel /> : null}
           {tab === "users" ? <UsersPanel /> : null}
           {tab === "coupons" ? <CouponsPanel /> : null}
@@ -326,7 +348,7 @@ function HomePanel() {
   return (
     <div className="grid gap-4 xl:grid-cols-4">
       {[
-        ["Readers", data.users],
+        ["Users", data.users],
         ["Tagged", data.tagged],
         ["Titles", data.books],
         ["Sales", formatMoney(data.salesCents / 100)],
@@ -359,6 +381,14 @@ function HomePanel() {
           }
         }}
       >
+        <div className="mb-4">
+          <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">
+            Overview and settings
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Configure platform-wide settings and review current admin metrics.
+          </p>
+        </div>
         <div className="grid gap-4 md:grid-cols-2">
           <label className="rounded-lg border border-border bg-background p-4 text-sm">
             <span className="flex items-center gap-2">
@@ -444,7 +474,10 @@ function BooksPanel() {
           }
         }}
       >
-        <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">Create book</p>
+        <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">Manage books</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Add titles, update metadata, upload covers, and maintain page order.
+        </p>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <Field
             label="Title"
@@ -809,6 +842,14 @@ function UsersPanel() {
 
   return (
     <div className="overflow-x-auto rounded-xl border border-border bg-card p-4">
+      <div className="mb-4">
+        <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">
+          Manage users
+        </p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Review account roles and update tagging or ban status.
+        </p>
+      </div>
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-border text-muted-foreground">
@@ -901,6 +942,14 @@ function CouponsPanel() {
           }
         }}
       >
+        <div className="mb-4">
+          <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">
+            Manage coupons
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Create and review coupons issued across the library platform.
+          </p>
+        </div>
         <div className="grid gap-4 md:grid-cols-3">
           <Field label="Code" value={code} onChange={setCode} />
           <Field label="Uses" value={uses} onChange={setUses} />
@@ -921,7 +970,7 @@ function CouponsPanel() {
           </label>
         </div>
         <Button variant="navy" className="mt-4">
-          Create coupon
+          Issue coupon
         </Button>
       </form>
 
@@ -962,7 +1011,7 @@ function SalesPanel() {
   return (
     <div className="grid gap-8 lg:grid-cols-2">
       <div>
-        <h2 className="font-display text-2xl">Sales</h2>
+        <h2 className="font-display text-2xl">Sales overview</h2>
         <ul className="mt-3 space-y-2 text-sm">
           {sales.map((sale) => (
             <li key={sale.id} className="rounded-md border border-border bg-card px-3 py-2">
@@ -978,7 +1027,7 @@ function SalesPanel() {
         </ul>
       </div>
       <div>
-        <h2 className="font-display text-2xl">Reading log</h2>
+        <h2 className="font-display text-2xl">Reader activity</h2>
         <ul className="mt-3 space-y-2 text-sm">
           {logs.map((log, index) => (
             <li key={`${log.user_id}-${log.book_id}-${index}`} className="rounded-md border border-border bg-card px-3 py-2">
