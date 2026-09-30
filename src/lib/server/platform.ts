@@ -794,7 +794,9 @@ export const adminAccess = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const db = getSupabaseAdmin();
-    const profile = await getAdminProfile(db, context.userId);
+    // Keep admin login consistent with the rest of the session bootstrap: adopt
+    // a pre-seeded profile by email, or create the profile row when missing.
+    const profile = await ensureProfile(db, context.userId);
     return {
       allowed: profile?.role === "admin",
       message:
