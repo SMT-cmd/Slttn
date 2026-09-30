@@ -27,6 +27,7 @@ import { Route as RefundRouteImport } from './routes/refund'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as LibraryIndexRouteImport } from './routes/library/index'
 import { Route as LibrarySlugRouteImport } from './routes/library/$slug'
 import { Route as ReadSlugRouteImport } from './routes/read.$slug'
@@ -123,6 +124,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/admin/login',
+  path: '/admin/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LibraryIndexRoute = LibraryIndexRouteImport.update({
   id: '/library/',
   path: '/library/',
@@ -167,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/refund': typeof RefundRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
+  '/admin/login': typeof AdminLoginRoute
   '/library/$slug': typeof LibrarySlugRoute
   '/read/$slug': typeof ReadSlugRoute
   '/admin/': typeof AdminIndexRoute
@@ -192,6 +199,7 @@ export interface FileRoutesByTo {
   '/refund': typeof RefundRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
+  '/admin/login': typeof AdminLoginRoute
   '/library/$slug': typeof LibrarySlugRoute
   '/read/$slug': typeof ReadSlugRoute
   '/admin': typeof AdminIndexRoute
@@ -218,6 +226,7 @@ export interface FileRoutesById {
   '/refund': typeof RefundRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
+  '/admin/login': typeof AdminLoginRoute
   '/library/$slug': typeof LibrarySlugRoute
   '/read/$slug': typeof ReadSlugRoute
   '/admin/': typeof AdminIndexRoute
@@ -245,6 +254,7 @@ export interface FileRouteTypes {
     | '/refund'
     | '/support'
     | '/terms'
+    | '/admin/login'
     | '/library/$slug'
     | '/read/$slug'
     | '/admin/'
@@ -270,6 +280,7 @@ export interface FileRouteTypes {
     | '/refund'
     | '/support'
     | '/terms'
+    | '/admin/login'
     | '/library/$slug'
     | '/read/$slug'
     | '/admin'
@@ -295,6 +306,7 @@ export interface FileRouteTypes {
     | '/refund'
     | '/support'
     | '/terms'
+    | '/admin/login'
     | '/library/$slug'
     | '/read/$slug'
     | '/admin/'
@@ -321,6 +333,7 @@ export interface RootRouteChildren {
   RefundRoute: typeof RefundRoute
   SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
+  AdminLoginRoute: typeof AdminLoginRoute
   LibrarySlugRoute: typeof LibrarySlugRoute
   ReadSlugRoute: typeof ReadSlugRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -457,6 +470,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/admin/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/library/': {
       id: '/library/'
       path: '/library'
@@ -513,6 +533,7 @@ const rootRouteChildren: RootRouteChildren = {
   RefundRoute: RefundRoute,
   SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
+  AdminLoginRoute: AdminLoginRoute,
   LibrarySlugRoute: LibrarySlugRoute,
   ReadSlugRoute: ReadSlugRoute,
   AdminIndexRoute: AdminIndexRoute,

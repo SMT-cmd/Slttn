@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
+import { signOut } from "@/lib/auth/client";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import {
+  adminAccess,
   adminBooks,
   adminCoupons,
   adminCreateBook,
@@ -22,7 +24,6 @@ import {
   adminSignCloudinaryUpload,
   adminUpdateBook,
   adminUsers,
-  getMe,
   type BookPageRow,
   type BookRow,
 } from "@/lib/server/platform";
@@ -167,6 +168,7 @@ function Admin() {
     "checking",
   );
   const [accessMessage, setAccessMessage] = useState("");
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     if (isPending) {
@@ -193,11 +195,12 @@ function Admin() {
       setAccessMessage("Admin access check timed out. Please reload your session and try again.");
     }, 10000);
 
-    getMe()
-      .then((profile) => {
+    adminAccess()
+      .then((result) => {
         if (cancelled) return;
         window.clearTimeout(timer);
-        setAccessState(profile.role === "admin" ? "allowed" : "locked");
+        setAccessState(result.allowed ? "allowed" : "locked");
+        setAccessMessage(result.message ?? "");
       })
       .catch((error: unknown) => {
         if (cancelled) return;
@@ -216,7 +219,7 @@ function Admin() {
     };
   }, [isPending, user]);
 
-  if (!user && !isPending) return <RedirectToSignIn />;
+  if (!user && !isPending) return <RedirectToSignIn to="/admin/login" />;
   if (isPending || accessState === "checking") {
     return <div className="grid min-h-dvh place-items-center">Checking the desk…</div>;
   }
@@ -234,7 +237,7 @@ function Admin() {
           </p>
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
             <Button asChild variant="navy">
-              <Link to="/login">Go to login</Link>
+              <Link to="/admin/login">Go to admin login</Link>
             </Button>
             <Button asChild variant="outline">
               <Link to="/account">Open account</Link>
@@ -248,14 +251,33 @@ function Admin() {
     return (
       <Shell>
         <div className="mx-auto max-w-lg px-4 py-24 text-center">
-          <h1 className="font-display text-4xl">This desk is locked.</h1>
-          <p className="mt-3 text-muted-foreground">You need admin access.</p>
-          <p className="mt-3 text-sm text-muted-foreground">
-            Ask the owner to set your profile role to admin in Supabase profiles table.
+          <h1 className="font-display text-4xl">Admin access required.</h1>
+          <p className="mt-3 text-muted-foreground">
+            {accessMessage || "This account does not have admin access."}
           </p>
-          <Button asChild variant="navy" className="mt-6">
-            <Link to="/account">Back to account</Link>
-          </Button>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Sign in with an admin account or ask the owner to update your role in the
+            `profiles` table.
+          </p>
+          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+            <Button asChild variant="navy">
+              <Link to="/admin/login">Use another account</Link>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={signingOut}
+              onClick={() => {
+                setSigningOut(true);
+                void signOut("/admin/login").catch(() => {
+                  setSigningOut(false);
+                  toast.error("We couldn't sign you out just yet. Please try again.");
+                });
+              }}
+            >
+              {signingOut ? "Signing out…" : "Sign out"}
+            </Button>
+          </div>
         </div>
       </Shell>
     );

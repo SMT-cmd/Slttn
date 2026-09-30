@@ -179,10 +179,6 @@ function randomCode(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
 
-function requireString(value: string | null | undefined, fallback = "") {
-  return typeof value === "string" ? value : fallback;
-}
-
 function requireNumber(value: number | null | undefined, fallback = 0) {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
@@ -328,6 +324,66 @@ async function getAuthUser(db: SupabaseAdmin, userId: string) {
   return rows?.[0] ?? { id: userId, name: null, email: null };
 }
 
+async function syncProfileFromAuthUser(
+  db: SupabaseAdmin,
+  authUser: AuthUserRow,
+  profile: ProfileRecord,
+) {
+  const updates: Record<string, string | null> = {};
+  if (authUser.email && authUser.email !== profile.email) updates.email = authUser.email;
+  if (authUser.name && !profile.full_name) updates.full_name = authUser.name;
+  if (Object.keys(updates).length > 0) {
+    const refreshed = assertSupabase(
+      await db
+        .from("profiles")
+        .update(updates)
+        .eq("user_id", profile.user_id)
+        .select("*")
+        .limit(1)
+        .single(),
+    ) as ProfileRecord;
+    return syncDerivFromOAuth(db, refreshed);
+  }
+  return syncDerivFromOAuth(db, profile);
+}
+
+async function resolveProfileForSession(db: SupabaseAdmin, userId: string) {
+  const authUser = await getAuthUser(db, userId);
+  const existing = assertSupabase(
+    await db.from("profiles").select("*").eq("user_id", userId).limit(1),
+  ) as ProfileRecord[] | null;
+
+  if (existing?.[0]) {
+    return syncProfileFromAuthUser(db, authUser, existing[0]);
+  }
+
+  if (!authUser.email) {
+    return null;
+  }
+
+  const fallback = assertSupabase(
+    await db.from("profiles").select("*").eq("email", authUser.email).limit(1),
+  ) as ProfileRecord[] | null;
+  const matched = fallback?.[0];
+  if (!matched) {
+    return null;
+  }
+
+  const adopted = matched.user_id === userId
+    ? matched
+    : (assertSupabase(
+        await db
+          .from("profiles")
+          .update({ user_id: userId })
+          .eq("user_id", matched.user_id)
+          .select("*")
+          .limit(1)
+          .single(),
+      ) as ProfileRecord);
+
+  return syncProfileFromAuthUser(db, authUser, adopted);
+}
+
 async function syncDerivFromOAuth(db: SupabaseAdmin, profile: ProfileRecord) {
   const linkedAccounts = assertSupabase(
     await db
@@ -377,31 +433,12 @@ async function syncDerivFromOAuth(db: SupabaseAdmin, profile: ProfileRecord) {
 }
 
 async function ensureProfile(db: SupabaseAdmin, userId: string) {
-  const authUser = await getAuthUser(db, userId);
-  const existing = assertSupabase(
-    await db.from("profiles").select("*").eq("user_id", userId).limit(1),
-  ) as ProfileRecord[] | null;
-
-  if (existing?.[0]) {
-    const current = existing[0];
-    const updates: Record<string, string | null> = {};
-    if (authUser.email && authUser.email !== current.email) updates.email = authUser.email;
-    if (authUser.name && !current.full_name) updates.full_name = authUser.name;
-    if (Object.keys(updates).length > 0) {
-      const refreshed = assertSupabase(
-        await db
-          .from("profiles")
-          .update(updates)
-          .eq("user_id", userId)
-          .select("*")
-          .limit(1)
-          .single(),
-      ) as ProfileRecord;
-      return syncDerivFromOAuth(db, refreshed);
-    }
-    return syncDerivFromOAuth(db, current);
+  const existing = await resolveProfileForSession(db, userId);
+  if (existing) {
+    return existing;
   }
 
+  const authUser = await getAuthUser(db, userId);
   const admins = assertSupabase(
     await db.from("profiles").select("user_id").eq("role", "admin"),
   ) as Array<{ user_id: string }> | null;
@@ -422,9 +459,9 @@ async function ensureProfile(db: SupabaseAdmin, userId: string) {
 }
 
 async function requireAdmin(db: SupabaseAdmin, userId: string) {
-  const profile = await ensureProfile(db, userId);
-  if (profile.role !== "admin") {
-    throw new Error("You need admin access for this page.");
+  const profile = await resolveProfileForSession(db, userId);
+  if (!profile || profile.role !== "admin") {
+    throw new Error("This account does not have admin access.");
   }
   return profile;
 }
@@ -707,6 +744,27 @@ export const getMe = createServerFn({ method: "GET" })
     return ensureProfile(db, context.userId);
   });
 
+export const adminAccess = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const db = getSupabaseAdmin();
+    const profile = await resolveProfileForSession(db, context.userId);
+    return {
+      allowed: profile?.role === "admin",
+      message:
+        profile?.role === "admin" ? null : "This account does not have admin access.",
+      profile,
+    };
+  });
+
+export const authUiConfig = createServerFn({ method: "GET" }).handler(async () => {
+  return {
+    googleEnabled: Boolean(
+      process.env.GOOGLE_CLIENT_ID?.trim() && process.env.GOOGLE_CLIENT_SECRET?.trim(),
+    ),
+  };
+});
+
 export const updateProfileName = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(z.object({ fullName: z.string().min(2).max(80) }))
@@ -889,7 +947,7 @@ export const startCheckout = createServerFn({ method: "POST" })
 
     let amount = 0;
     let book: BookRow | null = null;
-    let purchaseKind = data.kind;
+    const purchaseKind = data.kind;
     if (data.kind === "coupon5") amount = Math.round(PRICING.taggedCouponPublic * 100);
     else if (data.kind === "sub3") {
       amount = Math.round(PRICING.subQuarterly * 100);
