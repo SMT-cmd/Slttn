@@ -491,8 +491,21 @@ async function ensureProfile(db: SupabaseAdmin, userId: string) {
   return syncDerivFromOAuth(db, inserted);
 }
 
+function isMissingPurchaseAmountColumn(error: { message: string } | null) {
+  if (!error) return false;
+  return /amount_cents/i.test(error.message) && /does not exist|column/i.test(error.message);
+}
+
+async function getAdminProfile(db: SupabaseAdmin, userId: string) {
+  const rows = assertSupabase(
+    await db.from("profiles").select("*").eq("user_id", userId).limit(1),
+  ) as ProfileRecord[] | null;
+  const profile = rows?.[0];
+  return profile ? normalizeProfile(profile) : null;
+}
+
 async function requireAdmin(db: SupabaseAdmin, userId: string) {
-  const profile = await resolveProfileForSession(db, userId, { syncDeriv: false });
+  const profile = await getAdminProfile(db, userId);
   if (!profile || profile.role !== "admin") {
     throw new Error("This account does not have admin access.");
   }
@@ -781,7 +794,7 @@ export const adminAccess = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const db = getSupabaseAdmin();
-    const profile = await resolveProfileForSession(db, context.userId, { syncDeriv: false });
+    const profile = await getAdminProfile(db, context.userId);
     return {
       allowed: profile?.role === "admin",
       message:
@@ -1226,17 +1239,22 @@ export const adminOverview = createServerFn({ method: "GET" })
     const tagged = assertSupabase(
       await db.from("profiles").select("user_id").or("deriv_tagged.eq.true,is_tagged.eq.true"),
     ) as Array<{ user_id: string }> | null;
-    const paidRows = assertSupabase(
-      await db.from("purchases").select("amount_cents").eq("status", "paid"),
-    ) as Array<{ amount_cents: number }> | null;
+    const paidRowsResult = await db.from("purchases").select("amount_cents").eq("status", "paid");
+    const paidRows = isMissingPurchaseAmountColumn(paidRowsResult.error)
+      ? null
+      : (assertSupabase(paidRowsResult) as Array<{ amount_cents: number }> | null);
+    const salesCount = paidRows ? paidRows.length : 0;
+    const salesCents = paidRows
+      ? paidRows.reduce((sum, row) => sum + requireNumber(row.amount_cents), 0)
+      : 0;
     const books = assertSupabase(
       await db.from("books").select("id").eq("published", true),
     ) as Array<{ id: string }> | null;
     return {
       users: users?.length ?? 0,
       tagged: tagged?.length ?? 0,
-      salesCount: paidRows?.length ?? 0,
-      salesCents: (paidRows ?? []).reduce((sum, row) => sum + requireNumber(row.amount_cents), 0),
+      salesCount,
+      salesCents,
       books: books?.length ?? 0,
       settings: await getSettingsMap(db),
     };
