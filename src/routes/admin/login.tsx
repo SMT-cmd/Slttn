@@ -75,9 +75,7 @@ function AdminLogin() {
           return;
         }
         setAccessState("blocked");
-        setAccessMessage(
-          result.message ?? "This signed-in account is not assigned the admin role.",
-        );
+        setAccessMessage(result.message ?? "This signed-in email is not allowed to open the admin desk.");
       })
       .catch((error: unknown) => {
         if (cancelled) return;
@@ -110,9 +108,7 @@ function AdminLogin() {
         return;
       }
       setAccessState("blocked");
-      setAccessMessage(
-        access.message ?? "This signed-in account is not assigned the admin role.",
-      );
+      setAccessMessage(access.message ?? "This signed-in email is not allowed to open the admin desk.");
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Something went wrong signing in.";
@@ -146,8 +142,8 @@ function AdminLogin() {
             <div className="rounded-2xl border border-teal-400/20 bg-teal-400/10 p-5">
               <p className="text-sm font-medium text-teal-100">Admin checks</p>
               <p className="mt-2 text-sm text-slate-300">
-                We verify your signed-in account against the `profiles` table before the
-                dashboard opens.
+                We verify your signed-in email against the admin allowlist first, then fall back
+                to any account with the admin role before the dashboard opens.
               </p>
             </div>
           </section>

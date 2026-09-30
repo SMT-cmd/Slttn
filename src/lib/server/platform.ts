@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { isAllowlistedAdminEmail } from "@/lib/admin/access";
 import { authMiddleware } from "@/lib/auth/middleware";
 import {
   getCatalogBookBySlug,
@@ -496,20 +497,44 @@ function isMissingPurchaseAmountColumn(error: { message: string } | null) {
   return /amount_cents/i.test(error.message) && /does not exist|column/i.test(error.message);
 }
 
-async function getAdminProfile(db: SupabaseAdmin, userId: string) {
-  const rows = assertSupabase(
-    await db.from("profiles").select("*").eq("user_id", userId).limit(1),
-  ) as ProfileRecord[] | null;
-  const profile = rows?.[0];
-  return profile ? normalizeProfile(profile) : null;
+async function resolveAdminAccess(db: SupabaseAdmin, userId: string) {
+  const authUser = await getAuthUser(db, userId);
+  const sessionEmail = authUser.email?.trim() ?? null;
+  const profile = await resolveProfileForSession(db, userId, { syncDeriv: false });
+
+  if (isAllowlistedAdminEmail(sessionEmail)) {
+    return {
+      allowed: true,
+      message: null,
+      profile,
+    };
+  }
+
+  if (profile?.role === "admin") {
+    return { allowed: true, message: null, profile };
+  }
+
+  if (!sessionEmail) {
+    return {
+      allowed: false,
+      message: "We found your session, but this account email could not be verified for admin access.",
+      profile,
+    };
+  }
+
+  return {
+    allowed: false,
+    message: "This signed-in email is not allowed to open the admin desk.",
+    profile,
+  };
 }
 
 async function requireAdmin(db: SupabaseAdmin, userId: string) {
-  const profile = await getAdminProfile(db, userId);
-  if (!profile || profile.role !== "admin") {
-    throw new Error("This account does not have admin access.");
+  const access = await resolveAdminAccess(db, userId);
+  if (!access.allowed) {
+    throw new Error(access.message ?? "This account does not have admin access.");
   }
-  return profile;
+  return access.profile;
 }
 
 async function loadBooksWithPages(includeUnpublished = false) {
@@ -794,19 +819,7 @@ export const adminAccess = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const db = getSupabaseAdmin();
-    // Keep admin login consistent with the rest of the session bootstrap: adopt
-    // a pre-seeded profile by email, or create the profile row when missing.
-    const profile = await ensureProfile(db, context.userId);
-    return {
-      allowed: profile?.role === "admin",
-      message:
-        profile?.role === "admin"
-          ? null
-          : profile
-            ? "This signed-in account is not assigned the admin role."
-            : "We found your session, but this account is not configured for admin access.",
-      profile,
-    };
+    return resolveAdminAccess(db, context.userId);
   });
 
 export const authUiConfig = createServerFn({ method: "GET" }).handler(async () => {
