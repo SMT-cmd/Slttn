@@ -32,6 +32,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/utils";
 
+const ADMIN_ACCESS_TIMEOUT_MS = 10_000;
+
 export const Route = createFileRoute("/admin/")({ component: Admin });
 
 type TabKey = "overview" | "books" | "users" | "coupons" | "sales";
@@ -174,8 +176,8 @@ function Admin() {
     if (isPending) {
       const timer = window.setTimeout(() => {
         setAccessState("error");
-        setAccessMessage("Admin access is taking too long to confirm. Try signing in again.");
-      }, 10000);
+        setAccessMessage("Admin session check timed out. Reload or sign in again to continue.");
+      }, ADMIN_ACCESS_TIMEOUT_MS);
       return () => window.clearTimeout(timer);
     }
 
@@ -191,9 +193,10 @@ function Admin() {
 
     const timer = window.setTimeout(() => {
       if (cancelled) return;
+      cancelled = true;
       setAccessState("error");
-      setAccessMessage("Admin access check timed out. Please reload your session and try again.");
-    }, 10000);
+      setAccessMessage("Admin access check timed out. Reload your session or return to admin login.");
+    }, ADMIN_ACCESS_TIMEOUT_MS);
 
     adminAccess()
       .then((result) => {
@@ -219,10 +222,6 @@ function Admin() {
     };
   }, [isPending, user]);
 
-  if (!user && !isPending) return <RedirectToSignIn to="/admin/login" />;
-  if (isPending || accessState === "checking") {
-    return <div className="grid min-h-dvh place-items-center">Checking admin access…</div>;
-  }
   if (accessState === "error") {
     return (
       <Shell>
@@ -232,6 +231,9 @@ function Admin() {
             {accessMessage || "Please refresh your sign-in session and try again."}
           </p>
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+            <Button type="button" variant="outline" onClick={() => window.location.reload()}>
+              Reload this page
+            </Button>
             <Button asChild variant="navy">
               <Link to="/admin/login">Go to admin login</Link>
             </Button>
@@ -240,6 +242,7 @@ function Admin() {
       </Shell>
     );
   }
+  if (!user && !isPending) return <RedirectToSignIn to="/admin/login" />;
   if (accessState === "locked") {
     return (
       <Shell>
@@ -274,6 +277,9 @@ function Admin() {
         </div>
       </Shell>
     );
+  }
+  if (isPending || accessState === "checking") {
+    return <div className="grid min-h-dvh place-items-center">Checking admin access…</div>;
   }
 
   return (
