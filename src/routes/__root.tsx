@@ -30,7 +30,7 @@ export const Route = createRootRoute({
         return origin;
       }
     })();
-    const ogImage = `${origin}${SITE.ogImagePath}`;
+    const ogImage = `${SITE.url}${SITE.ogImagePath}`;
 
     return {
       meta: [
@@ -61,9 +61,11 @@ export const Route = createRootRoute({
       ],
       links: [
         { rel: "canonical", href: shareUrl },
-        { rel: "icon", type: "image/png", href: "/brand/slt-logo.png" },
-        { rel: "shortcut icon", href: "/brand/slt-logo.png" },
-        { rel: "apple-touch-icon", href: "/brand/slt-logo.png" },
+        { rel: "icon", href: "/favicon.ico", sizes: "any" },
+        { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32x32.png" },
+        { rel: "icon", type: "image/png", sizes: "16x16", href: "/favicon-16x16.png" },
+        { rel: "shortcut icon", href: "/favicon.ico" },
+        { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" },
         { rel: "manifest", href: "/__grok/manifest.webmanifest" },
         { rel: "stylesheet", href: appCss },
         { rel: "preconnect", href: "https://fonts.googleapis.com" },

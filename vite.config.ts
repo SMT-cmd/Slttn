@@ -143,6 +143,47 @@ function authPopupPlugin(): Plugin {
   };
 }
 
+function sitemapPlugin(): Plugin {
+  return {
+    name: "app-builder:sitemap",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        try {
+          const rawUrl = req.url ?? "";
+          const pathOnly = rawUrl.split("?", 1)[0] ?? "";
+          if (pathOnly !== "/sitemap.xml") {
+            next();
+            return;
+          }
+          if ((req.method ?? "GET").toUpperCase() !== "GET") {
+            res.statusCode = 405;
+            res.setHeader("content-type", "text/plain; charset=utf-8");
+            res.end("Method Not Allowed");
+            return;
+          }
+
+          const mod = (await server.ssrLoadModule("/src/lib/server/sitemap.ts")) as {
+            renderSitemapXml: () => Promise<string>;
+          };
+          const xml = await mod.renderSitemapXml();
+          res.statusCode = 200;
+          res.setHeader("content-type", "application/xml; charset=utf-8");
+          res.setHeader("cache-control", "no-cache");
+          res.end(xml);
+        } catch (err) {
+          console.error("[app-builder] /sitemap.xml handler failed:", err);
+          if (!res.headersSent) {
+            res.statusCode = 500;
+            res.setHeader("content-type", "text/plain; charset=utf-8");
+            res.end("sitemap generation failed");
+          }
+        }
+      });
+    },
+  };
+}
+
 function shouldIgnoreUseClientDirectiveWarning(
   warning: { code?: string; id?: string; message?: string },
 ): boolean {
@@ -195,6 +236,7 @@ export default defineConfig(({ command, isPreview }) => ({
   },
   plugins: [
     pgliteBootstrapPlugin(),
+    sitemapPlugin(),
     // Before tanstackStart so /auth/popup never falls through to the SPA.
     authPopupPlugin(),
     // Dev-only /__app-env, read by scripts/check-auth-invariant.mjs.
