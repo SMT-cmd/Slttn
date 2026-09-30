@@ -241,8 +241,8 @@ function Admin() {
             {accessMessage || "This account does not have admin access."}
           </p>
           <p className="mt-3 text-sm text-muted-foreground">
-            Sign in with an admin account or ask the owner to update your role in the
-            `profiles` table.
+            Sign in with an approved admin account or ask the owner to add your email to the
+            admin allowlist.
           </p>
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
             <Button asChild variant="navy">

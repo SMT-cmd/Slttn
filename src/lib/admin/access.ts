@@ -5,6 +5,24 @@ export type AdminAccessPayload = {
 
 export const ADMIN_ACCESS_TIMEOUT_MS = 10_000;
 
+function normalizeAdminEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+export function parseAdminEmails(raw = process.env.ADMIN_EMAILS ?? "") {
+  return new Set(
+    raw
+      .split(",")
+      .map((email) => normalizeAdminEmail(email))
+      .filter(Boolean),
+  );
+}
+
+export function isAllowlistedAdminEmail(email: string | null | undefined, raw = process.env.ADMIN_EMAILS ?? "") {
+  if (!email) return false;
+  return parseAdminEmails(raw).has(normalizeAdminEmail(email));
+}
+
 export async function runAdminAccessCheck<T extends AdminAccessPayload>(
   check: () => Promise<T>,
   timeoutMs = ADMIN_ACCESS_TIMEOUT_MS,
