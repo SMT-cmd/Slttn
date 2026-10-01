@@ -1,5 +1,12 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type ChangeEvent,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { toast } from "sonner";
 import { Shell } from "@/components/layout/shell";
 import { Button } from "@/components/ui/button";
@@ -55,12 +62,19 @@ type LogsData = NonNullable<Awaited<ReturnType<typeof adminLogs>>>;
 type SignedUpload = Awaited<ReturnType<typeof adminSignCloudinaryUpload>>;
 type BookDraft = AdminBookWorkspaceDraft;
 
+type CommunityLinkForm = {
+  id: string;
+  label: string;
+  url: string;
+};
+
 type SettingsForm = {
   global_prelaunch: boolean;
   partner_code: string;
   support_email: string;
   telegram_url: string;
   whatsapp_url: string;
+  community_links: CommunityLinkForm[];
 };
 
 type QueryState<T> =
@@ -89,9 +103,12 @@ type CouponForm = {
 
 type PageUploadProgress = {
   active: boolean;
+  stage: "idle" | "uploading" | "saving" | "done";
   total: number;
+  completed: number;
   uploaded: number;
   failed: number;
+  failedFiles: string[];
 };
 
 const EMPTY_BOOK: NewBookForm = {
@@ -145,6 +162,38 @@ function createBookDraft(book: BookRow): BookDraft {
   };
 }
 
+function createCommunityLink(
+  patch: Partial<CommunityLinkForm> = {},
+  index = 0,
+): CommunityLinkForm {
+  const label = typeof patch.label === "string" ? patch.label : "";
+  const url = typeof patch.url === "string" ? patch.url : "";
+  return {
+    id: patch.id ?? `community-link-${index}-${label || "new"}-${url || "link"}`,
+    label,
+    url,
+  };
+}
+
+function normalizeCommunityLinks(value: unknown): CommunityLinkForm[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry, index) => {
+      if (!entry || typeof entry !== "object") return null;
+      const record = entry as Record<string, unknown>;
+      if (typeof record.label !== "string" || typeof record.url !== "string") return null;
+      return createCommunityLink(
+        {
+          id: typeof record.id === "string" ? record.id : undefined,
+          label: record.label,
+          url: record.url,
+        },
+        index,
+      );
+    })
+    .filter((entry): entry is CommunityLinkForm => entry !== null);
+}
+
 function normalizeSettings(settings: Record<string, unknown>): SettingsForm {
   return {
     global_prelaunch:
@@ -153,6 +202,7 @@ function normalizeSettings(settings: Record<string, unknown>): SettingsForm {
     support_email: typeof settings.support_email === "string" ? settings.support_email : "",
     telegram_url: typeof settings.telegram_url === "string" ? settings.telegram_url : "",
     whatsapp_url: typeof settings.whatsapp_url === "string" ? settings.whatsapp_url : "",
+    community_links: normalizeCommunityLinks(settings.community_links),
   };
 }
 
@@ -161,6 +211,29 @@ function formatDateTime(value: string | null | undefined) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleString();
+}
+
+function formatRoleLabel(role: string | null | undefined) {
+  if (!role) return "Member";
+  return role
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function getMemberName(user: UsersData[number]) {
+  return user.full_name?.trim() || user.email?.trim() || "Unnamed member";
+}
+
+function getPageUploadMessage(progress: PageUploadProgress) {
+  if (progress.stage === "saving") return "Saving pages to library…";
+  if (progress.stage === "done") {
+    return `Done: ${progress.uploaded} uploaded, ${progress.failed} failed`;
+  }
+  if (progress.stage === "uploading") {
+    const current = Math.min(progress.completed, progress.total);
+    return `Uploading ${current} of ${progress.total}…`;
+  }
+  return "";
 }
 
 function PanelStateCard({
@@ -200,7 +273,7 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`h-10 rounded-md px-4 text-sm capitalize ${
+      className={`h-10 rounded-md px-4 text-sm ${
         active ? "bg-navy text-navy-foreground" : "bg-muted"
       }`}
     >
@@ -261,7 +334,7 @@ function Admin() {
   const handleClearDraft = useCallback(() => {
     clearAdminWorkspace();
     setWorkspace((current) => ({ ...defaultAdminWorkspace(), activeTab: current.activeTab }));
-    toast.success("Admin workspace draft cleared.");
+    toast.success("Draft cleared.");
   }, []);
 
   if (gate.status === "denied") {
@@ -302,8 +375,8 @@ function Admin() {
             <p className="text-xs tracking-[0.18em] uppercase text-muted-foreground">Admin</p>
             <h1 className="mt-2 font-display text-5xl">Platform dashboard</h1>
             <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
-              Manage books, covers, pages, coupons, users, sales, and settings with a
-              persistent local workspace.
+              Run books, members, sales, coupons, and site settings from one workspace
+              that stays open after refresh.
             </p>
           </div>
           <Button
@@ -342,11 +415,11 @@ function Admin() {
         ) : null}
 
         <div className="mt-6 flex flex-wrap gap-2">
-          <TabButton active={workspace.activeTab === "overview"} label="overview" onClick={() => setTab("overview")} />
-          <TabButton active={workspace.activeTab === "books"} label="books" onClick={() => setTab("books")} />
-          <TabButton active={workspace.activeTab === "users"} label="users" onClick={() => setTab("users")} />
-          <TabButton active={workspace.activeTab === "coupons"} label="coupons" onClick={() => setTab("coupons")} />
-          <TabButton active={workspace.activeTab === "sales"} label="sales" onClick={() => setTab("sales")} />
+          <TabButton active={workspace.activeTab === "overview"} label="Overview" onClick={() => setTab("overview")} />
+          <TabButton active={workspace.activeTab === "books"} label="Books" onClick={() => setTab("books")} />
+          <TabButton active={workspace.activeTab === "users"} label="Members" onClick={() => setTab("users")} />
+          <TabButton active={workspace.activeTab === "coupons"} label="Coupons" onClick={() => setTab("coupons")} />
+          <TabButton active={workspace.activeTab === "sales"} label="Sales" onClick={() => setTab("sales")} />
         </div>
 
         <div className="mt-8">
@@ -413,10 +486,10 @@ function HomePanel() {
   return (
     <div className="grid gap-4 xl:grid-cols-5">
       {[
-        ["Users", String(data.users)],
-        ["Tagged", String(data.tagged)],
-        ["Paid Sales", String(data.salesCount)],
-        ["Sales Amount", formatMoney(data.salesCents / 100)],
+        ["Members", String(data.users)],
+        ["Tagged members", String(data.tagged)],
+        ["Paid orders", String(data.salesCount)],
+        ["Revenue", formatMoney(data.salesCents / 100)],
         ["Books", String(data.books)],
       ].map(([label, value]) => (
         <div key={label} className="rounded-xl border border-border bg-card p-5">
@@ -429,13 +502,28 @@ function HomePanel() {
         className="xl:col-span-5 rounded-xl border border-border bg-card p-5"
         onSubmit={async (event) => {
           event.preventDefault();
+          const hasHalfFilledCommunityLink = form.community_links.some(
+            (link) =>
+              (link.label.trim().length > 0 || link.url.trim().length > 0) &&
+              (link.label.trim().length === 0 || link.url.trim().length === 0),
+          );
+          if (hasHalfFilledCommunityLink) {
+            toast.error("Each community link needs both a name and a link.");
+            return;
+          }
+
           setSaving(true);
+          const communityLinks = form.community_links
+            .map((link) => ({ label: link.label.trim(), url: link.url.trim() }))
+            .filter((link) => link.label.length > 0 && link.url.length > 0);
+
           const saves: Array<[string, string]> = [
             ["global_prelaunch", String(form.global_prelaunch)],
             ["partner_code", form.partner_code],
             ["support_email", form.support_email],
             ["telegram_url", form.telegram_url],
             ["whatsapp_url", form.whatsapp_url],
+            ["community_links", JSON.stringify(communityLinks)],
           ];
           try {
             await Promise.all(
@@ -444,62 +532,179 @@ function HomePanel() {
             await loadOverview();
             toast.success("Settings saved.");
           } catch (error) {
-            toast.error(error instanceof Error ? error.message : "Could not save settings.");
+            toast.error(error instanceof Error ? error.message : "We could not save your settings.");
           } finally {
             setSaving(false);
           }
         }}
       >
         <div className="mb-4">
-          <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">Settings</p>
+          <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">Site settings</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Save global prelaunch mode, partner code, and support links without leaving
-            the admin area.
+            Update launch mode, support details, and community links for the public site.
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <label className="rounded-lg border border-border bg-background p-4 text-sm">
-            <span className="flex items-center gap-2">
+            <span className="block font-medium">Pre-launch mode</span>
+            <span className="mt-1 block text-sm text-muted-foreground">
+              Turn this on to keep the public site in pre-launch mode.
+            </span>
+            <span className="mt-3 flex items-center gap-2">
               <input
                 type="checkbox"
                 checked={form.global_prelaunch}
+                disabled={saving}
                 onChange={(event) =>
                   setForm((current) =>
                     current ? { ...current, global_prelaunch: event.target.checked } : current,
                   )
                 }
               />
-              Global prelaunch
+              Keep pre-launch mode on
             </span>
           </label>
           <Field
             label="Partner code"
+            helperText="Use this when you need to match a partner code on the public site."
             value={form.partner_code}
+            disabled={saving}
             onChange={(value) =>
               setForm((current) => (current ? { ...current, partner_code: value } : current))
             }
           />
           <Field
             label="Support email"
+            helperText="This email is shown on the public site for support questions."
             value={form.support_email}
+            disabled={saving}
+            type="email"
             onChange={(value) =>
               setForm((current) => (current ? { ...current, support_email: value } : current))
             }
           />
           <Field
-            label="Telegram URL"
+            label="Telegram link"
+            helperText="Add the main Telegram link for your public site."
             value={form.telegram_url}
+            disabled={saving}
             onChange={(value) =>
               setForm((current) => (current ? { ...current, telegram_url: value } : current))
             }
           />
           <Field
-            label="WhatsApp URL"
+            label="WhatsApp link"
+            helperText="Add the main WhatsApp link for your public site."
             value={form.whatsapp_url}
+            disabled={saving}
             onChange={(value) =>
               setForm((current) => (current ? { ...current, whatsapp_url: value } : current))
             }
           />
+        </div>
+        <div className="mt-4 rounded-xl border border-border bg-background p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="font-medium">Community links</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Add the links shown in your public community section, such as WhatsApp
+                Community, Telegram Channel, or Support Group.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={saving}
+              onClick={() =>
+                setForm((current) =>
+                  current
+                    ? {
+                        ...current,
+                        community_links: [
+                          ...current.community_links,
+                          createCommunityLink({}, current.community_links.length),
+                        ],
+                      }
+                    : current,
+                )
+              }
+            >
+              Add link
+            </Button>
+          </div>
+          <div className="mt-4 space-y-4">
+            {form.community_links.map((link) => (
+              <div
+                key={link.id}
+                className="grid gap-3 rounded-lg border border-border bg-card p-3 md:grid-cols-[1fr_1.4fr_auto]"
+              >
+                <Field
+                  label="Link name"
+                  helperText="Examples: WhatsApp Community, Telegram Channel, Support Group."
+                  value={link.label}
+                  disabled={saving}
+                  onChange={(value) =>
+                    setForm((current) =>
+                      current
+                        ? {
+                            ...current,
+                            community_links: current.community_links.map((entry) =>
+                              entry.id === link.id ? { ...entry, label: value } : entry,
+                            ),
+                          }
+                        : current,
+                    )
+                  }
+                />
+                <Field
+                  label="Link URL"
+                  helperText="Paste the full public link."
+                  value={link.url}
+                  disabled={saving}
+                  onChange={(value) =>
+                    setForm((current) =>
+                      current
+                        ? {
+                            ...current,
+                            community_links: current.community_links.map((entry) =>
+                              entry.id === link.id ? { ...entry, url: value } : entry,
+                            ),
+                          }
+                        : current,
+                    )
+                  }
+                />
+                <div className="flex items-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={saving}
+                    onClick={() =>
+                      setForm((current) =>
+                        current
+                          ? {
+                              ...current,
+                              community_links: current.community_links.filter(
+                                (entry) => entry.id !== link.id,
+                              ),
+                            }
+                          : current,
+                      )
+                    }
+                  >
+                    Remove
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {form.community_links.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No community links yet. Add your first public group link.
+              </p>
+            ) : null}
+          </div>
         </div>
         <Button type="submit" variant="navy" className="mt-4" disabled={saving}>
           {saving ? "Saving settings…" : "Save settings"}
@@ -515,7 +720,7 @@ function BooksPanel({
   clearWorkspaceDraft,
 }: {
   workspace: AdminWorkspaceDraft;
-  setWorkspace: React.Dispatch<React.SetStateAction<AdminWorkspaceDraft>>;
+  setWorkspace: Dispatch<SetStateAction<AdminWorkspaceDraft>>;
   clearWorkspaceDraft: () => void;
 }) {
   const [booksState, setBooksState] = useState<QueryState<BookRow[]>>(() => createLoadingState());
@@ -523,12 +728,17 @@ function BooksPanel({
   const [creating, setCreating] = useState(false);
 
   const updateSelectedBook = useCallback(
-    (book: BookRow | null) => {
+    (book: BookRow | null, options?: { preserveDraft?: boolean }) => {
       setWorkspace((current) => ({
         ...current,
         activeTab: "books",
         selectedBookId: book?.id ?? null,
-        draft: book ? createBookDraft(book) : null,
+        draft:
+          book && options?.preserveDraft && current.draft?.id === book.id
+            ? current.draft
+            : book
+              ? createBookDraft(book)
+              : null,
       }));
     },
     [setWorkspace],
@@ -543,7 +753,7 @@ function BooksPanel({
         const preferred = rows.find((book) => book.id === (preferredBookId ?? workspace.selectedBookId));
         const currentMatch = rows.find((book) => book.id === workspace.selectedBookId);
         const nextBook = preferred ?? currentMatch ?? rows[0] ?? null;
-        updateSelectedBook(nextBook);
+        updateSelectedBook(nextBook, { preserveDraft: true });
       } catch (error: unknown) {
         setBooksState(createErrorState(error, "Could not load books."));
       }
@@ -585,25 +795,46 @@ function BooksPanel({
       >
         <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">Create book</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Create a book, then continue editing it from the admin workspace.
+          Add the main details first, then keep editing cover images and pages below.
         </p>
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <Field label="Title" value={newBook.title} onChange={(value) => setNewBook((current) => ({ ...current, title: value }))} />
-          <Field label="Subtitle" value={newBook.subtitle} onChange={(value) => setNewBook((current) => ({ ...current, subtitle: value }))} />
-          <Field label="Slug" value={newBook.slug} onChange={(value) => setNewBook((current) => ({ ...current, slug: value }))} />
-          <Field label="Category" value={newBook.category} onChange={(value) => setNewBook((current) => ({ ...current, category: value }))} />
+          <Field
+            label="Book title"
+            helperText="This is the name members will see in the library."
+            value={newBook.title}
+            disabled={creating}
+            onChange={(value) => setNewBook((current) => ({ ...current, title: value }))}
+          />
+          <Field
+            label="Short description"
+            helperText="Use one short line to explain what this book is about."
+            value={newBook.subtitle}
+            disabled={creating}
+            onChange={(value) => setNewBook((current) => ({ ...current, subtitle: value }))}
+          />
+          <Field
+            label="Category"
+            helperText="Choose the shelf or topic this book belongs to."
+            value={newBook.category}
+            disabled={creating}
+            onChange={(value) => setNewBook((current) => ({ ...current, category: value }))}
+          />
           <SelectField
             label="Size"
+            helperText="Tell readers whether this is a short, medium, or full read."
             value={newBook.size}
             options={["short", "medium", "full"]}
+            disabled={creating}
             onChange={(value) =>
               setNewBook((current) => ({ ...current, size: value as NewBookForm["size"] }))
             }
           />
           <SelectField
             label="Launch mode"
+            helperText="Choose whether this book follows pre-launch access or full launch access."
             value={newBook.launch_mode}
             options={["prelaunch", "launch"]}
+            disabled={creating}
             onChange={(value) =>
               setNewBook((current) => ({
                 ...current,
@@ -613,20 +844,33 @@ function BooksPanel({
           />
         </div>
         <label className="mt-4 block text-sm">
-          <span className="mb-2 block text-muted-foreground">Blurb</span>
+          <span className="mb-2 block font-medium">Full description</span>
+          <span className="mb-2 block text-sm text-muted-foreground">
+            Share the longer description shown on the book page.
+          </span>
           <textarea
             value={newBook.blurb}
+            disabled={creating}
             onChange={(event) => setNewBook((current) => ({ ...current, blurb: event.target.value }))}
             className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2"
           />
         </label>
-        <label className="mt-4 flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={newBook.published}
-            onChange={(event) => setNewBook((current) => ({ ...current, published: event.target.checked }))}
-          />
-          Published
+        <label className="mt-4 block rounded-lg border border-border bg-background p-4 text-sm">
+          <span className="block font-medium">Publish this book</span>
+          <span className="mt-1 block text-sm text-muted-foreground">
+            Turn this on if the book should appear on the public site right away.
+          </span>
+          <span className="mt-3 flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={newBook.published}
+              disabled={creating}
+              onChange={(event) =>
+                setNewBook((current) => ({ ...current, published: event.target.checked }))
+              }
+            />
+            Show this book on the public site
+          </span>
         </label>
         <Button type="submit" variant="navy" className="mt-4" disabled={creating}>
           {creating ? "Creating book…" : "Create book"}
@@ -676,10 +920,12 @@ function BooksPanel({
                   >
                     <p className="font-medium">{book.title}</p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {book.slug} · {book.pages?.length ?? 0} pages
+                      {book.category} · {book.pages?.length ?? 0} page
+                      {(book.pages?.length ?? 0) === 1 ? "" : "s"}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {book.published ? "Published" : "Unpublished"} · sort {book.sort_order}
+                      {book.published ? "Visible on site" : "Hidden from site"} · shelf order{" "}
+                      {book.sort_order}
                     </p>
                   </button>
                 );
@@ -713,7 +959,7 @@ function BooksPanel({
             ) : (
               <PanelStateCard
                 title="Select a book"
-                message="Choose a book from the list to edit covers, pages, coupons, and metadata."
+                message="Choose a book from the list to edit details, cover image, and pages."
               />
             )}
           </div>
@@ -745,9 +991,12 @@ function BookEditor({
   const [coverUploading, setCoverUploading] = useState(false);
   const [pageUploadProgress, setPageUploadProgress] = useState<PageUploadProgress>({
     active: false,
+    stage: "idle",
     total: 0,
+    completed: 0,
     uploaded: 0,
     failed: 0,
+    failedFiles: [],
   });
   const [reordering, setReordering] = useState(false);
   const [deletingPageId, setDeletingPageId] = useState<string | null>(null);
@@ -811,9 +1060,9 @@ function BookEditor({
       await adminSaveBookCover({ data: { id: draft.id, coverUrl } });
       onDraftChange({ ...draft, cover_url: coverUrl });
       await onReload(draft.id);
-      toast.success("Cover updated.");
+      toast.success("Cover image updated.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Cover upload failed.");
+      toast.error(error instanceof Error ? error.message : "We could not upload the cover image.");
     } finally {
       event.target.value = "";
       setCoverUploading(false);
@@ -826,9 +1075,12 @@ function BookEditor({
 
     setPageUploadProgress({
       active: true,
+      stage: "uploading",
       total: files.length,
+      completed: 0,
       uploaded: 0,
       failed: 0,
+      failedFiles: [],
     });
 
     const uploadedUrls: string[] = [];
@@ -857,33 +1109,53 @@ function BookEditor({
 
         setPageUploadProgress((current) => ({
           ...current,
+          stage: "uploading",
+          completed: uploadedUrls.length + failedFiles.length,
           uploaded: uploadedUrls.length,
           failed: failedFiles.length,
+          failedFiles: [...failedFiles],
         }));
       }
 
       if (uploadedUrls.length > 0) {
-        const nextPages = await adminCreateBookPages({
-          data: { bookId: draft.id, imageUrls: uploadedUrls },
-        });
-        setPages(nextPages);
-        await onReload(draft.id);
+        setPageUploadProgress((current) => ({
+          ...current,
+          stage: "saving",
+          completed: current.total,
+        }));
+        try {
+          const nextPages = await adminCreateBookPages({
+            data: { bookId: draft.id, imageUrls: uploadedUrls },
+          });
+          setPages(nextPages);
+          await onReload(draft.id);
+        } catch (error) {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "We uploaded the images, but we could not save the pages yet.",
+          );
+          return;
+        }
       }
 
+      const summary = `Done: ${uploadedUrls.length} uploaded, ${failedFiles.length} failed`;
       if (uploadedUrls.length > 0 && failedFiles.length === 0) {
-        toast.success(`Uploaded ${uploadedUrls.length} page image${uploadedUrls.length === 1 ? "" : "s"}.`);
+        toast.success(summary);
       } else if (uploadedUrls.length > 0) {
-        toast.success(
-          `Uploaded ${uploadedUrls.length} of ${files.length} page images. ${failedFiles.length} failed.`,
-        );
+        toast.success(summary);
       } else {
-        toast.error(`All ${files.length} page uploads failed.`);
+        toast.error(`Done: 0 uploaded, ${failedFiles.length} failed`);
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Page upload failed.");
+      toast.error(error instanceof Error ? error.message : "We could not upload those page images.");
     } finally {
       event.target.value = "";
-      setPageUploadProgress((current) => ({ ...current, active: false }));
+      setPageUploadProgress((current) => ({
+        ...current,
+        active: false,
+        stage: "done",
+      }));
     }
   }
 
@@ -954,7 +1226,10 @@ function BookEditor({
             />
           </div>
           <label className="mt-3 block text-sm">
-            <span className="mb-2 block text-muted-foreground">Replace cover</span>
+            <span className="mb-2 block font-medium">Cover image</span>
+            <span className="mb-2 block text-sm text-muted-foreground">
+              Upload a new cover image for this book.
+            </span>
             <input
               type="file"
               accept="image/*"
@@ -969,56 +1244,94 @@ function BookEditor({
 
         <div>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Title" value={draft.title} onChange={(value) => applyDraftPatch({ title: value })} />
-            <Field label="Subtitle" value={draft.subtitle} onChange={(value) => applyDraftPatch({ subtitle: value })} />
-            <Field label="Slug" value={draft.slug} onChange={(value) => applyDraftPatch({ slug: value })} />
-            <Field label="Category" value={draft.category} onChange={(value) => applyDraftPatch({ category: value })} />
             <Field
-              label="Sort order"
+              label="Book title"
+              helperText="This is the name shown in the library."
+              value={draft.title}
+              disabled={isBusy}
+              onChange={(value) => applyDraftPatch({ title: value })}
+            />
+            <Field
+              label="Short description"
+              helperText="Use a short line that helps members recognize the book."
+              value={draft.subtitle}
+              disabled={isBusy}
+              onChange={(value) => applyDraftPatch({ subtitle: value })}
+            />
+            <Field
+              label="Category"
+              helperText="Choose the shelf or topic for this book."
+              value={draft.category}
+              disabled={isBusy}
+              onChange={(value) => applyDraftPatch({ category: value })}
+            />
+            <Field
+              label="Shelf order"
+              helperText="Lower numbers appear first in the library."
               value={String(draft.sort_order)}
+              disabled={isBusy}
               onChange={(value) =>
                 applyDraftPatch({ sort_order: Number.parseInt(value || "0", 10) || 0 })
               }
             />
             <SelectField
               label="Size"
+              helperText="Choose the reading size shown to members."
               value={draft.size}
               options={["short", "medium", "full"]}
+              disabled={isBusy}
               onChange={(value) => applyDraftPatch({ size: value as BookDraft["size"] })}
             />
             <SelectField
               label="Launch mode"
+              helperText="Choose whether this book follows pre-launch access or full launch access."
               value={draft.launch_mode}
               options={["prelaunch", "launch"]}
+              disabled={isBusy}
               onChange={(value) =>
                 applyDraftPatch({ launch_mode: value as BookDraft["launch_mode"] })
               }
             />
-            <label className="flex items-end gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm">
-              <input
-                type="checkbox"
-                checked={draft.published}
-                onChange={(event) => applyDraftPatch({ published: event.target.checked })}
-              />
-              Published
+            <label className="rounded-md border border-border bg-background px-3 py-2 text-sm">
+              <span className="block font-medium">Show this book on the public site</span>
+              <span className="mt-1 block text-sm text-muted-foreground">
+                Turn this off to hide the book while you keep editing it.
+              </span>
+              <span className="mt-3 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={draft.published}
+                  disabled={isBusy}
+                  onChange={(event) => applyDraftPatch({ published: event.target.checked })}
+                />
+                {draft.published ? "Visible on site" : "Hidden from site"}
+              </span>
             </label>
           </div>
 
           <label className="mt-4 block text-sm">
-            <span className="mb-2 block text-muted-foreground">Blurb</span>
+            <span className="mb-2 block font-medium">Full description</span>
+            <span className="mb-2 block text-sm text-muted-foreground">
+              Save the longer description shown on the book page.
+            </span>
             <textarea
               value={draft.blurb}
+              disabled={isBusy}
               onChange={(event) => applyDraftPatch({ blurb: event.target.value })}
               className="min-h-32 w-full rounded-md border border-border bg-background px-3 py-2"
             />
           </label>
 
           <label className="mt-4 block text-sm">
-            <span className="mb-2 block text-muted-foreground">Admin note</span>
+            <span className="mb-2 block font-medium">Workspace note</span>
+            <span className="mb-2 block text-sm text-muted-foreground">
+              Keep a local note for your next editing session.
+            </span>
             <textarea
               value={note}
+              disabled={isBusy}
               onChange={(event) => onNoteChange(event.target.value)}
-              placeholder="Optional workspace note"
+              placeholder="Optional note for your next visit"
               className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2"
             />
           </label>
@@ -1033,19 +1346,7 @@ function BookEditor({
               onClick={() => void saveBook({ published: !draft.published })}
               disabled={isBusy}
             >
-              {draft.published ? "Unpublish" : "Publish"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                applyDraftPatch({
-                  launch_mode: draft.launch_mode === "prelaunch" ? "launch" : "prelaunch",
-                })
-              }
-              disabled={isBusy}
-            >
-              Toggle launch mode
+              {draft.published ? "Hide this book" : "Publish this book"}
             </Button>
             <Button type="button" variant="outline" onClick={onClearDraft} disabled={isBusy}>
               Clear draft
@@ -1078,17 +1379,26 @@ function BookEditor({
               <div>
                 <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">Book pages</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Upload page images, preview them at full size, reorder them, or remove one page.
+                  Upload page images, preview them full size, reorder them, or remove one page.
                 </p>
-                {pageUploadProgress.active ? (
+                {pageUploadProgress.stage !== "idle" ? (
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Uploaded {pageUploadProgress.uploaded} of {pageUploadProgress.total}
-                    {pageUploadProgress.failed > 0 ? ` · ${pageUploadProgress.failed} failed` : ""}
+                    {getPageUploadMessage(pageUploadProgress)}
                   </p>
+                ) : null}
+                {pageUploadProgress.failedFiles.length > 0 ? (
+                  <div className="mt-2 text-sm text-muted-foreground">
+                    <p>Files that could not be uploaded:</p>
+                    <p>{pageUploadProgress.failedFiles.join(", ")}</p>
+                  </div>
                 ) : null}
               </div>
               <label className="text-sm">
-                <span className="mb-2 block text-muted-foreground">Upload page images</span>
+                <span className="mb-2 block font-medium">Upload page images</span>
+                <span className="mb-2 block text-sm text-muted-foreground">
+                  Choose one or many images. We upload a few at a time and keep going if one
+                  file fails.
+                </span>
                 <input
                   type="file"
                   accept="image/*"
@@ -1100,7 +1410,9 @@ function BookEditor({
             </div>
 
             {pages.length === 0 ? (
-              <p className="mt-4 text-sm text-muted-foreground">No pages yet. Upload page images.</p>
+              <p className="mt-4 text-sm text-muted-foreground">
+                No pages yet. Upload page images for this book.
+              </p>
             ) : (
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 {pages.map((page, index) => {
@@ -1121,7 +1433,7 @@ function BookEditor({
                       <div className="mt-3 flex items-center justify-between gap-3">
                         <p className="text-sm font-medium">Page {page.page_number}</p>
                         <Button type="button" size="sm" variant="outline" onClick={() => setPreviewImage(page.image_url)}>
-                          Enlarge
+                          Open preview
                         </Button>
                       </div>
                       <div className="mt-3 flex flex-wrap gap-2">
@@ -1184,13 +1496,13 @@ function UsersPanel() {
   }, [reload]);
 
   if (usersState.status === "loading") {
-    return <PanelStateCard title="Loading users" message="Fetching profiles for admin review." />;
+    return <PanelStateCard title="Loading members" message="Fetching member details for review." />;
   }
 
   if (usersState.status === "error") {
     return (
       <PanelStateCard
-        title="Users failed to load"
+        title="Members failed to load"
         message={usersState.error}
         actionLabel="Retry"
         onAction={() => {
@@ -1203,9 +1515,9 @@ function UsersPanel() {
   return (
     <div className="overflow-x-auto rounded-xl border border-border bg-card p-4">
       <div className="mb-4">
-        <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">Users</p>
+        <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">Members</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          List email, role, tagged state, and ban state. Update tagged and banned flags directly.
+          Review members, see each role, and update tagged or banned status.
         </p>
       </div>
       <table className="w-full text-left text-sm">
@@ -1224,9 +1536,9 @@ function UsersPanel() {
             const busy = busyUserId === user.user_id;
             return (
               <tr key={user.user_id} className="border-b border-border align-top">
-                <td className="py-3">{user.full_name ?? "Unnamed"}</td>
+                <td className="py-3">{getMemberName(user)}</td>
                 <td>{user.email ?? "—"}</td>
-                <td>{user.role}</td>
+                <td>{formatRoleLabel(user.role)}</td>
                 <td>{user.deriv_tagged ? "Yes" : "No"}</td>
                 <td>{user.banned ? "Yes" : "No"}</td>
                 <td className="space-x-2 whitespace-nowrap">
@@ -1242,17 +1554,21 @@ function UsersPanel() {
                           data: { userId: user.user_id, tagged: !user.deriv_tagged },
                         });
                         await reload();
-                        toast.success(user.deriv_tagged ? "User untagged." : "User tagged.");
+                        toast.success(
+                          user.deriv_tagged ? "Tag removed from member." : "Member tagged.",
+                        );
                       } catch (error) {
                         toast.error(
-                          error instanceof Error ? error.message : "Could not update tagged status.",
+                          error instanceof Error
+                            ? error.message
+                            : "We could not update the member tag.",
                         );
                       } finally {
                         setBusyUserId(null);
                       }
                     }}
                   >
-                    {user.deriv_tagged ? "Untag" : "Tag"}
+                    {user.deriv_tagged ? "Remove tag" : "Tag member"}
                   </Button>
                   <Button
                     type="button"
@@ -1264,22 +1580,31 @@ function UsersPanel() {
                       try {
                         await adminSetBan({ data: { userId: user.user_id, banned: !user.banned } });
                         await reload();
-                        toast.success(user.banned ? "User unbanned." : "User banned.");
+                        toast.success(user.banned ? "Member unbanned." : "Member banned.");
                       } catch (error) {
                         toast.error(
-                          error instanceof Error ? error.message : "Could not update ban status.",
+                          error instanceof Error
+                            ? error.message
+                            : "We could not update the member status.",
                         );
                       } finally {
                         setBusyUserId(null);
                       }
                     }}
                   >
-                    {user.banned ? "Unban" : "Ban"}
+                    {user.banned ? "Unban member" : "Ban member"}
                   </Button>
                 </td>
               </tr>
             );
           })}
+          {usersState.data.length === 0 ? (
+            <tr>
+              <td colSpan={6} className="py-6 text-muted-foreground">
+                No members yet.
+              </td>
+            </tr>
+          ) : null}
         </tbody>
       </table>
     </div>
@@ -1348,7 +1673,7 @@ function CouponsPanel() {
           event.preventDefault();
           setCreating(true);
           try {
-            await adminCreateCoupon({
+            const created = await adminCreateCoupon({
               data: {
                 code: form.code.trim() || undefined,
                 kind: form.kind.trim(),
@@ -1359,7 +1684,7 @@ function CouponsPanel() {
             });
             setForm(EMPTY_COUPON_FORM);
             await reload();
-            toast.success("Coupon created.");
+            toast.success(`Coupon created: ${created.code}.`);
           } catch (error) {
             toast.error(error instanceof Error ? error.message : "Could not create the coupon.");
           } finally {
@@ -1370,21 +1695,32 @@ function CouponsPanel() {
         <div className="mb-4">
           <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">Coupons</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Create admin coupons with manual or auto-generated codes. Leave the code blank to auto-generate one.
+            Create a coupon code. Leave the code blank if you want us to generate one for you.
           </p>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <Field label="Code" value={form.code} onChange={(value) => setForm((current) => ({ ...current, code: value }))} />
-          <Field label="Kind" value={form.kind} onChange={(value) => setForm((current) => ({ ...current, kind: value }))} />
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Field
-            label="Uses remaining"
+            label="Coupon code"
+            helperText="Leave blank to auto-generate a code."
+            value={form.code}
+            disabled={creating}
+            onChange={(value) => setForm((current) => ({ ...current, code: value }))}
+          />
+          <Field
+            label="Total uses"
+            helperText="Choose how many times this code can be used."
             value={form.usesRemaining}
+            disabled={creating}
             onChange={(value) => setForm((current) => ({ ...current, usesRemaining: value }))}
           />
           <label className="text-sm">
-            <span className="mb-2 block text-muted-foreground">Book</span>
+            <span className="mb-2 block font-medium">Book</span>
+            <span className="mb-2 block text-sm text-muted-foreground">
+              Leave blank if this coupon should work for any book.
+            </span>
             <select
               value={form.bookId}
+              disabled={creating}
               onChange={(event) => setForm((current) => ({ ...current, bookId: event.target.value }))}
               className="h-11 w-full rounded-md border border-border bg-background px-3"
             >
@@ -1397,9 +1733,13 @@ function CouponsPanel() {
             </select>
           </label>
           <label className="text-sm">
-            <span className="mb-2 block text-muted-foreground">User</span>
+            <span className="mb-2 block font-medium">Member</span>
+            <span className="mb-2 block text-sm text-muted-foreground">
+              Leave blank if the code is not tied to one member.
+            </span>
             <select
               value={form.userId}
+              disabled={creating}
               onChange={(event) => setForm((current) => ({ ...current, userId: event.target.value }))}
               className="h-11 w-full rounded-md border border-border bg-background px-3"
             >
@@ -1418,7 +1758,7 @@ function CouponsPanel() {
       </form>
 
       {couponState.data.rows.length === 0 ? (
-        <PanelStateCard title="No coupons yet." message="Create your first coupon from the form above." />
+        <PanelStateCard title="No coupons yet." message="Create a coupon code." />
       ) : (
         <ul className="space-y-3 text-sm">
           {couponState.data.rows.map((coupon) => (
@@ -1427,13 +1767,13 @@ function CouponsPanel() {
                 <div>
                   <p className="font-medium">{coupon.code}</p>
                   <p className="mt-1 text-muted-foreground">
-                    {coupon.kind} · {coupon.uses_remaining ?? 0} left
+                    {coupon.uses_remaining ?? 0} use{coupon.uses_remaining === 1 ? "" : "s"} left
                   </p>
                   <p className="mt-1 text-muted-foreground">
                     Book: {coupon.book_id ? booksById.get(coupon.book_id) ?? coupon.book_id : "All books"}
                   </p>
                   <p className="mt-1 text-muted-foreground">
-                    User: {coupon.user_id ? usersById.get(coupon.user_id) ?? coupon.user_id : "Unassigned"}
+                    Member: {coupon.user_id ? usersById.get(coupon.user_id) ?? coupon.user_id : "Unassigned"}
                   </p>
                   <p className="mt-1 text-muted-foreground">
                     Created: {formatDateTime(coupon.created_at)}
@@ -1528,7 +1868,7 @@ function SalesPanel() {
               </li>
             ))}
             {salesState.data.length === 0 ? (
-              <li className="text-muted-foreground">No sales yet.</li>
+              <li className="text-muted-foreground">No paid orders yet.</li>
             ) : null}
           </ul>
         ) : null}
@@ -1560,7 +1900,7 @@ function SalesPanel() {
               </li>
             ))}
             {logsState.data.length === 0 ? (
-              <li className="text-muted-foreground">No pages opened yet.</li>
+              <li className="text-muted-foreground">No reading progress yet.</li>
             ) : null}
           </ul>
         ) : null}
@@ -1571,37 +1911,59 @@ function SalesPanel() {
 
 function Field({
   label,
+  helperText,
   value,
   onChange,
+  disabled,
+  type = "text",
 }: {
   label: string;
+  helperText?: string;
   value: string;
   onChange: (value: string) => void;
+  disabled?: boolean;
+  type?: "text" | "email";
 }) {
   return (
     <label className="text-sm">
-      <span className="mb-2 block text-muted-foreground">{label}</span>
-      <Input value={value} onChange={(event) => onChange(event.target.value)} />
+      <span className="mb-2 block font-medium">{label}</span>
+      {helperText ? (
+        <span className="mb-2 block text-sm text-muted-foreground">{helperText}</span>
+      ) : null}
+      <Input
+        type={type}
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+      />
     </label>
   );
 }
 
 function SelectField({
   label,
+  helperText,
   value,
   options,
   onChange,
+  disabled,
 }: {
   label: string;
+  helperText?: string;
   value: string;
   options: string[];
   onChange: (value: string) => void;
+  disabled?: boolean;
 }) {
   return (
     <label className="text-sm">
-      <span className="mb-2 block text-muted-foreground">{label}</span>
+      <span className="mb-2 block font-medium">{label}</span>
+      {helperText ? (
+        <span className="mb-2 block text-sm text-muted-foreground">{helperText}</span>
+      ) : null}
       <select
         value={value}
+        disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         className="h-11 w-full rounded-md border border-border bg-background px-3"
       >

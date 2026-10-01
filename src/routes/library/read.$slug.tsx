@@ -23,6 +23,8 @@ export function Reader() {
 
   useEffect(() => {
     if (isPending || !user) return;
+    setError(null);
+    setData(null);
     readerPayload({ data: { slug } })
       .then((d) => {
         const maxPageIndex = Math.max(d.pages.length - 1, 0);
@@ -47,7 +49,7 @@ export function Reader() {
   }, [data]);
 
   useEffect(() => {
-    if (!data) return;
+    if (!data || !data.pages[page]) return;
     logPage({ data: { slug, pageIndex: page } }).catch(() => undefined);
   }, [data, page, slug]);
 
