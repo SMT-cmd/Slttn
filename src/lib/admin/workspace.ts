@@ -21,6 +21,7 @@ export type AdminWorkspaceDraft = {
   selectedBookId: string | null;
   draft: AdminBookWorkspaceDraft | null;
   note: string;
+  restoreRequestId: number;
 };
 
 export function defaultAdminWorkspace(): AdminWorkspaceDraft {
@@ -29,6 +30,7 @@ export function defaultAdminWorkspace(): AdminWorkspaceDraft {
     selectedBookId: null,
     draft: null,
     note: "",
+    restoreRequestId: 0,
   };
 }
 
@@ -45,6 +47,10 @@ export function loadAdminWorkspace(): AdminWorkspaceDraft {
       selectedBookId: typeof parsed.selectedBookId === "string" ? parsed.selectedBookId : null,
       draft: isWorkspaceBookDraft(parsed.draft) ? parsed.draft : null,
       note: typeof parsed.note === "string" ? parsed.note : "",
+      restoreRequestId:
+        typeof parsed.restoreRequestId === "number" && Number.isFinite(parsed.restoreRequestId)
+          ? parsed.restoreRequestId
+          : 0,
     };
   } catch {
     return defaultAdminWorkspace();
