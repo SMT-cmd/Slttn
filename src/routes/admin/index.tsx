@@ -2,6 +2,7 @@ import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   type ChangeEvent,
   type Dispatch,
@@ -341,6 +342,15 @@ function Admin() {
     setWorkspace((current) => ({ ...current, activeTab: nextTab }));
   }, []);
 
+  const handleContinueEditing = useCallback(() => {
+    setWorkspace((current) => ({
+      ...current,
+      activeTab: "books",
+      selectedBookId: current.selectedBookId ?? current.draft?.id ?? null,
+      restoreRequestId: current.restoreRequestId + 1,
+    }));
+  }, []);
+
   const handleClearDraft = useCallback(() => {
     clearAdminWorkspace();
     setWorkspace((current) => ({ ...defaultAdminWorkspace(), activeTab: current.activeTab }));
@@ -414,7 +424,7 @@ function Admin() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="navy" onClick={() => setTab("books")}>
+              <Button type="button" variant="navy" onClick={handleContinueEditing}>
                 Continue editing
               </Button>
               <Button type="button" variant="outline" onClick={handleClearDraft}>
@@ -736,6 +746,18 @@ function BooksPanel({
   const [booksState, setBooksState] = useState<QueryState<BookRow[]>>(() => createLoadingState());
   const [newBook, setNewBook] = useState<NewBookForm>(EMPTY_BOOK);
   const [creating, setCreating] = useState(false);
+  const [selectionMessage, setSelectionMessage] = useState("");
+  const selectionRef = useRef({
+    selectedBookId: workspace.selectedBookId,
+    draftId: workspace.draft?.id ?? null,
+  });
+
+  useEffect(() => {
+    selectionRef.current = {
+      selectedBookId: workspace.selectedBookId,
+      draftId: workspace.draft?.id ?? null,
+    };
+  }, [workspace.draft?.id, workspace.selectedBookId]);
 
   const updateSelectedBook = useCallback(
     (book: BookRow | null, options?: { preserveDraft?: boolean }) => {
@@ -759,24 +781,52 @@ function BooksPanel({
       setBooksState(createLoadingState());
       try {
         const rows = await adminBooks();
+        const { selectedBookId, draftId } = selectionRef.current;
+        const selectionCandidates = [preferredBookId, selectedBookId, draftId].filter(
+          (value): value is string => Boolean(value),
+        );
+        const matchedBook =
+          selectionCandidates
+            .map((candidateId) => rows.find((book) => book.id === candidateId) ?? null)
+            .find((book): book is BookRow => Boolean(book)) ?? null;
+        const draftMissing = Boolean(draftId) && !rows.some((book) => book.id === draftId);
+
         setBooksState(createReadyState(rows));
-        const preferred = rows.find((book) => book.id === (preferredBookId ?? workspace.selectedBookId));
-        const currentMatch = rows.find((book) => book.id === workspace.selectedBookId);
-        const nextBook = preferred ?? currentMatch ?? rows[0] ?? null;
-        updateSelectedBook(nextBook, { preserveDraft: true });
+
+        if (matchedBook) {
+          setSelectionMessage("");
+          updateSelectedBook(matchedBook, { preserveDraft: true });
+          return;
+        }
+
+        if (draftMissing) {
+          setSelectionMessage("Saved draft book was not found. Select a book from the list.");
+          setWorkspace((current) => ({
+            ...current,
+            activeTab: "books",
+            selectedBookId: null,
+          }));
+          return;
+        }
+
+        setSelectionMessage("");
+        updateSelectedBook(rows[0] ?? null, { preserveDraft: true });
       } catch (error: unknown) {
         setBooksState(createErrorState(error, "Could not load books."));
       }
     },
-    [updateSelectedBook, workspace.selectedBookId],
+    [setWorkspace, updateSelectedBook],
   );
 
   useEffect(() => {
-    void loadBooks();
-  }, [loadBooks]);
+    void loadBooks(workspace.selectedBookId ?? workspace.draft?.id ?? null);
+  }, [loadBooks, workspace.restoreRequestId]);
 
   const rows = booksState.status === "ready" ? booksState.data : [];
-  const selectedBook = rows.find((book) => book.id === workspace.selectedBookId) ?? null;
+  const selectedBook =
+    rows.find((book) => book.id === workspace.selectedBookId) ??
+    rows.find((book) => book.id === workspace.draft?.id) ??
+    null;
   const draft =
     selectedBook && workspace.draft?.id === selectedBook.id
       ? workspace.draft
@@ -916,13 +966,18 @@ function BooksPanel({
                   Pick one book to continue editing.
                 </p>
               </div>
-              <Button type="button" variant="outline" size="sm" onClick={() => void loadBooks(workspace.selectedBookId)}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void loadBooks(workspace.selectedBookId ?? workspace.draft?.id ?? null)}
+              >
                 Refresh
               </Button>
             </div>
             <div className="mt-4 space-y-3">
               {rows.map((book) => {
-                const active = workspace.selectedBookId === book.id;
+                const active = (workspace.selectedBookId ?? workspace.draft?.id) === book.id;
                 return (
                   <button
                     key={book.id}
@@ -930,7 +985,10 @@ function BooksPanel({
                     className={`w-full rounded-xl border p-3 text-left ${
                       active ? "border-navy bg-navy/5" : "border-border bg-background"
                     }`}
-                    onClick={() => updateSelectedBook(book)}
+                    onClick={() => {
+                      setSelectionMessage("");
+                      updateSelectedBook(book, { preserveDraft: true });
+                    }}
                   >
                     <p className="font-medium">{book.title}</p>
                     <p className="mt-1 text-sm text-muted-foreground">
@@ -953,9 +1011,10 @@ function BooksPanel({
           </aside>
 
           <div>
-            {selectedBook && draft ? (
+            {draft ? (
               <BookEditor
                 book={selectedBook}
+                rows={rows}
                 draft={draft}
                 note={workspace.note}
                 onDraftChange={(nextDraft) =>
@@ -971,10 +1030,15 @@ function BooksPanel({
                 onClearDraft={clearWorkspaceDraft}
               />
             ) : (
-              <PanelStateCard
-                title="Select a book"
-                message="Choose a book from the list to edit details, cover image, and pages."
-              />
+              <>
+                {selectionMessage ? (
+                  <p className="mb-3 text-sm text-muted-foreground">{selectionMessage}</p>
+                ) : null}
+                <PanelStateCard
+                  title="Select a book"
+                  message="Choose a book from the list to edit details, cover image, and pages."
+                />
+              </>
             )}
           </div>
         </div>
@@ -985,6 +1049,7 @@ function BooksPanel({
 
 function BookEditor({
   book,
+  rows,
   draft,
   note,
   onDraftChange,
@@ -992,7 +1057,8 @@ function BookEditor({
   onReload,
   onClearDraft,
 }: {
-  book: BookRow;
+  book: BookRow | null;
+  rows: BookRow[];
   draft: BookDraft;
   note: string;
   onDraftChange: (draft: BookDraft) => void;
@@ -1000,7 +1066,8 @@ function BookEditor({
   onReload: (preferredBookId?: string | null) => Promise<void>;
   onClearDraft: () => void;
 }) {
-  const [pages, setPages] = useState<BookPageRow[]>(() => (book.pages ?? []).filter(isBookPageRow));
+  const resolvedBook = book ?? rows.find((row) => row.id === draft.id) ?? null;
+  const [pages, setPages] = useState<BookPageRow[]>(() => (resolvedBook?.pages ?? []).filter(isBookPageRow));
   const [saving, setSaving] = useState(false);
   const [coverUploading, setCoverUploading] = useState(false);
   const [pageUploadProgress, setPageUploadProgress] = useState<PageUploadProgress>({
@@ -1018,22 +1085,24 @@ function BookEditor({
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
-    setPages((book.pages ?? []).filter(isBookPageRow));
-  }, [book]);
+    setPages((resolvedBook?.pages ?? []).filter(isBookPageRow));
+  }, [resolvedBook]);
 
   const isBusy = saving || coverUploading || pageUploadProgress.active || reordering || deletingBook;
   const visiblePages = pages.filter(isBookPageRow);
 
   const requireSelectedBook = useCallback(() => {
-    if (!draft?.id || !book?.id) {
+    const resolvedBookId = resolvedBook?.id ?? rows.find((row) => row.id === draft?.id)?.id ?? null;
+    const draftId = draft?.id ?? resolvedBookId;
+    if (!draftId || !resolvedBookId) {
       toast.error("Select or create a book first.");
       return null;
     }
     return {
-      bookId: book.id,
-      draftId: draft.id,
+      bookId: resolvedBookId,
+      draftId,
     };
-  }, [book, draft]);
+  }, [draft?.id, resolvedBook?.id, rows]);
 
   const applyDraftPatch = useCallback(
     (patch: Partial<BookDraft>) => {
@@ -1075,6 +1144,16 @@ function BookEditor({
     },
     [draft, onDraftChange, onReload, requireSelectedBook],
   );
+
+  if (!resolvedBook) {
+    return (
+      <section className="rounded-xl border border-border bg-card p-5">
+        <p className="text-sm text-muted-foreground">
+          Saved draft book was not found. Select a book from the list.
+        </p>
+      </section>
+    );
+  }
 
   async function handleCoverUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -1268,9 +1347,9 @@ function BookEditor({
             />
           </div>
           <label className="mt-3 block text-sm">
-            <span className="mb-2 block font-medium">Cover image</span>
+            <span className="mb-2 block font-medium">Upload cover image</span>
             <span className="mb-2 block text-sm text-muted-foreground">
-              Upload a new cover image for this book.
+              This is the front cover shown on the book card.
             </span>
             <input
               type="file"
@@ -1280,7 +1359,7 @@ function BookEditor({
             />
           </label>
           <p className="mt-3 text-xs text-muted-foreground">
-            {visiblePages.length} page image{visiblePages.length === 1 ? "" : "s"} · {formatMoney(book.online_price_cents / 100)} online
+            {visiblePages.length} page image{visiblePages.length === 1 ? "" : "s"} · {formatMoney(resolvedBook.online_price_cents / 100)} online
           </p>
         </div>
 
@@ -1440,8 +1519,7 @@ function BookEditor({
               <label className="text-sm">
                 <span className="mb-2 block font-medium">Upload page images</span>
                 <span className="mb-2 block text-sm text-muted-foreground">
-                  Choose one or many images. We upload a few at a time and keep going if one
-                  file fails.
+                  Select one or many page images for this book.
                 </span>
                 <input
                   type="file"
