@@ -51,8 +51,15 @@ type AccountRecord = {
 
 type SettingRecord = {
   key: string;
-  value: unknown;
+  value: string | boolean | CommunityLinkSetting[] | null;
 };
+
+type CommunityLinkSetting = {
+  label: string;
+  url: string;
+};
+
+type SettingValue = string | boolean | CommunityLinkSetting[];
 
 type CouponRecord = {
   id: string;
@@ -142,7 +149,7 @@ export type BookRow = {
 };
 
 const PREVIEW_PAGES = 3;
-const DEFAULT_SETTINGS: Record<string, unknown> = {
+const DEFAULT_SETTINGS: Record<string, SettingValue> = {
   global_prelaunch: true,
   partner_code: "SLT-PARTNER",
   support_email: SITE.email,
@@ -184,6 +191,17 @@ function normalizeEmail(email: string | null | undefined) {
   return email?.trim().toLowerCase() ?? null;
 }
 
+function isCommunityLinkSetting(value: unknown): value is CommunityLinkSetting {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  return typeof record.label === "string" && typeof record.url === "string";
+}
+
+function isSettingValue(value: unknown): value is SettingValue {
+  if (typeof value === "string" || typeof value === "boolean") return true;
+  return Array.isArray(value) && value.every((entry) => isCommunityLinkSetting(entry));
+}
+
 function settingToString(value: unknown, fallback = "") {
   if (typeof value === "string") return value;
   if (typeof value === "boolean") return value ? "true" : "false";
@@ -200,11 +218,28 @@ function parseSettingInput(key: string, value: string) {
     return value === "true";
   }
   if (key === "community_links") {
-    try {
-      return JSON.parse(value);
-    } catch {
-      throw new Error("Community links must be valid JSON.");
+    const parsed = (() => {
+      try {
+        return JSON.parse(value);
+      } catch {
+        throw new Error("Community links must be a valid list.");
+      }
+    })();
+    if (!Array.isArray(parsed)) {
+      throw new Error("Community links must be a valid list.");
     }
+    return parsed.map((entry, index) => {
+      if (!entry || typeof entry !== "object") {
+        throw new Error(`Community link ${index + 1} is missing its name or link.`);
+      }
+      const record = entry as Record<string, unknown>;
+      const label = typeof record.label === "string" ? record.label.trim() : "";
+      const url = typeof record.url === "string" ? record.url.trim() : "";
+      if (!label || !url) {
+        throw new Error(`Community link ${index + 1} is missing its name or link.`);
+      }
+      return { label, url } satisfies CommunityLinkSetting;
+    });
   }
   return value;
 }
@@ -277,7 +312,7 @@ async function seedDefaultSettings(db: SupabaseAdmin) {
   const existing = new Set((rows ?? []).map((row) => row.key));
   const missing = Object.entries(DEFAULT_SETTINGS)
     .filter(([key]) => !existing.has(key))
-    .map(([key, value]) => ({ key, value }));
+    .map(([key, value]) => ({ key, value: value as SettingValue }));
   if (missing.length > 0) {
     assertSupabase(
       await db.from("settings").upsert(missing, { onConflict: "key" }),
@@ -290,9 +325,11 @@ async function getSettingsMap(db: SupabaseAdmin) {
   const rows = assertSupabase(
     await db.from("settings").select("key, value"),
   ) as SettingRecord[] | null;
-  const map: Record<string, unknown> = { ...DEFAULT_SETTINGS };
+  const map: Record<string, SettingValue> = { ...DEFAULT_SETTINGS };
   for (const row of rows ?? []) {
-    map[row.key] = row.value;
+    if (isSettingValue(row.value)) {
+      map[row.key] = row.value;
+    }
   }
   return map;
 }
@@ -424,7 +461,7 @@ async function resolveProfileForSession(
   }
 
   const fallback = assertSupabase(
-    await db.from("profiles").select("*").ilike("email", normalizedEmail).limit(1),
+    await db.from("profiles").select("*").filter("email", "ilike", normalizedEmail).limit(1),
   ) as ProfileRecord[] | null;
   const matched = fallback?.[0];
   if (!matched) {
@@ -1407,9 +1444,9 @@ export const adminOverview = createServerFn({ method: "GET" })
     const salesCents = paidRows
       ? paidRows.reduce((sum, row) => sum + requireNumber(row.amount_cents), 0)
       : 0;
-    const books = assertSupabase(
-      await db.from("books").select("id").eq("published", true),
-    ) as Array<{ id: string }> | null;
+    const books = assertSupabase(await db.from("books").select("id")) as
+      | Array<{ id: string }>
+      | null;
     return {
       users: users?.length ?? 0,
       tagged: tagged?.length ?? 0,
