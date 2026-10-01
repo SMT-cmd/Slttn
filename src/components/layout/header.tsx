@@ -45,6 +45,7 @@ export function Header({ library }: { library?: boolean }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [menuSigningOut, setMenuSigningOut] = useState(false);
   const libraryLink = libraryHomeHref(siteContext);
+  const mainSiteLink = siteContext.mainSiteUrl;
   const homeLink = library ? libraryLink : marketingHref("/", siteContext);
   const signInLink = marketingHref("/login", siteContext);
   const accountLink = marketingHref("/account", siteContext);
@@ -113,6 +114,14 @@ export function Header({ library }: { library?: boolean }) {
               {l.label}
             </a>
           ))}
+          {library || siteContext.isLibraryHost ? (
+            <a
+              href={mainSiteLink}
+              className="whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              Main site
+            </a>
+          ) : null}
         </nav>
 
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">
@@ -197,6 +206,15 @@ export function Header({ library }: { library?: boolean }) {
                       {l.label}
                     </a>
                   ))}
+                  {library || siteContext.isLibraryHost ? (
+                    <a
+                      href={mainSiteLink}
+                      onClick={() => setOpen(false)}
+                      className="rounded-xl border border-transparent px-4 py-3 text-base font-medium transition-colors hover:bg-muted"
+                    >
+                      Main site — SLT Trade Hub
+                    </a>
+                  ) : null}
                   {isAdmin ? (
                     <a
                       href={adminLink}

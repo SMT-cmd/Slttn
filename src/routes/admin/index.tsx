@@ -876,7 +876,7 @@ function BooksPanel({
             }
             setNewBook(EMPTY_BOOK);
             await loadBooks(created.id);
-            toast.success("Book created.");
+            toast.success(newBook.published ? "Book created and added to the shelf." : "Book created as a draft (off the shelf).");
           } catch (error) {
             toast.error(error instanceof Error ? error.message : "Could not create the book.");
           } finally {
@@ -947,9 +947,9 @@ function BooksPanel({
           />
         </label>
         <label className="mt-4 block rounded-lg border border-border bg-background p-4 text-sm">
-          <span className="block font-medium">Publish this book</span>
+          <span className="block font-medium">Add to the shelf</span>
           <span className="mt-1 block text-sm text-muted-foreground">
-            Turn this on if the book should appear on the public site right away.
+            Turn this on so the book appears in The Trading Library for readers. Leave it off while you keep drafting.
           </span>
           <span className="mt-3 flex items-center gap-2">
             <input
@@ -1023,7 +1023,7 @@ function BooksPanel({
                       {(book.pages?.length ?? 0) === 1 ? "" : "s"}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {book.published ? "Visible on site" : "Hidden from site"} · shelf order{" "}
+                      {book.published ? "On the shelf" : "Draft — off the shelf"} · order{" "}
                       {book.sort_order}
                     </p>
                   </button>
@@ -1191,7 +1191,19 @@ function BookEditor({
       try {
         await adminUpdateBook({ data: payload });
         await onReload(selectedBookId);
-        toast.success(`Saved ${normalizedDraft.title}.`);
+        if (overrides && Object.prototype.hasOwnProperty.call(overrides, "published")) {
+          toast.success(
+            normalizedDraft.published
+              ? `${normalizedDraft.title} is now on the shelf.`
+              : `${normalizedDraft.title} was removed from the shelf.`,
+          );
+        } else {
+          toast.success(
+            normalizedDraft.published
+              ? `Saved ${normalizedDraft.title} (on the shelf).`
+              : `Saved ${normalizedDraft.title} (draft — off the shelf).`,
+          );
+        }
       } catch (error) {
         toast.error(getPlainSaveErrorMessage(error));
       } finally {
@@ -1470,9 +1482,9 @@ function BookEditor({
               }
             />
             <label className="rounded-md border border-border bg-background px-3 py-2 text-sm">
-              <span className="block font-medium">Show this book on the public site</span>
+              <span className="block font-medium">Shelf status</span>
               <span className="mt-1 block text-sm text-muted-foreground">
-                Turn this off to hide the book while you keep editing it.
+                On the shelf = readers can find this title. Off the shelf = draft only (admin can still edit).
               </span>
               <span className="mt-3 flex items-center gap-2">
                 <input
@@ -1481,7 +1493,7 @@ function BookEditor({
                   disabled={isBusy}
                   onChange={(event) => applyDraftPatch({ published: event.target.checked })}
                 />
-                {draft.published ? "Visible on site" : "Hidden from site"}
+                {draft.published ? "On the shelf" : "Off the shelf (draft)"}
               </span>
             </label>
           </div>
@@ -1523,7 +1535,7 @@ function BookEditor({
               onClick={() => void saveBook({ published: !draft.published })}
               disabled={isBusy}
             >
-              {draft.published ? "Hide this book" : "Publish this book"}
+              {draft.published ? "Remove from shelf" : "Add to shelf"}
             </Button>
             <Button type="button" variant="outline" onClick={onClearDraft} disabled={isBusy}>
               Clear draft

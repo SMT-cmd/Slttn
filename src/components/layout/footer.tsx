@@ -57,6 +57,9 @@ export function Footer({ library }: { library?: boolean }) {
             <a href={libraryLink} className="hover:underline">
               The Trading Library
             </a>
+            <a href={siteContext.mainSiteUrl} className="hover:underline">
+              SLT Trade Hub (main site)
+            </a>
             <a href={marketingHref("/pricing", siteContext)} className="hover:underline">
               Pricing
             </a>
