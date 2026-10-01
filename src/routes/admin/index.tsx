@@ -1122,10 +1122,9 @@ function BookEditor({
   const visiblePages = pages.filter(isBookPageRow);
 
   const requireSelectedBook = useCallback(() => {
-    const selectedRowId = rows.find((row) => row.id === selectedBookId)?.id ?? resolvedBook?.id ?? null;
     const resolvedId =
-      selectedRowId ??
-      draft.id ??
+      rows.find((row) => row.id === selectedBookId)?.id ??
+      rows.find((row) => row.id === resolvedBook?.id)?.id ??
       rows.find((row) => row.id === draft.id)?.id ??
       null;
     if (!resolvedId) {

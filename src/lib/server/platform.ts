@@ -305,6 +305,13 @@ function assertSupabase<T>(result: { data: T; error: { message: string } | null 
   return result.data;
 }
 
+function asSingleRow<T>(value: T | T[] | null | undefined) {
+  if (Array.isArray(value)) {
+    return value[0] ?? null;
+  }
+  return value ?? null;
+}
+
 async function seedDefaultSettings(db: SupabaseAdmin) {
   const rows = assertSupabase(
     await db.from("settings").select("key, value"),
@@ -1593,24 +1600,44 @@ export const adminUpdateBook = createServerFn({ method: "POST" })
     if (data.sort_order !== undefined) updates.sort_order = data.sort_order;
     if (data.cover_url !== undefined) updates.cover_url = data.cover_url;
 
-    const result = await db
+    const existingBook = asSingleRow(
+      assertSupabase(
+        await db.from("books").select("id").eq("id", data.id).limit(1),
+      ) as Array<{ id: string }> | { id: string } | null,
+    );
+    if (!existingBook) {
+      throw new Error("We could not find that book to save.");
+    }
+
+    const updateResult = await db
       .from("books")
       .update(updates)
       .eq("id", data.id)
       .select("id, slug, title, subtitle, category, size, launch_mode, cover_url, blurb, published, sort_order, created_at")
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
 
-    if (result.error) {
-      throw new Error(result.error.message);
+    if (updateResult.error) {
+      throw new Error(updateResult.error.message);
     }
 
-    if (!result.data) {
+    const updatedRow =
+      asSingleRow(updateResult.data as CatalogBook[] | Omit<CatalogBook, "updated_at"> | null) ??
+      asSingleRow(
+        assertSupabase(
+          await db
+            .from("books")
+            .select("id, slug, title, subtitle, category, size, launch_mode, cover_url, blurb, published, sort_order, created_at, updated_at")
+            .eq("id", data.id)
+            .limit(1),
+        ) as Array<CatalogBook> | CatalogBook | null,
+      );
+
+    if (!updatedRow) {
       throw new Error("We could not find that book to save.");
     }
 
-    const updated = result.data as Omit<CatalogBook, "updated_at"> & { updated_at?: string };
-    const pages = await getCatalogBookPages(updated.id);
+    const updated = updatedRow as Omit<CatalogBook, "updated_at"> & { updated_at?: string };
+    const pages = await getCatalogBookPages(data.id);
     return toBookRow(
       {
         ...updated,
