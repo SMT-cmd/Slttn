@@ -1560,7 +1560,13 @@ export const adminUpdateBook = createServerFn({ method: "POST" })
       launch_mode: z.enum(["prelaunch", "launch", "public"]).optional(),
       published: z.boolean().optional(),
       sort_order: z.number().int().min(0).optional(),
-      cover_url: z.string().url().optional(),
+      cover_url: z
+        .string()
+        .min(1)
+        .refine((value) => value.startsWith("/") || /^https?:\/\//i.test(value), {
+          message: "Cover image link is not valid.",
+        })
+        .optional(),
       archived: z.boolean().optional(),
     }),
   )
