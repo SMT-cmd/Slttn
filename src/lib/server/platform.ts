@@ -15,6 +15,7 @@ import {
   canCheckDerivTags,
   checkDerivClientTags,
 } from "@/lib/deriv";
+import { isAllowlistedAdminEmail } from "@/lib/admin/access";
 import { PRICING, SITE } from "@/lib/site";
 import { getSupabaseAdmin } from "@/lib/supabase";
 
@@ -526,6 +527,104 @@ function isMissingPurchaseAmountColumn(error: { message: string } | null) {
   return /amount_cents/i.test(error.message) && /does not exist|column/i.test(error.message);
 }
 
+function isMissingCouponOptionalColumns(error: { message: string } | null) {
+  if (!error) return false;
+  return /(paid_cents|expires_at)/i.test(error.message) && /does not exist|column/i.test(error.message);
+}
+
+async function ensureAllowlistedAdminProfile(
+  db: SupabaseAdmin,
+  userId: string,
+  authUser: AuthUserRow,
+  profile: Profile | null,
+) {
+  if (profile?.role === "admin") return profile;
+
+  if (profile) {
+    const updated = assertSupabase(
+      await db
+        .from("profiles")
+        .update({ role: "admin" })
+        .eq("user_id", userId)
+        .select("*")
+        .limit(1)
+        .single(),
+    ) as ProfileRecord;
+    return normalizeProfile(updated);
+  }
+
+  const inserted = assertSupabase(
+    await db
+      .from("profiles")
+      .insert({
+        user_id: userId,
+        full_name: authUser.name,
+        email: authUser.email,
+        role: "admin",
+      })
+      .select("*")
+      .limit(1)
+      .single(),
+  ) as ProfileRecord;
+  return normalizeProfile(inserted);
+}
+
+async function loadCouponsForAdmin(db: SupabaseAdmin) {
+  const fullResult = await db
+    .from("coupons")
+    .select("id, code, user_id, book_id, kind, uses_remaining, paid_cents, created_at, expires_at")
+    .order("created_at", { ascending: false });
+  if (!isMissingCouponOptionalColumns(fullResult.error)) {
+    return assertSupabase(fullResult) as CouponRecord[] | null;
+  }
+
+  const fallback = assertSupabase(
+    await db
+      .from("coupons")
+      .select("id, code, user_id, book_id, kind, uses_remaining, created_at")
+      .order("created_at", { ascending: false }),
+  ) as Array<Omit<CouponRecord, "paid_cents" | "expires_at">> | null;
+  return (fallback ?? []).map((row) => ({
+    ...row,
+    paid_cents: null,
+    expires_at: null,
+  }));
+}
+
+async function loadPurchasesForAdmin(db: SupabaseAdmin) {
+  const fullResult = await db
+    .from("purchases")
+    .select("id, user_id, book_id, kind, amount_cents, provider, status, reference, gateway_url, created_at")
+    .order("created_at", { ascending: false });
+  if (!isMissingPurchaseAmountColumn(fullResult.error)) {
+    return assertSupabase(fullResult) as PurchaseRecord[] | null;
+  }
+
+  const fallback = assertSupabase(
+    await db
+      .from("purchases")
+      .select("id, user_id, book_id, kind, provider, status, reference, gateway_url, created_at")
+      .order("created_at", { ascending: false }),
+  ) as Array<Omit<PurchaseRecord, "amount_cents">> | null;
+  return (fallback ?? []).map((row) => ({
+    ...row,
+    amount_cents: 0,
+  }));
+}
+
+async function getLatestReadingProgress(db: SupabaseAdmin, userId: string, bookId: string) {
+  const rows = assertSupabase(
+    await db
+      .from("reading_logs")
+      .select("user_id, book_id, page_index, created_at")
+      .eq("user_id", userId)
+      .eq("book_id", bookId)
+      .order("created_at", { ascending: false })
+      .limit(1),
+  ) as ReadingLogRecord[] | null;
+  return rows?.[0] ?? null;
+}
+
 async function resolveAdminAccess(db: SupabaseAdmin, userId: string) {
   const authUser = await getAuthUser(db, userId);
   const sessionEmail = authUser.email?.trim() ?? null;
@@ -538,6 +637,16 @@ async function resolveAdminAccess(db: SupabaseAdmin, userId: string) {
       message: null,
       profile,
       role: resolvedRole,
+    };
+  }
+
+  if (isAllowlistedAdminEmail(sessionEmail)) {
+    const ensuredProfile = await ensureAllowlistedAdminProfile(db, userId, authUser, profile);
+    return {
+      allowed: true,
+      message: null,
+      profile: ensuredProfile,
+      role: ensuredProfile.role,
     };
   }
 
@@ -1179,15 +1288,22 @@ export const readerPayload = createServerFn({ method: "GET" })
     if (!book) throw new Error("That book is not in the library.");
     const pages = book.pages ?? [];
     const access = await accessForBook(db, profile, book);
+    const visiblePages = access.canRead ? pages : pages.slice(0, PREVIEW_PAGES);
+    const progress = await getLatestReadingProgress(db, context.userId, book.id);
+    const maxResumeIndex = Math.max(visiblePages.length - 1, 0);
+    const resumePageIndex = progress
+      ? Math.max(0, Math.min(progress.page_index, maxResumeIndex))
+      : 0;
     const watermark = `${profile.full_name || profile.email || "Reader"} · ${profile.deriv_cr || profile.email || context.userId}`;
     return {
       book,
       profile,
       access,
       watermark,
-      pages: access.canRead ? pages : pages.slice(0, PREVIEW_PAGES),
+      pages: visiblePages,
       lockedFrom: access.canRead ? null : Math.min(PREVIEW_PAGES, pages.length),
       totalPages: pages.length,
+      resumePageIndex,
     };
   });
 
@@ -1507,8 +1623,17 @@ export const adminCreateBookPages = createServerFn({ method: "POST" })
       page_number: nextNumber++,
       image_url: imageUrl,
     }));
-    assertSupabase(await db.from("book_pages").insert(inserts));
-    return getCatalogBookPages(data.bookId);
+    try {
+      assertSupabase(await db.from("book_pages").insert(inserts));
+    } catch (error) {
+      throw new Error(
+        error instanceof Error && error.message
+          ? `Could not save uploaded page images. ${error.message}`
+          : "Could not save uploaded page images.",
+      );
+    }
+    const pages = await getCatalogBookPages(data.bookId);
+    return pages.map((page) => toPageRow(page));
   });
 
 export const adminDeleteBookPage = createServerFn({ method: "POST" })
@@ -1526,7 +1651,8 @@ export const adminDeleteBookPage = createServerFn({ method: "POST" })
         ),
       ),
     );
-    return getCatalogBookPages(data.bookId);
+    const nextPages = await getCatalogBookPages(data.bookId);
+    return nextPages.map((page) => toPageRow(page));
   });
 
 export const adminReorderBookPages = createServerFn({ method: "POST" })
@@ -1551,28 +1677,32 @@ export const adminReorderBookPages = createServerFn({ method: "POST" })
         ),
       ),
     );
-    return getCatalogBookPages(data.bookId);
+    const pages = await getCatalogBookPages(data.bookId);
+    return pages.map((page) => toPageRow(page));
   });
 
 export const adminCreateCoupon = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(
     z.object({
-      code: z.string().min(4).max(20),
-      uses: z.number().int().min(1).max(500),
+      code: z.string().max(32).optional(),
+      kind: z.string().min(2).max(40).default("promo"),
+      usesRemaining: z.number().int().min(1).max(500),
       bookId: z.string().optional(),
+      userId: z.string().optional(),
     }),
   )
   .handler(async ({ context, data }) => {
     const db = getSupabaseAdmin();
     await requireAdmin(db, context.userId);
-    const code = data.code.trim().toUpperCase();
+    const code = (data.code?.trim() || randomCode("SLT")).toUpperCase();
     assertSupabase(
       await db.from("coupons").insert({
         code,
-        kind: "promo",
-        uses_remaining: data.uses,
+        kind: data.kind.trim(),
+        uses_remaining: data.usesRemaining,
         book_id: data.bookId ?? null,
+        user_id: data.userId ?? null,
       }),
     );
     return { ok: true, code };
@@ -1583,12 +1713,17 @@ export const adminCoupons = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const db = getSupabaseAdmin();
     await requireAdmin(db, context.userId);
-    return assertSupabase(
-      await db
-        .from("coupons")
-        .select("id, code, user_id, book_id, kind, uses_remaining, paid_cents, created_at, expires_at")
-        .order("created_at", { ascending: false }),
-    ) as CouponRecord[] | null;
+    return loadCouponsForAdmin(db);
+  });
+
+export const adminDeleteCoupon = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(z.object({ id: z.string() }))
+  .handler(async ({ context, data }) => {
+    const db = getSupabaseAdmin();
+    await requireAdmin(db, context.userId);
+    assertSupabase(await db.from("coupons").delete().eq("id", data.id));
+    return { ok: true };
   });
 
 export const adminSales = createServerFn({ method: "GET" })
@@ -1596,12 +1731,7 @@ export const adminSales = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const db = getSupabaseAdmin();
     await requireAdmin(db, context.userId);
-    return assertSupabase(
-      await db
-        .from("purchases")
-        .select("id, user_id, book_id, kind, amount_cents, provider, status, reference, gateway_url, created_at")
-        .order("created_at", { ascending: false }),
-    ) as PurchaseRecord[] | null;
+    return loadPurchasesForAdmin(db);
   });
 
 export const adminLogs = createServerFn({ method: "GET" })
