@@ -167,10 +167,25 @@ function isValidCoverValue(value: string) {
   return value.startsWith("/") || /^https?:\/\//i.test(value);
 }
 
+function normalizeBookSize(value: string): BookDraft["size"] {
+  return value === "short" || value === "full" ? value : "medium";
+}
+
+function normalizeBookLaunchMode(value: string): BookDraft["launch_mode"] {
+  return value === "launch" ? "launch" : "prelaunch";
+}
+
+function normalizeSortOrder(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
 function getPlainSaveErrorMessage(error: unknown) {
   if (error instanceof Error) {
-    const message = error.message.trim();
-    if (message === "Cover image link is not valid.") return message;
+    const message = error.message
+      .split("\n")
+      .map((line) => line.trim())
+      .find(Boolean);
+    if (message) return message;
   }
   return "Could not save this book. Check the title, category, and cover image, then try again.";
 }
@@ -1132,7 +1147,19 @@ function BookEditor({
       const selectedBookId = requireSelectedBook();
       if (!selectedBookId) return;
       const nextDraft = { ...draft, ...overrides };
-      onDraftChange(nextDraft);
+      const normalizedDraft: BookDraft = {
+        ...nextDraft,
+        title: nextDraft.title.trim(),
+        subtitle: nextDraft.subtitle.trim(),
+        slug: nextDraft.slug.trim(),
+        category: nextDraft.category.trim(),
+        size: normalizeBookSize(nextDraft.size),
+        launch_mode: normalizeBookLaunchMode(nextDraft.launch_mode),
+        blurb: nextDraft.blurb.trim(),
+        sort_order: normalizeSortOrder(nextDraft.sort_order),
+        cover_url: nextDraft.cover_url.trim(),
+      };
+      onDraftChange(normalizedDraft);
       const payload: {
         id: string;
         title: string;
@@ -1147,17 +1174,17 @@ function BookEditor({
         cover_url?: string;
       } = {
         id: selectedBookId,
-        title: nextDraft.title,
-        subtitle: nextDraft.subtitle,
-        slug: nextDraft.slug,
-        category: nextDraft.category,
-        size: nextDraft.size,
-        launch_mode: nextDraft.launch_mode,
-        blurb: nextDraft.blurb,
-        published: nextDraft.published,
-        sort_order: nextDraft.sort_order,
+        title: normalizedDraft.title,
+        subtitle: normalizedDraft.subtitle,
+        slug: normalizedDraft.slug,
+        category: normalizedDraft.category,
+        size: normalizedDraft.size,
+        launch_mode: normalizedDraft.launch_mode,
+        blurb: normalizedDraft.blurb,
+        published: normalizedDraft.published,
+        sort_order: normalizedDraft.sort_order,
       };
-      const trimmedCoverUrl = nextDraft.cover_url.trim();
+      const trimmedCoverUrl = normalizedDraft.cover_url;
       if (trimmedCoverUrl && isValidCoverValue(trimmedCoverUrl)) {
         payload.cover_url = trimmedCoverUrl;
       }
@@ -1165,7 +1192,7 @@ function BookEditor({
       try {
         await adminUpdateBook({ data: payload });
         await onReload(selectedBookId);
-        toast.success(`Saved ${nextDraft.title}.`);
+        toast.success(`Saved ${normalizedDraft.title}.`);
       } catch (error) {
         toast.error(getPlainSaveErrorMessage(error));
       } finally {

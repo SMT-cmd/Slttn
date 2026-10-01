@@ -1559,7 +1559,10 @@ export const adminUpdateBook = createServerFn({ method: "POST" })
       size: z.enum(["short", "medium", "full"]).optional(),
       launch_mode: z.enum(["prelaunch", "launch", "public"]).optional(),
       published: z.boolean().optional(),
-      sort_order: z.number().int().min(0).optional(),
+      sort_order: z.preprocess(
+        (value) => (typeof value === "number" && Number.isNaN(value) ? undefined : value),
+        z.number().int().min(0).optional(),
+      ),
       cover_url: z
         .string()
         .min(1)
@@ -1590,17 +1593,32 @@ export const adminUpdateBook = createServerFn({ method: "POST" })
     if (data.sort_order !== undefined) updates.sort_order = data.sort_order;
     if (data.cover_url !== undefined) updates.cover_url = data.cover_url;
 
-    const updated = assertSupabase(
-      await db
-        .from("books")
-        .update(updates)
-        .eq("id", data.id)
-        .select("id, slug, title, subtitle, category, size, launch_mode, cover_url, blurb, published, sort_order, created_at, updated_at")
-        .limit(1)
-        .single(),
-    ) as CatalogBook;
+    const result = await db
+      .from("books")
+      .update(updates)
+      .eq("id", data.id)
+      .select("id, slug, title, subtitle, category, size, launch_mode, cover_url, blurb, published, sort_order, created_at")
+      .limit(1)
+      .maybeSingle();
+
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+
+    if (!result.data) {
+      throw new Error("We could not find that book to save.");
+    }
+
+    const updated = result.data as Omit<CatalogBook, "updated_at"> & { updated_at?: string };
     const pages = await getCatalogBookPages(updated.id);
-    return toBookRow(updated, pages.length, pages);
+    return toBookRow(
+      {
+        ...updated,
+        updated_at: updated.updated_at ?? updated.created_at,
+      },
+      pages.length,
+      pages,
+    );
   });
 
 export const adminDeleteBook = createServerFn({ method: "POST" })
