@@ -63,12 +63,22 @@ export function BookPage() {
   function goRead() {
     if (!book) return;
 
+    // Always use an absolute reader URL so OAuth callback can return across main/library hosts.
+    const readerUrl = libraryReaderHref(book.slug, siteContext);
+    const absoluteReader =
+      readerUrl.startsWith("http://") || readerUrl.startsWith("https://")
+        ? readerUrl
+        : `${siteContext.origin}${readerUrl.startsWith("/") ? readerUrl : `/${readerUrl}`}`;
     if (!user) {
-      window.location.assign(marketingHref("/login", siteContext));
+      // Prefer same-host login; session cookies are shared on .slttradehub.trade in production.
+      const loginBase = siteContext.isLibraryHost
+        ? "/login"
+        : marketingHref("/login", siteContext);
+      window.location.assign(`${loginBase}?next=${encodeURIComponent(absoluteReader)}`);
       return;
     }
 
-    window.location.assign(libraryReaderHref(book.slug, siteContext));
+    window.location.assign(absoluteReader);
   }
 
   return (

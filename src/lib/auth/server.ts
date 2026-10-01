@@ -40,6 +40,7 @@ import { GATE_PROVIDER_ID, gateIdentitySessions } from "./gate-session.server";
 import { AUTH_PROVIDERS } from "./providers";
 import { pgliteDialect } from "./pglite-dialect";
 import { PREVIEW_ALLOWED_HOSTS } from "./preview";
+import { SITE } from "../site";
 
 // Kick (and share) PGLite bootstrap as soon as the auth server module loads.
 void ensureDbReady();
@@ -103,8 +104,18 @@ const baseURL = explicitBaseURL ?? {
 
 // Origins Better Auth accepts on credentialed POSTs (sign-up/sign-in, etc.).
 // Missing entries here surface as FORBIDDEN "Invalid origin".
+// Production serves both the main site and library subdomain from one app.
+// OAuth and credentialed auth POSTs must accept both origins.
+const productionOrigins: string[] = [
+  SITE.url,
+  SITE.libraryUrl,
+  `https://${SITE.domain}`,
+  `https://${SITE.libraryHost}`,
+  `https://www.${SITE.domain}`,
+];
+
 const trustedOrigins: string[] = explicitBaseURL
-  ? [explicitBaseURL, ...LOCAL_DEV_ORIGINS]
+  ? Array.from(new Set([explicitBaseURL, ...productionOrigins, ...LOCAL_DEV_ORIGINS]))
   : [
       // Host wildcards (matched against Origin's host)
       ...previewAllowedHosts,
@@ -124,8 +135,21 @@ const database = databaseUrl
   ? new Pool(createPostgresPoolConfig(databaseUrl))
   : { dialect: pgliteDialect(() => getPglite()), type: "postgres" as const };
 
+// Shared parent-domain cookies so a session on slttradehub.trade is visible on
+// library.slttradehub.trade (and the reverse). __Host- cookies are host-only and
+// break multi-subdomain login; keep __Host- only for non-production / preview.
+const useSharedAuthDomain = Boolean(
+  explicitBaseURL &&
+    (explicitBaseURL.includes(SITE.domain) || explicitBaseURL.includes(SITE.libraryHost)),
+);
+const AUTH_COOKIE_DOMAIN = useSharedAuthDomain ? `.${SITE.domain}` : undefined;
+
 /** Session token cookie name — also read by the live-preview popup completion page. */
-export const SESSION_TOKEN_COOKIE = "__Host-app-auth.session_token";
+export const SESSION_TOKEN_COOKIE = useSharedAuthDomain
+  ? "__Secure-app-auth.session_token"
+  : "__Host-app-auth.session_token";
+
+const AUTH_COOKIE_PREFIX = useSharedAuthDomain ? "__Secure-app-auth" : "__Host-app-auth";
 
 const DERIV_AUTHORIZATION_URL = "https://auth.deriv.com/oauth2/auth";
 const DERIV_TOKEN_URL = "https://auth.deriv.com/oauth2/token";
@@ -342,21 +366,22 @@ export const auth = betterAuth({
   // Local email/password — toggled only via `./email-password` (not a plugin).
   ...(emailAndPasswordEnabled ? { emailAndPassword: { enabled: true } } : {}),
 
-  // `__Host-` prefixed cookies: the browser REFUSES any same-named cookie that
-  // carries a `Domain` attribute, so a sibling `*.grok.me` app cannot "toss" a
-  // `Domain=.grok.me` session cookie onto this app. `__Host-` requires Secure +
-  // Path=/ + no Domain; Better Auth otherwise uses `__Secure-` (which permits
-  // Domain), so we drop its auto prefix (`useSecureCookies: false`) and set
-  // Secure + the names ourselves. (Browsers allow Secure cookies on
-  // `http://localhost`, so local dev still works.)
+  // Production (main + library subdomains): shared `__Secure-` cookies with
+  // Domain=.slttradehub.trade so Deriv/Google login on either host works on both.
+  // Preview/sandbox keeps host-only `__Host-` cookies for isolation.
   advanced: {
     useSecureCookies: false,
-    defaultCookieAttributes: { secure: true, sameSite: "lax", path: "/" },
+    defaultCookieAttributes: {
+      secure: true,
+      sameSite: "lax" as const,
+      path: "/",
+      ...(AUTH_COOKIE_DOMAIN ? { domain: AUTH_COOKIE_DOMAIN } : {}),
+    },
     cookies: {
       session_token: { name: SESSION_TOKEN_COOKIE },
-      session_data: { name: "__Host-app-auth.session_data" },
-      account_data: { name: "__Host-app-auth.account_data" },
-      dont_remember: { name: "__Host-app-auth.dont_remember" },
+      session_data: { name: `${AUTH_COOKIE_PREFIX}.session_data` },
+      account_data: { name: `${AUTH_COOKIE_PREFIX}.account_data` },
+      dont_remember: { name: `${AUTH_COOKIE_PREFIX}.dont_remember` },
     },
   },
 

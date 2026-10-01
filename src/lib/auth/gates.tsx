@@ -47,6 +47,13 @@ export function SignedOut({ children }: { children: ReactNode }) {
  * render this.
  */
 export function RedirectToSignIn({ to = SIGN_IN_PATH }: { to?: string }) {
+  // Preserve the page the reader was trying to open so OAuth can return there.
+  if (typeof window !== "undefined") {
+    const next = `${window.location.pathname}${window.location.search}`;
+    const target = `${to}?next=${encodeURIComponent(next)}`;
+    window.location.assign(target);
+    return <div className="grid min-h-dvh place-items-center">Redirecting to sign in…</div>;
+  }
   return <Navigate to={to} />;
 }
 

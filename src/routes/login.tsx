@@ -23,6 +23,31 @@ export const Route = createFileRoute("/login")({
   component: Login,
 });
 
+function safeNextPath(raw: string | null | undefined, fallback = "/account") {
+  if (!raw) return fallback;
+  const value = raw.trim();
+  // Allow absolute URLs on our own domains, or relative paths.
+  try {
+    if (value.startsWith("http://") || value.startsWith("https://")) {
+      const url = new URL(value);
+      const host = url.hostname.toLowerCase();
+      if (
+        host === "slttradehub.trade" ||
+        host === "www.slttradehub.trade" ||
+        host === "library.slttradehub.trade" ||
+        host.endsWith(".slttradehub.trade")
+      ) {
+        return url.toString();
+      }
+      return fallback;
+    }
+  } catch {
+    return fallback;
+  }
+  if (value.startsWith("/") && !value.startsWith("//")) return value;
+  return fallback;
+}
+
 const derivProvider = AUTH_PROVIDERS.find((provider) => provider.label === "Deriv");
 const secondaryProviders = AUTH_PROVIDERS.filter((provider) => provider.label !== "Deriv");
 
@@ -33,6 +58,11 @@ function Login() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const nextPath =
+    typeof window !== "undefined"
+      ? safeNextPath(new URLSearchParams(window.location.search).get("next"), "/account")
+      : "/account";
 
   async function onEmail(e: FormEvent) {
     e.preventDefault();
@@ -45,7 +75,7 @@ function Login() {
         const res = await authClient.signIn.email({ email, password });
         if (res.error) throw new Error(res.error.message || "Email or password is not right.");
       }
-      window.location.href = "/account";
+      window.location.href = nextPath;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong signing in.");
     } finally {
@@ -83,7 +113,7 @@ function Login() {
                     variant="navy"
                     size="lg"
                     className="mt-3 w-full"
-                    onClick={() => signIn(derivProvider.providerId, { callbackURL: "/account" })}
+                    onClick={() => signIn(derivProvider.providerId, { callbackURL: nextPath, errorCallbackURL: `/login?next=${encodeURIComponent(nextPath)}` })}
                   >
                     Continue with Deriv
                   </Button>
@@ -101,7 +131,7 @@ function Login() {
                     type="button"
                     variant={p.label === "Google" ? "navy" : "outline"}
                     className="w-full"
-                    onClick={() => signIn(p.providerId, { callbackURL: "/account" })}
+                    onClick={() => signIn(p.providerId, { callbackURL: nextPath, errorCallbackURL: `/login?next=${encodeURIComponent(nextPath)}` })}
                   >
                     Continue with {p.label}
                   </Button>
