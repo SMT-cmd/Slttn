@@ -163,6 +163,18 @@ function createBookDraft(book: BookRow): BookDraft {
   };
 }
 
+function isValidCoverValue(value: string) {
+  return value.startsWith("/") || /^https?:\/\//i.test(value);
+}
+
+function getPlainSaveErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    const message = error.message.trim();
+    if (message === "Cover image link is not valid.") return message;
+  }
+  return "Could not save this book. Check the title, category, and cover image, then try again.";
+}
+
 function createCommunityLink(
   patch: Partial<CommunityLinkForm> = {},
   index = 0,
@@ -828,7 +840,7 @@ function BooksPanel({
     rows.find((book) => book.id === workspace.draft?.id) ??
     null;
   const draft =
-    selectedBook && workspace.draft?.id === selectedBook.id
+    workspace.draft && (!selectedBook || workspace.draft.id === selectedBook.id)
       ? workspace.draft
       : selectedBook
         ? createBookDraft(selectedBook)
@@ -1014,6 +1026,7 @@ function BooksPanel({
             {draft ? (
               <BookEditor
                 book={selectedBook}
+                selectedBookId={workspace.selectedBookId}
                 rows={rows}
                 draft={draft}
                 note={workspace.note}
@@ -1049,6 +1062,7 @@ function BooksPanel({
 
 function BookEditor({
   book,
+  selectedBookId,
   rows,
   draft,
   note,
@@ -1058,6 +1072,7 @@ function BookEditor({
   onClearDraft,
 }: {
   book: BookRow | null;
+  selectedBookId: string | null;
   rows: BookRow[];
   draft: BookDraft;
   note: string;
@@ -1092,17 +1107,18 @@ function BookEditor({
   const visiblePages = pages.filter(isBookPageRow);
 
   const requireSelectedBook = useCallback(() => {
-    const resolvedBookId = resolvedBook?.id ?? rows.find((row) => row.id === draft?.id)?.id ?? null;
-    const draftId = draft?.id ?? resolvedBookId;
-    if (!draftId || !resolvedBookId) {
+    const selectedRowId = rows.find((row) => row.id === selectedBookId)?.id ?? resolvedBook?.id ?? null;
+    const resolvedId =
+      selectedRowId ??
+      draft.id ??
+      rows.find((row) => row.id === draft.id)?.id ??
+      null;
+    if (!resolvedId) {
       toast.error("Select or create a book first.");
       return null;
     }
-    return {
-      bookId: resolvedBookId,
-      draftId,
-    };
-  }, [draft?.id, resolvedBook?.id, rows]);
+    return resolvedId;
+  }, [draft.id, resolvedBook?.id, rows, selectedBookId]);
 
   const applyDraftPatch = useCallback(
     (patch: Partial<BookDraft>) => {
@@ -1113,31 +1129,45 @@ function BookEditor({
 
   const saveBook = useCallback(
     async (overrides?: Partial<BookDraft>) => {
-      const selected = requireSelectedBook();
-      if (!selected) return;
+      const selectedBookId = requireSelectedBook();
+      if (!selectedBookId) return;
       const nextDraft = { ...draft, ...overrides };
       onDraftChange(nextDraft);
+      const payload: {
+        id: string;
+        title: string;
+        subtitle: string;
+        slug: string;
+        category: string;
+        size: BookDraft["size"];
+        launch_mode: BookDraft["launch_mode"];
+        blurb: string;
+        published: boolean;
+        sort_order: number;
+        cover_url?: string;
+      } = {
+        id: selectedBookId,
+        title: nextDraft.title,
+        subtitle: nextDraft.subtitle,
+        slug: nextDraft.slug,
+        category: nextDraft.category,
+        size: nextDraft.size,
+        launch_mode: nextDraft.launch_mode,
+        blurb: nextDraft.blurb,
+        published: nextDraft.published,
+        sort_order: nextDraft.sort_order,
+      };
+      const trimmedCoverUrl = nextDraft.cover_url.trim();
+      if (trimmedCoverUrl && isValidCoverValue(trimmedCoverUrl)) {
+        payload.cover_url = trimmedCoverUrl;
+      }
       setSaving(true);
       try {
-        await adminUpdateBook({
-          data: {
-            id: selected.draftId,
-            title: nextDraft.title,
-            subtitle: nextDraft.subtitle,
-            slug: nextDraft.slug,
-            category: nextDraft.category,
-            size: nextDraft.size,
-            launch_mode: nextDraft.launch_mode,
-            blurb: nextDraft.blurb,
-            published: nextDraft.published,
-            sort_order: nextDraft.sort_order,
-            cover_url: nextDraft.cover_url,
-          },
-        });
-        await onReload(selected.draftId);
+        await adminUpdateBook({ data: payload });
+        await onReload(selectedBookId);
         toast.success(`Saved ${nextDraft.title}.`);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Could not save the book.");
+        toast.error(getPlainSaveErrorMessage(error));
       } finally {
         setSaving(false);
       }
@@ -1158,8 +1188,8 @@ function BookEditor({
   async function handleCoverUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    const selected = requireSelectedBook();
-    if (!selected) {
+    const selectedBookId = requireSelectedBook();
+    if (!selectedBookId) {
       event.target.value = "";
       return;
     }
@@ -1169,9 +1199,9 @@ function BookEditor({
         data: { kind: "cover", bookSlug: draft.slug || draft.title, fileName: file.name },
       });
       const coverUrl = await uploadFile(file, signed);
-      await adminSaveBookCover({ data: { id: selected.draftId, coverUrl } });
+      await adminSaveBookCover({ data: { id: selectedBookId, coverUrl } });
       onDraftChange({ ...draft, cover_url: coverUrl });
-      await onReload(selected.draftId);
+      await onReload(selectedBookId);
       toast.success("Cover image updated.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "We could not upload the cover image.");
@@ -1184,8 +1214,8 @@ function BookEditor({
   async function handlePageUpload(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
     if (files.length === 0) return;
-    const selected = requireSelectedBook();
-    if (!selected) {
+    const selectedBookId = requireSelectedBook();
+    if (!selectedBookId) {
       event.target.value = "";
       return;
     }
@@ -1242,10 +1272,10 @@ function BookEditor({
         }));
         try {
           const nextPages = await adminCreateBookPages({
-            data: { bookId: selected.draftId, imageUrls: uploadedUrls },
+            data: { bookId: selectedBookId, imageUrls: uploadedUrls },
           });
           setPages((nextPages ?? []).filter(isBookPageRow));
-          await onReload(selected.draftId);
+          await onReload(selectedBookId);
         } catch (error) {
           toast.error(
             error instanceof Error
@@ -1277,8 +1307,8 @@ function BookEditor({
   }
 
   async function movePage(pageId: string, direction: -1 | 1) {
-    const selected = requireSelectedBook();
-    if (!selected) return;
+    const selectedBookId = requireSelectedBook();
+    if (!selectedBookId) return;
     const currentIndex = visiblePages.findIndex((page) => page.id === pageId);
     const nextIndex = currentIndex + direction;
     if (currentIndex < 0 || nextIndex < 0 || nextIndex >= visiblePages.length) return;
@@ -1292,10 +1322,10 @@ function BookEditor({
 
     try {
       const refreshed = await adminReorderBookPages({
-        data: { bookId: selected.draftId, pageIds: nextPages.map((page) => page.id) },
+        data: { bookId: selectedBookId, pageIds: nextPages.map((page) => page.id) },
       });
       setPages((refreshed ?? []).filter(isBookPageRow));
-      await onReload(selected.draftId);
+      await onReload(selectedBookId);
     } catch (error) {
       setPages(previousPages);
       toast.error(error instanceof Error ? error.message : "Could not reorder pages.");
@@ -1305,15 +1335,15 @@ function BookEditor({
   }
 
   async function deletePage(pageId: string) {
-    const selected = requireSelectedBook();
-    if (!selected) return;
+    const selectedBookId = requireSelectedBook();
+    if (!selectedBookId) return;
     setDeletingPageId(pageId);
     try {
       const nextPages = await adminDeleteBookPage({
-        data: { pageId, bookId: selected.draftId },
+        data: { pageId, bookId: selectedBookId },
       });
       setPages((nextPages ?? []).filter(isBookPageRow));
-      await onReload(selected.draftId);
+      await onReload(selectedBookId);
       toast.success("Page removed.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not remove the page.");
@@ -1477,11 +1507,11 @@ function BookEditor({
               variant="loss"
               onClick={async () => {
                 if (!window.confirm(`Delete ${draft.title} and all pages?`)) return;
-                const selected = requireSelectedBook();
-                if (!selected) return;
+                const selectedBookId = requireSelectedBook();
+                if (!selectedBookId) return;
                 setDeletingBook(true);
                 try {
-                  await adminDeleteBook({ data: { id: selected.draftId } });
+                  await adminDeleteBook({ data: { id: selectedBookId } });
                   await onReload(null);
                   onClearDraft();
                   toast.success("Book deleted.");
