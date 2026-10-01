@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useLoaderData } from "@tanstack/react-router";
 import { Shell } from "@/components/layout/shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +36,8 @@ export const Route = createFileRoute("/library/$slug")({
 });
 
 export function BookPage() {
-  const book = Route.useLoaderData();
+  // Shared by /$slug and /library/$slug — must not bind to one Route id
+  const book = useLoaderData({ strict: false });
   const { user, isPending } = useCurrentUserState();
   const siteContext = useSiteContext();
 

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Lock } from "lucide-react";
 import { RedirectToSignIn } from "@/lib/auth/gates";
@@ -13,7 +13,8 @@ export const Route = createFileRoute("/library/read/$slug")({
 });
 
 export function Reader() {
-  const { slug } = Route.useParams();
+  // Shared by /read/$slug and /library/read/$slug — must not bind to one Route id
+  const { slug } = useParams({ strict: false });
   const { user, isPending } = useCurrentUserState();
   const siteContext = useSiteContext();
   const [data, setData] = useState<Awaited<ReturnType<typeof readerPayload>> | null>(null);
