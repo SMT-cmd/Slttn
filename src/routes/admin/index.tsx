@@ -236,6 +236,16 @@ function getPageUploadMessage(progress: PageUploadProgress) {
   return "";
 }
 
+function isBookPageRow(value: BookPageRow | null | undefined): value is BookPageRow {
+  return Boolean(value?.id && value.image_url);
+}
+
+function isCommunityLinkForm(
+  value: CommunityLinkForm | null | undefined,
+): value is CommunityLinkForm {
+  return Boolean(value?.id);
+}
+
 function PanelStateCard({
   title,
   message,
@@ -634,7 +644,7 @@ function HomePanel() {
             </Button>
           </div>
           <div className="mt-4 space-y-4">
-            {form.community_links.map((link) => (
+            {form.community_links.filter(isCommunityLinkForm).map((link) => (
               <div
                 key={link.id}
                 className="grid gap-3 rounded-lg border border-border bg-card p-3 md:grid-cols-[1fr_1.4fr_auto]"
@@ -699,7 +709,7 @@ function HomePanel() {
                 </div>
               </div>
             ))}
-            {form.community_links.length === 0 ? (
+            {form.community_links.filter(isCommunityLinkForm).length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No community links yet. Add your first public group link.
               </p>
@@ -783,6 +793,10 @@ function BooksPanel({
           setCreating(true);
           try {
             const created = await adminCreateBook({ data: newBook });
+            if (!created?.id) {
+              toast.error("We could not open the new book yet. Please try again.");
+              return;
+            }
             setNewBook(EMPTY_BOOK);
             await loadBooks(created.id);
             toast.success("Book created.");
@@ -986,7 +1000,7 @@ function BookEditor({
   onReload: (preferredBookId?: string | null) => Promise<void>;
   onClearDraft: () => void;
 }) {
-  const [pages, setPages] = useState<BookPageRow[]>(book.pages ?? []);
+  const [pages, setPages] = useState<BookPageRow[]>(() => (book.pages ?? []).filter(isBookPageRow));
   const [saving, setSaving] = useState(false);
   const [coverUploading, setCoverUploading] = useState(false);
   const [pageUploadProgress, setPageUploadProgress] = useState<PageUploadProgress>({
@@ -1004,10 +1018,22 @@ function BookEditor({
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
-    setPages(book.pages ?? []);
+    setPages((book.pages ?? []).filter(isBookPageRow));
   }, [book]);
 
   const isBusy = saving || coverUploading || pageUploadProgress.active || reordering || deletingBook;
+  const visiblePages = pages.filter(isBookPageRow);
+
+  const requireSelectedBook = useCallback(() => {
+    if (!draft?.id || !book?.id) {
+      toast.error("Select or create a book first.");
+      return null;
+    }
+    return {
+      bookId: book.id,
+      draftId: draft.id,
+    };
+  }, [book, draft]);
 
   const applyDraftPatch = useCallback(
     (patch: Partial<BookDraft>) => {
@@ -1018,13 +1044,15 @@ function BookEditor({
 
   const saveBook = useCallback(
     async (overrides?: Partial<BookDraft>) => {
+      const selected = requireSelectedBook();
+      if (!selected) return;
       const nextDraft = { ...draft, ...overrides };
       onDraftChange(nextDraft);
       setSaving(true);
       try {
         await adminUpdateBook({
           data: {
-            id: nextDraft.id,
+            id: selected.draftId,
             title: nextDraft.title,
             subtitle: nextDraft.subtitle,
             slug: nextDraft.slug,
@@ -1037,7 +1065,7 @@ function BookEditor({
             cover_url: nextDraft.cover_url,
           },
         });
-        await onReload(nextDraft.id);
+        await onReload(selected.draftId);
         toast.success(`Saved ${nextDraft.title}.`);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Could not save the book.");
@@ -1045,21 +1073,26 @@ function BookEditor({
         setSaving(false);
       }
     },
-    [draft, onDraftChange, onReload],
+    [draft, onDraftChange, onReload, requireSelectedBook],
   );
 
   async function handleCoverUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
+    const selected = requireSelectedBook();
+    if (!selected) {
+      event.target.value = "";
+      return;
+    }
     setCoverUploading(true);
     try {
       const signed = await adminSignCloudinaryUpload({
         data: { kind: "cover", bookSlug: draft.slug || draft.title, fileName: file.name },
       });
       const coverUrl = await uploadFile(file, signed);
-      await adminSaveBookCover({ data: { id: draft.id, coverUrl } });
+      await adminSaveBookCover({ data: { id: selected.draftId, coverUrl } });
       onDraftChange({ ...draft, cover_url: coverUrl });
-      await onReload(draft.id);
+      await onReload(selected.draftId);
       toast.success("Cover image updated.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "We could not upload the cover image.");
@@ -1072,6 +1105,11 @@ function BookEditor({
   async function handlePageUpload(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
     if (files.length === 0) return;
+    const selected = requireSelectedBook();
+    if (!selected) {
+      event.target.value = "";
+      return;
+    }
 
     setPageUploadProgress({
       active: true,
@@ -1125,10 +1163,10 @@ function BookEditor({
         }));
         try {
           const nextPages = await adminCreateBookPages({
-            data: { bookId: draft.id, imageUrls: uploadedUrls },
+            data: { bookId: selected.draftId, imageUrls: uploadedUrls },
           });
-          setPages(nextPages);
-          await onReload(draft.id);
+          setPages((nextPages ?? []).filter(isBookPageRow));
+          await onReload(selected.draftId);
         } catch (error) {
           toast.error(
             error instanceof Error
@@ -1160,12 +1198,14 @@ function BookEditor({
   }
 
   async function movePage(pageId: string, direction: -1 | 1) {
-    const currentIndex = pages.findIndex((page) => page.id === pageId);
+    const selected = requireSelectedBook();
+    if (!selected) return;
+    const currentIndex = visiblePages.findIndex((page) => page.id === pageId);
     const nextIndex = currentIndex + direction;
-    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= pages.length) return;
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= visiblePages.length) return;
 
-    const previousPages = [...pages];
-    const nextPages = [...pages];
+    const previousPages = [...visiblePages];
+    const nextPages = [...visiblePages];
     const [moved] = nextPages.splice(currentIndex, 1);
     nextPages.splice(nextIndex, 0, moved);
     setPages(nextPages);
@@ -1173,10 +1213,10 @@ function BookEditor({
 
     try {
       const refreshed = await adminReorderBookPages({
-        data: { bookId: draft.id, pageIds: nextPages.map((page) => page.id) },
+        data: { bookId: selected.draftId, pageIds: nextPages.map((page) => page.id) },
       });
-      setPages(refreshed);
-      await onReload(draft.id);
+      setPages((refreshed ?? []).filter(isBookPageRow));
+      await onReload(selected.draftId);
     } catch (error) {
       setPages(previousPages);
       toast.error(error instanceof Error ? error.message : "Could not reorder pages.");
@@ -1186,13 +1226,15 @@ function BookEditor({
   }
 
   async function deletePage(pageId: string) {
+    const selected = requireSelectedBook();
+    if (!selected) return;
     setDeletingPageId(pageId);
     try {
       const nextPages = await adminDeleteBookPage({
-        data: { pageId, bookId: draft.id },
+        data: { pageId, bookId: selected.draftId },
       });
-      setPages(nextPages);
-      await onReload(draft.id);
+      setPages((nextPages ?? []).filter(isBookPageRow));
+      await onReload(selected.draftId);
       toast.success("Page removed.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not remove the page.");
@@ -1238,7 +1280,7 @@ function BookEditor({
             />
           </label>
           <p className="mt-3 text-xs text-muted-foreground">
-            {pages.length} page image{pages.length === 1 ? "" : "s"} · {formatMoney(book.online_price_cents / 100)} online
+            {visiblePages.length} page image{visiblePages.length === 1 ? "" : "s"} · {formatMoney(book.online_price_cents / 100)} online
           </p>
         </div>
 
@@ -1356,9 +1398,11 @@ function BookEditor({
               variant="loss"
               onClick={async () => {
                 if (!window.confirm(`Delete ${draft.title} and all pages?`)) return;
+                const selected = requireSelectedBook();
+                if (!selected) return;
                 setDeletingBook(true);
                 try {
-                  await adminDeleteBook({ data: { id: draft.id } });
+                  await adminDeleteBook({ data: { id: selected.draftId } });
                   await onReload(null);
                   onClearDraft();
                   toast.success("Book deleted.");
@@ -1409,13 +1453,13 @@ function BookEditor({
               </label>
             </div>
 
-            {pages.length === 0 ? (
+            {visiblePages.length === 0 ? (
               <p className="mt-4 text-sm text-muted-foreground">
                 No pages yet. Upload page images for this book.
               </p>
             ) : (
               <div className="mt-4 grid gap-4 md:grid-cols-2">
-                {pages.map((page, index) => {
+                {visiblePages.map((page, index) => {
                   const pageBusy = deletingPageId === page.id || reordering;
                   return (
                     <div key={page.id} className="rounded-lg border border-border bg-card p-3">
@@ -1450,7 +1494,7 @@ function BookEditor({
                           type="button"
                           size="sm"
                           variant="outline"
-                          disabled={pageBusy || index === pages.length - 1}
+                          disabled={pageBusy || index === visiblePages.length - 1}
                           onClick={() => void movePage(page.id, 1)}
                         >
                           Move down
