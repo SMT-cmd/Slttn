@@ -25,6 +25,9 @@ export function Reader() {
     if (isPending || !user) return;
     readerPayload({ data: { slug } })
       .then((d) => {
+        const maxPageIndex = Math.max(d.pages.length - 1, 0);
+        const nextPage = Math.min(Math.max(d.resumePageIndex ?? 0, 0), maxPageIndex);
+        setPage(nextPage);
         setData(d);
         setTos(!d.profile.tos_accepted_at);
       })
