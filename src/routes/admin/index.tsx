@@ -120,7 +120,7 @@ const EMPTY_BOOK: NewBookForm = {
   size: "medium",
   launch_mode: "prelaunch",
   blurb: "",
-  published: true,
+  published: false,
 };
 
 const EMPTY_COUPON_FORM: CouponForm = {
@@ -348,6 +348,7 @@ async function uploadFile(file: File, signed: SignedUpload) {
 function Admin() {
   const { user, isPending } = useCurrentUserState();
   const [signingOut, setSigningOut] = useState(false);
+  const [continueDismissed, setContinueDismissed] = useState(false);
   const [workspace, setWorkspace] = useState<AdminWorkspaceDraft>(() => loadAdminWorkspace());
   const checkAccess = useCallback(() => adminAccess(), []);
   const { state: gate, retry } = useAdminGate({
@@ -370,6 +371,7 @@ function Admin() {
   }, []);
 
   const handleContinueEditing = useCallback(() => {
+    setContinueDismissed(true);
     setWorkspace((current) => ({
       ...current,
       activeTab: "books",
@@ -442,7 +444,7 @@ function Admin() {
           </Button>
         </div>
 
-        {hasWorkspaceDraft ? (
+        {hasWorkspaceDraft && !continueDismissed ? (
           <div className="mt-6 flex flex-col gap-3 rounded-xl border border-border bg-card p-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-sm font-medium">Continue editing: {continueTitle}</p>
@@ -863,6 +865,12 @@ function BooksPanel({
 
   return (
     <div className="space-y-6">
+      <div className="rounded-xl border border-border bg-card p-4">
+        <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">Books desk</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Create starts as a draft. Use Add to shelf when the title is ready for readers. Public URL slug must match the path you share (example: synthetic-indices-101).
+        </p>
+      </div>
       <form
         className="rounded-xl border border-border bg-card p-5"
         onSubmit={async (event) => {
@@ -902,6 +910,13 @@ function BooksPanel({
             value={newBook.subtitle}
             disabled={creating}
             onChange={(value) => setNewBook((current) => ({ ...current, subtitle: value }))}
+          />
+          <Field
+            label="Public URL slug (optional)"
+            helperText="Example: synthetic-indices-101. Blank uses title + short description."
+            value={newBook.slug}
+            disabled={creating}
+            onChange={(value) => setNewBook((current) => ({ ...current, slug: value }))}
           />
           <Field
             label="Category"
@@ -1344,32 +1359,57 @@ function BookEditor({
     }
   }
 
-  async function movePage(pageId: string, direction: -1 | 1) {
+  async function applyPageOrder(nextPages: BookPageRow[]) {
     const selectedBookId = requireSelectedBook();
     if (!selectedBookId) return;
-    const currentIndex = visiblePages.findIndex((page) => page.id === pageId);
-    const nextIndex = currentIndex + direction;
-    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= visiblePages.length) return;
-
     const previousPages = [...visiblePages];
-    const nextPages = [...visiblePages];
-    const [moved] = nextPages.splice(currentIndex, 1);
-    nextPages.splice(nextIndex, 0, moved);
     setPages(nextPages);
     setReordering(true);
-
     try {
       const refreshed = await adminReorderBookPages({
         data: { bookId: selectedBookId, pageIds: nextPages.map((page) => page.id) },
       });
       setPages((refreshed ?? []).filter(isBookPageRow));
       await onReload(selectedBookId);
+      toast.success("Page order updated.");
     } catch (error) {
       setPages(previousPages);
       toast.error(error instanceof Error ? error.message : "Could not reorder pages.");
     } finally {
       setReordering(false);
     }
+  }
+
+  async function movePage(pageId: string, direction: -1 | 1) {
+    const currentIndex = visiblePages.findIndex((page) => page.id === pageId);
+    const nextIndex = currentIndex + direction;
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= visiblePages.length) return;
+    const nextPages = [...visiblePages];
+    const [moved] = nextPages.splice(currentIndex, 1);
+    nextPages.splice(nextIndex, 0, moved);
+    await applyPageOrder(nextPages);
+  }
+
+  async function movePageToPosition(pageId: string, targetPageNumber: number) {
+    const currentIndex = visiblePages.findIndex((page) => page.id === pageId);
+    if (currentIndex < 0) return;
+    const targetIndex = Math.max(0, Math.min(visiblePages.length - 1, Math.floor(targetPageNumber) - 1));
+    if (targetIndex === currentIndex) return;
+    const nextPages = [...visiblePages];
+    const [moved] = nextPages.splice(currentIndex, 1);
+    nextPages.splice(targetIndex, 0, moved);
+    await applyPageOrder(nextPages);
+  }
+
+  async function swapPages(pageId: string, otherPageNumber: number) {
+    const currentIndex = visiblePages.findIndex((page) => page.id === pageId);
+    const otherIndex = Math.max(0, Math.min(visiblePages.length - 1, Math.floor(otherPageNumber) - 1));
+    if (currentIndex < 0 || otherIndex === currentIndex) return;
+    const nextPages = [...visiblePages];
+    const temp = nextPages[currentIndex];
+    nextPages[currentIndex] = nextPages[otherIndex];
+    nextPages[otherIndex] = temp;
+    await applyPageOrder(nextPages);
   }
 
   async function deletePage(pageId: string) {
@@ -1446,6 +1486,13 @@ function BookEditor({
               value={draft.subtitle}
               disabled={isBusy}
               onChange={(value) => applyDraftPatch({ subtitle: value })}
+            />
+            <Field
+              label="Public URL slug"
+              helperText={`Readers open: /${draft.slug || "your-slug"} on the library site. Fix this if the book page says not on the shelf.`}
+              value={draft.slug}
+              disabled={isBusy}
+              onChange={(value) => applyDraftPatch({ slug: value })}
             />
             <Field
               label="Category"
@@ -1654,6 +1701,62 @@ function BookEditor({
                         >
                           {deletingPageId === page.id ? "Deleting…" : "Delete"}
                         </Button>
+                      </div>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        <label className="text-xs">
+                          <span className="mb-1 block font-medium">Move to page #</span>
+                          <span className="flex gap-2">
+                            <input
+                              type="number"
+                              min={1}
+                              max={visiblePages.length}
+                              defaultValue={index + 1}
+                              id={`move-to-${page.id}`}
+                              disabled={pageBusy}
+                              className="w-full rounded-md border border-border bg-background px-2 py-1"
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={pageBusy}
+                              onClick={() => {
+                                const el = document.getElementById(`move-to-${page.id}`) as HTMLInputElement | null;
+                                const n = Number(el?.value ?? index + 1);
+                                if (Number.isFinite(n)) void movePageToPosition(page.id, n);
+                              }}
+                            >
+                              Move
+                            </Button>
+                          </span>
+                        </label>
+                        <label className="text-xs">
+                          <span className="mb-1 block font-medium">Swap with page #</span>
+                          <span className="flex gap-2">
+                            <input
+                              type="number"
+                              min={1}
+                              max={visiblePages.length}
+                              defaultValue={Math.min(visiblePages.length, index + 2)}
+                              id={`swap-with-${page.id}`}
+                              disabled={pageBusy}
+                              className="w-full rounded-md border border-border bg-background px-2 py-1"
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={pageBusy}
+                              onClick={() => {
+                                const el = document.getElementById(`swap-with-${page.id}`) as HTMLInputElement | null;
+                                const n = Number(el?.value ?? index + 2);
+                                if (Number.isFinite(n)) void swapPages(page.id, n);
+                              }}
+                            >
+                              Swap
+                            </Button>
+                          </span>
+                        </label>
                       </div>
                     </div>
                   );

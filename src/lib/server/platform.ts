@@ -171,12 +171,13 @@ function uiLaunchMode(mode: string | null | undefined): LaunchModeValue {
 }
 
 function slugify(value: string) {
-  return value
+  const next = value
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 120);
+  return next || "book";
 }
 
 function randomCode(prefix: string) {
@@ -1534,7 +1535,7 @@ export const adminCreateBook = createServerFn({ method: "POST" })
       await db
         .from("books")
         .insert({
-          slug: slugify(data.slug || data.title),
+          slug: slugify(data.slug || [data.title, data.subtitle].filter(Boolean).join(" ")),
           title: data.title.trim(),
           subtitle: data.subtitle.trim(),
           category: data.category.trim(),

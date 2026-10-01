@@ -118,18 +118,32 @@ export async function listCatalogBooks(includeUnpublished = false) {
 
 export async function getCatalogBookBySlug(slug: string, includeUnpublished = false) {
   const db = getDb();
+  const cleanSlug = slug.trim().replace(/^\/+|\/+$/g, "").toLowerCase();
+  // Apply all filters before resolving the row so public shelf lookups are reliable.
   let query = db
     .from("books")
     .select("id, slug, title, subtitle, category, size, launch_mode, cover_url, blurb, published, sort_order, created_at, updated_at")
-    .eq("slug", slug)
-    .limit(1)
-    .maybeSingle();
+    .eq("slug", cleanSlug)
+    .limit(1);
   if (!includeUnpublished) {
     query = query.eq("published", true);
   }
-  const { data, error } = await query;
+  const { data, error } = await query.maybeSingle();
   if (error) throw new Error(error.message);
-  return data ? normalizeCatalogBook(data as CatalogBookRecord) : null;
+  if (!data) {
+    // Fallback: case-insensitive match on slug for older rows
+    const all = await db
+      .from("books")
+      .select("id, slug, title, subtitle, category, size, launch_mode, cover_url, blurb, published, sort_order, created_at, updated_at")
+      .limit(200);
+    if (all.error) throw new Error(all.error.message);
+    const rows = (all.data ?? []) as CatalogBookRecord[];
+    const match = rows.find((row) => row.slug?.toLowerCase() === cleanSlug);
+    if (!match) return null;
+    if (!includeUnpublished && !match.published) return null;
+    return normalizeCatalogBook(match);
+  }
+  return normalizeCatalogBook(data as CatalogBookRecord);
 }
 
 export async function getCatalogBookPages(bookId: string) {
