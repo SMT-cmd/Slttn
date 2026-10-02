@@ -1770,6 +1770,53 @@ export const adminReorderBookPages = createServerFn({ method: "POST" })
     return pages.map((page) => toPageRow(page));
   });
 
+export const adminReplaceBookPage = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(
+    z.object({
+      pageId: z.string(),
+      bookId: z.string(),
+      imageUrl: z.string().url(),
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    const db = getSupabaseAdmin();
+    await requireAdmin(db, context.userId);
+    assertSupabase(
+      await db
+        .from("book_pages")
+        .update({ image_url: data.imageUrl })
+        .eq("id", data.pageId)
+        .eq("book_id", data.bookId),
+    );
+    const pages = await getCatalogBookPages(data.bookId);
+    return pages.map((page) => toPageRow(page));
+  });
+
+/** Admin-only asset list for offline ZIP download. Never exposed publicly. */
+export const adminBookDownloadBundle = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator(z.object({ bookId: z.string() }))
+  .handler(async ({ context, data }) => {
+    const db = getSupabaseAdmin();
+    await requireAdmin(db, context.userId);
+    const books = await loadBooksWithPages(true);
+    const book = books.find((row) => row.id === data.bookId);
+    if (!book) throw new Error("Book not found.");
+    const pages = await getCatalogBookPages(data.bookId);
+    return {
+      id: book.id,
+      title: book.title,
+      subtitle: book.subtitle,
+      slug: book.slug,
+      cover_url: book.cover_url,
+      pages: pages.map((page) => ({
+        page_number: page.page_number,
+        image_url: page.image_url,
+      })),
+    };
+  });
+
 export const adminCreateCoupon = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(

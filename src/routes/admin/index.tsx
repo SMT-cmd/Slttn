@@ -25,10 +25,12 @@ import {
   type AdminWorkspaceDraft,
   type AdminWorkspaceTab,
 } from "@/lib/admin/workspace";
+import { downloadAdminBookZip } from "@/lib/admin/download-book-zip";
 import { signOut } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import {
   adminAccess,
+  adminBookDownloadBundle,
   adminBooks,
   adminCoupons,
   adminCreateBook,
@@ -40,6 +42,7 @@ import {
   adminLogs,
   adminOverview,
   adminReorderBookPages,
+  adminReplaceBookPage,
   adminSales,
   adminSaveBookCover,
   adminSaveSetting,
@@ -1703,6 +1706,9 @@ function BookEditor({
   const [deletingBook, setDeletingBook] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [activePageIndex, setActivePageIndex] = useState(0);
+  const [replacingPage, setReplacingPage] = useState(false);
+  const [downloadingBook, setDownloadingBook] = useState(false);
+  const replacePageInputRef = useRef<HTMLInputElement | null>(null);
   const [jumpToPageInput, setJumpToPageInput] = useState("1");
   const [moveToPageInput, setMoveToPageInput] = useState("1");
   const [swapWithPageInput, setSwapWithPageInput] = useState("2");
@@ -1711,7 +1717,7 @@ function BookEditor({
     setPages((resolvedBook?.pages ?? []).filter(isBookPageRow));
   }, [resolvedBook]);
 
-  const isBusy = saving || coverUploading || pageUploadProgress.active || reordering || deletingBook;
+  const isBusy = saving || coverUploading || pageUploadProgress.active || reordering || deletingBook || replacingPage || downloadingBook || Boolean(deletingPageId);
   const visiblePages = pages.filter(isBookPageRow);
   const activePage = visiblePages[activePageIndex] ?? null;
 
@@ -1986,6 +1992,51 @@ function BookEditor({
     }
   }
 
+
+  async function handleReplacePage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !activePage) return;
+    const selectedBookId = requireSelectedBook();
+    if (!selectedBookId) return;
+    setReplacingPage(true);
+    try {
+      const signed = await adminSignCloudinaryUpload({
+        data: { kind: "page", bookSlug: draft.slug || selectedBookId, fileName: file.name },
+      });
+      const imageUrl = await uploadFile(file, signed);
+      const nextPages = await adminReplaceBookPage({
+        data: { pageId: activePage.id, bookId: selectedBookId, imageUrl },
+      });
+      setPages((nextPages ?? []).filter(isBookPageRow));
+      toast.success(`Page ${activePageIndex + 1} image replaced.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not replace this page image.");
+    } finally {
+      setReplacingPage(false);
+    }
+  }
+
+  async function handleDownloadBookZip() {
+    const selectedBookId = requireSelectedBook();
+    if (!selectedBookId) return;
+    setDownloadingBook(true);
+    try {
+      const bundle = await adminBookDownloadBundle({ data: { bookId: selectedBookId } });
+      // Resolve relative cover paths against the current origin
+      const cover =
+        bundle.cover_url.startsWith("http://") || bundle.cover_url.startsWith("https://")
+          ? bundle.cover_url
+          : `${window.location.origin}${bundle.cover_url.startsWith("/") ? "" : "/"}${bundle.cover_url}`;
+      await downloadAdminBookZip({ ...bundle, cover_url: cover });
+      toast.success("Admin ZIP download started (cover + all pages).");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not build the admin download.");
+    } finally {
+      setDownloadingBook(false);
+    }
+  }
+
   async function applyPageOrder(nextPages: BookPageRow[], nextActiveIndex = activePageIndex) {
     const selectedBookId = requireSelectedBook();
     if (!selectedBookId) return;
@@ -2207,6 +2258,15 @@ function BookEditor({
           <div className="mt-4 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:gap-3">
             <Button type="button" variant="navy" className="w-full sm:w-auto" onClick={() => void saveBook()} disabled={isBusy}>
               {saving ? "Saving…" : "Save book"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => void handleDownloadBookZip()}
+              disabled={isBusy || downloadingBook || visiblePages.length === 0}
+            >
+              {downloadingBook ? "Preparing ZIP…" : "Download book (admin ZIP)"}
             </Button>
             <Button
               type="button"
@@ -2448,6 +2508,22 @@ function BookEditor({
                         >
                           {deletingPageId === activePage.id ? "Deleting…" : "Delete"}
                         </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={replacingPage || reordering || isBusy}
+                          onClick={() => replacePageInputRef.current?.click()}
+                        >
+                          {replacingPage ? "Replacing…" : "Replace image"}
+                        </Button>
+                        <input
+                          ref={replacePageInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(event) => void handleReplacePage(event)}
+                        />
                       </div>
                     </div>
                   </div>
