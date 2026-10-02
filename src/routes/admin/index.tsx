@@ -2023,19 +2023,41 @@ function BookEditor({
     setDownloadingBook(true);
     try {
       const bundle = await adminBookDownloadBundle({ data: { bookId: selectedBookId } });
-      // Resolve relative cover paths against the current origin
+      if (!bundle?.pages?.length) {
+        throw new Error("This book has no page images to download yet.");
+      }
+      const coverRaw = bundle.cover_url ?? "";
       const cover =
-        bundle.cover_url.startsWith("http://") || bundle.cover_url.startsWith("https://")
-          ? bundle.cover_url
-          : `${window.location.origin}${bundle.cover_url.startsWith("/") ? "" : "/"}${bundle.cover_url}`;
-      await downloadAdminBookPdf({
-        ...bundle,
+        !coverRaw
+          ? ""
+          : coverRaw.startsWith("http://") || coverRaw.startsWith("https://")
+            ? coverRaw
+            : `${window.location.origin}${coverRaw.startsWith("/") ? "" : "/"}${coverRaw}`;
+      const result = await downloadAdminBookPdf({
+        title: bundle.title ?? draft.title ?? "book",
+        slug: bundle.slug ?? draft.slug ?? "book",
         cover_url: cover,
-        onProgress: (message) => toast.message(message),
+        pages: bundle.pages,
+        onProgress: (message) => {
+          // sonner: use plain toast for progress (toast.message is not always available)
+          toast(message, { id: "admin-pdf-progress" });
+        },
       });
-      toast.success("Admin PDF download started (cover + all pages).");
+      toast.dismiss("admin-pdf-progress");
+      if (result.skipped > 0) {
+        toast.success(
+          `PDF ready (${result.pageCount} pages). ${result.skipped} image(s) were skipped.`,
+        );
+      } else {
+        toast.success(`PDF ready with ${result.pageCount} pages.`);
+      }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not build the admin download.");
+      toast.dismiss("admin-pdf-progress");
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Could not build the admin PDF. Try again on Wi‑Fi or a desktop browser.";
+      toast.error(message);
     } finally {
       setDownloadingBook(false);
     }

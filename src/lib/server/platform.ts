@@ -1793,27 +1793,34 @@ export const adminReplaceBookPage = createServerFn({ method: "POST" })
     return pages.map((page) => toPageRow(page));
   });
 
-/** Admin-only asset list for offline ZIP download. Never exposed publicly. */
+/** Admin-only asset list for offline PDF download. Never exposed publicly. */
 export const adminBookDownloadBundle = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator(z.object({ bookId: z.string() }))
+  .validator(z.object({ bookId: z.string().min(1) }))
   .handler(async ({ context, data }) => {
     const db = getSupabaseAdmin();
     await requireAdmin(db, context.userId);
     const books = await loadBooksWithPages(true);
     const book = books.find((row) => row.id === data.bookId);
     if (!book) throw new Error("Book not found.");
-    const pages = await getCatalogBookPages(data.bookId);
+    const pages = (await getCatalogBookPages(data.bookId)) ?? [];
+    const ordered = [...pages]
+      .filter((page) => Boolean(page?.image_url) && typeof page.page_number === "number")
+      .sort((a, b) => a.page_number - b.page_number)
+      .map((page) => ({
+        page_number: page.page_number,
+        image_url: String(page.image_url),
+      }));
+    if (ordered.length === 0) {
+      throw new Error("This book has no page images to download yet.");
+    }
     return {
       id: book.id,
-      title: book.title,
-      subtitle: book.subtitle,
-      slug: book.slug,
-      cover_url: book.cover_url,
-      pages: pages.map((page) => ({
-        page_number: page.page_number,
-        image_url: page.image_url,
-      })),
+      title: book.title ?? "",
+      subtitle: book.subtitle ?? "",
+      slug: book.slug ?? "book",
+      cover_url: book.cover_url ? String(book.cover_url) : "",
+      pages: ordered,
     };
   });
 
