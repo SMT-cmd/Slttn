@@ -1,6 +1,7 @@
 export const ADMIN_WORKSPACE_KEY = "slt.admin.workspace.v1";
 
 export type AdminWorkspaceTab = "overview" | "books" | "users" | "coupons" | "sales";
+export type AdminBooksDeskMode = "hub" | "list" | "drafts" | "create" | "edit";
 
 export type AdminBookWorkspaceDraft = {
   id: string;
@@ -18,19 +19,23 @@ export type AdminBookWorkspaceDraft = {
 
 export type AdminWorkspaceDraft = {
   activeTab: AdminWorkspaceTab;
+  booksMode: AdminBooksDeskMode;
   selectedBookId: string | null;
   draft: AdminBookWorkspaceDraft | null;
   note: string;
   restoreRequestId: number;
+  continueBannerDismissed: boolean;
 };
 
 export function defaultAdminWorkspace(): AdminWorkspaceDraft {
   return {
     activeTab: "overview",
+    booksMode: "hub",
     selectedBookId: null,
     draft: null,
     note: "",
     restoreRequestId: 0,
+    continueBannerDismissed: false,
   };
 }
 
@@ -44,6 +49,7 @@ export function loadAdminWorkspace(): AdminWorkspaceDraft {
     if (!parsed || typeof parsed !== "object") return defaultAdminWorkspace();
     return {
       activeTab: isWorkspaceTab(parsed.activeTab) ? parsed.activeTab : "overview",
+      booksMode: isBooksDeskMode(parsed.booksMode) ? parsed.booksMode : "hub",
       selectedBookId: typeof parsed.selectedBookId === "string" ? parsed.selectedBookId : null,
       draft: isWorkspaceBookDraft(parsed.draft) ? parsed.draft : null,
       note: typeof parsed.note === "string" ? parsed.note : "",
@@ -51,6 +57,7 @@ export function loadAdminWorkspace(): AdminWorkspaceDraft {
         typeof parsed.restoreRequestId === "number" && Number.isFinite(parsed.restoreRequestId)
           ? parsed.restoreRequestId
           : 0,
+      continueBannerDismissed: typeof parsed.continueBannerDismissed === "boolean" ? parsed.continueBannerDismissed : false,
     };
   } catch {
     return defaultAdminWorkspace();
@@ -69,6 +76,10 @@ export function clearAdminWorkspace() {
 
 function isWorkspaceTab(value: unknown): value is AdminWorkspaceTab {
   return value === "overview" || value === "books" || value === "users" || value === "coupons" || value === "sales";
+}
+
+function isBooksDeskMode(value: unknown): value is AdminBooksDeskMode {
+  return value === "hub" || value === "list" || value === "drafts" || value === "create" || value === "edit";
 }
 
 function isWorkspaceBookDraft(value: unknown): value is AdminBookWorkspaceDraft {
