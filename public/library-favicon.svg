@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="The Trading Library">
+  <rect width="64" height="64" rx="14" fill="#0E2744" />
+  <path
+    d="M14 18h12c5.6 0 9.7 1.3 14 4.4V50c-4.2-3-8.4-4.3-14-4.3H14V18Zm36 0H38c-5.6 0-9.8 1.3-14 4.4V50c4.2-3 8.4-4.3 14-4.3h12V18Z"
+    fill="#F8FAFC"
+  />
+  <path d="M24 24h16v3H24zM24 30h16v3H24zM24 36h12v3H24z" fill="#D4AF37" />
+  <path d="M31 11h3v13h-3zM22 15h3v9h-3zM40 13h3v11h-3z" fill="#16A34A" />
+  <path d="M25 18h3v6h-3zM34 16h3v8h-3zM43 19h3v5h-3z" fill="#DC2626" />
+</svg>

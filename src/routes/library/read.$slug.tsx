@@ -22,6 +22,7 @@ export function Reader() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [tos, setTos] = useState(false);
+  const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
 
   useEffect(() => {
     if (isPending || !user || !slug) return;
@@ -34,6 +35,7 @@ export function Reader() {
         setPage(nextPage);
         setData(d);
         setTos(!d.profile.tos_accepted_at);
+        setHasAcceptedTerms(false);
       })
       .catch((e: unknown) =>
         setError(e instanceof Error ? e.message : "We could not open this book."),
@@ -108,9 +110,19 @@ export function Reader() {
             or screenshots can be traced back to this account. You also accept the Terms
             of Service. This is education, not financial advice.
           </DialogDescription>
+          <label className="mt-4 flex items-start gap-3 rounded-lg border border-border/70 bg-muted/30 p-3 text-sm leading-6 text-foreground">
+            <input
+              type="checkbox"
+              checked={hasAcceptedTerms}
+              onChange={(event) => setHasAcceptedTerms(event.target.checked)}
+              className="mt-1 size-4 rounded border border-border accent-[var(--color-navy)]"
+            />
+            <span>I have read and accepted the terms and conditions</span>
+          </label>
           <Button
             variant="navy"
             className="mt-4 w-full"
+            disabled={!hasAcceptedTerms}
             onClick={async () => {
               await acceptTos();
               setTos(false);
