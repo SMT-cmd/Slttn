@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { AUTH_PROVIDERS, authEnabled, signIn, authClient } from "@/lib/auth/client";
 import { Button } from "@/components/ui/button";
@@ -63,6 +63,15 @@ function Login() {
     typeof window !== "undefined"
       ? safeNextPath(new URLSearchParams(window.location.search).get("next"), "/account")
       : "/account";
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const oauthError = params.get("error");
+    if (!oauthError) return;
+    const detail = oauthError.replace(/_/g, " ");
+    toast.error(`Sign-in did not complete (${detail}). Try Deriv again, or use Google / email.`);
+  }, []);
+
 
   async function onEmail(e: FormEvent) {
     e.preventDefault();

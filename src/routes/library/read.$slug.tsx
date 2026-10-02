@@ -14,7 +14,8 @@ export const Route = createFileRoute("/library/read/$slug")({
 
 export function Reader() {
   // Shared by /read/$slug and /library/read/$slug — must not bind to one Route id
-  const { slug } = useParams({ strict: false });
+  const params = useParams({ strict: false }) as { slug?: string };
+  const slug = params.slug ?? "";
   const { user, isPending } = useCurrentUserState();
   const siteContext = useSiteContext();
   const [data, setData] = useState<Awaited<ReturnType<typeof readerPayload>> | null>(null);
@@ -23,7 +24,7 @@ export function Reader() {
   const [tos, setTos] = useState(false);
 
   useEffect(() => {
-    if (isPending || !user) return;
+    if (isPending || !user || !slug) return;
     setError(null);
     setData(null);
     readerPayload({ data: { slug } })

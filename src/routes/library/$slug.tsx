@@ -3,6 +3,7 @@ import { Shell } from "@/components/layout/shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getBook } from "@/lib/server/platform";
+import type { CatalogBook } from "@/lib/catalog";
 import {
   libraryHomeHref,
   libraryReaderHref,
@@ -37,7 +38,7 @@ export const Route = createFileRoute("/library/$slug")({
 
 export function BookPage() {
   // Shared by /$slug and /library/$slug — must not bind to one Route id
-  const book = useLoaderData({ strict: false });
+  const book = useLoaderData({ strict: false }) as CatalogBook | null | undefined;
   const { user, isPending } = useCurrentUserState();
   const siteContext = useSiteContext();
 
