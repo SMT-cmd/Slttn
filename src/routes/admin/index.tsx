@@ -25,7 +25,7 @@ import {
   type AdminWorkspaceDraft,
   type AdminWorkspaceTab,
 } from "@/lib/admin/workspace";
-import { downloadAdminBookZip } from "@/lib/admin/download-book-zip";
+import { downloadAdminBookPdf } from "@/lib/admin/download-book-pdf";
 import { signOut } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import {
@@ -2028,8 +2028,12 @@ function BookEditor({
         bundle.cover_url.startsWith("http://") || bundle.cover_url.startsWith("https://")
           ? bundle.cover_url
           : `${window.location.origin}${bundle.cover_url.startsWith("/") ? "" : "/"}${bundle.cover_url}`;
-      await downloadAdminBookZip({ ...bundle, cover_url: cover });
-      toast.success("Admin ZIP download started (cover + all pages).");
+      await downloadAdminBookPdf({
+        ...bundle,
+        cover_url: cover,
+        onProgress: (message) => toast.message(message),
+      });
+      toast.success("Admin PDF download started (cover + all pages).");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not build the admin download.");
     } finally {
@@ -2266,7 +2270,7 @@ function BookEditor({
               onClick={() => void handleDownloadBookZip()}
               disabled={isBusy || downloadingBook || visiblePages.length === 0}
             >
-              {downloadingBook ? "Preparing ZIP…" : "Download book (admin ZIP)"}
+              {downloadingBook ? "Preparing PDF…" : "Download book (PDF)"}
             </Button>
             <Button
               type="button"
