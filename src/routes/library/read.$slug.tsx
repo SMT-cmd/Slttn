@@ -76,6 +76,18 @@ export function Reader() {
   }
 
   const current = data.pages[page];
+  if (!current) {
+    return (
+      <div className="grid min-h-dvh place-items-center px-4 text-center">
+        <div>
+          <h1 className="font-display text-3xl">This title has no readable pages yet.</h1>
+          <Button asChild variant="navy" className="mt-6">
+            <a href={libraryHomeHref(siteContext)}>Back to the library</a>
+          </Button>
+        </div>
+      </div>
+    );
+  }
   const showLock = data.lockedFrom !== null && page === data.pages.length - 1;
   const watermarkRows = [
     "top-1/4",

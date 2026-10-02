@@ -1,42 +1,26 @@
 /**
  * Admin-only: build a multi-page PDF from cover + ordered page images in the browser.
- * Images are scaled down for mobile memory safety, encoded as JPEG, one PDF page each.
+ * Each image becomes one PDF page. JPEG bytes are used as-is; PNG is converted via canvas.
  */
 
+type JpegPage = {
+  jpeg: Uint8Array;
+  width: number;
+  height: number;
+};
+
 const MAX_EDGE = 1600;
+const PLACEHOLDER_COVER = /trading-library-powered/i;
 
 function assertBytes(value: Uint8Array | undefined, label: string): Uint8Array {
-  if (!value || typeof value.length !== "number") {
+  if (!value || typeof value.length !== "number" || value.length < 8) {
     throw new Error(`Missing binary data for ${label}.`);
   }
   return value;
 }
 
-async function loadImageFromUrl(url: string): Promise<HTMLImageElement> {
-  if (!url || typeof url !== "string") {
-    throw new Error("Missing image URL.");
-  }
-
-  // Prefer blob fetch so we control CORS; fall back to direct Image load.
-  try {
-    const response = await fetch(url, { mode: "cors", credentials: "omit", cache: "no-store" });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    const blob = await response.blob();
-    if (!blob || blob.size < 32) {
-      throw new Error("Empty image response.");
-    }
-    const objectUrl = URL.createObjectURL(blob);
-    try {
-      return await decodeImage(objectUrl);
-    } finally {
-      URL.revokeObjectURL(objectUrl);
-    }
-  } catch {
-    // Cross-origin or blocked fetch — try element load (may still work with CORS headers)
-    return decodeImage(url);
-  }
+function isJpegBytes(bytes: Uint8Array) {
+  return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
 }
 
 function decodeImage(src: string): Promise<HTMLImageElement> {
@@ -49,15 +33,18 @@ function decodeImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-async function imageToJpeg(
-  img: HTMLImageElement,
-  quality = 0.85,
-): Promise<{ bytes: Uint8Array; width: number; height: number }> {
+async function fetchImageBytes(url: string): Promise<Uint8Array> {
+  const response = await fetch(url, { mode: "cors", credentials: "omit", cache: "no-store" });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const buffer = await response.arrayBuffer();
+  if (!buffer || buffer.byteLength < 32) throw new Error("Empty image response.");
+  return new Uint8Array(buffer);
+}
+
+async function canvasToJpeg(img: HTMLImageElement, quality = 0.85): Promise<JpegPage> {
   const naturalW = img.naturalWidth || img.width || 0;
   const naturalH = img.naturalHeight || img.height || 0;
-  if (!naturalW || !naturalH) {
-    throw new Error("Image has no dimensions.");
-  }
+  if (!naturalW || !naturalH) throw new Error("Image has no dimensions.");
 
   const scale = Math.min(1, MAX_EDGE / Math.max(naturalW, naturalH));
   const width = Math.max(1, Math.round(naturalW * scale));
@@ -78,13 +65,34 @@ async function imageToJpeg(
   if (!blob || blob.size < 32) {
     throw new Error("JPEG encode failed (image may be too large for this device).");
   }
-
-  const buffer = await blob.arrayBuffer();
   return {
-    bytes: new Uint8Array(buffer),
+    jpeg: new Uint8Array(await blob.arrayBuffer()),
     width,
     height,
   };
+}
+
+async function urlToJpegPage(url: string): Promise<JpegPage> {
+  try {
+    const bytes = await fetchImageBytes(url);
+    const objectUrl = URL.createObjectURL(new Blob([bytes]));
+    try {
+      const img = await decodeImage(objectUrl);
+      if (isJpegBytes(bytes)) {
+        return {
+          jpeg: bytes,
+          width: img.naturalWidth || img.width,
+          height: img.naturalHeight || img.height,
+        };
+      }
+      return canvasToJpeg(img);
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  } catch {
+    const img = await decodeImage(url);
+    return canvasToJpeg(img);
+  }
 }
 
 function encodeUtf8(str: string): Uint8Array {
@@ -109,15 +117,13 @@ function concatBytes(parts: Uint8Array[]): Uint8Array {
 }
 
 /** Minimal PDF 1.4: one DCTDecode (JPEG) image per page. */
-function buildJpegPdf(
-  pages: Array<{ jpeg: Uint8Array; width: number; height: number }>,
-): Blob {
+export function buildJpegPdf(pages: JpegPage[]): Blob {
   if (!pages.length) {
     throw new Error("No pages to put in the PDF.");
   }
 
   const parts: Uint8Array[] = [];
-  const offsets: number[] = [0]; // index 0 unused
+  const offsets: number[] = [0];
   let pos = 0;
 
   const write = (data: string | Uint8Array) => {
@@ -129,15 +135,14 @@ function buildJpegPdf(
     pos += bytes.length;
   };
 
-  write("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n");
+  write("%PDF-1.4\n");
+  write(new Uint8Array([0x25, 0xe2, 0xe3, 0xcf, 0xd3, 0x0a]));
 
-  // 1 Catalog
   offsets[1] = pos;
   write("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
 
   const pageCount = pages.length;
   const kidRefs = pages.map((_, i) => `${3 + i * 3} 0 R`).join(" ");
-  // 2 Pages
   offsets[2] = pos;
   write(`2 0 obj\n<< /Type /Pages /Count ${pageCount} /Kids [${kidRefs}] >>\nendobj\n`);
 
@@ -151,7 +156,6 @@ function buildJpegPdf(
     const pageObj = 3 + i * 3;
     const contentObj = 4 + i * 3;
     const imageObj = 5 + i * 3;
-
     const content = `q\n${w} 0 0 ${h} 0 0 cm\n/Im${i} Do\nQ\n`;
     const contentBytes = encodeUtf8(content);
 
@@ -187,10 +191,7 @@ function buildJpegPdf(
   write(`trailer\n<< /Size ${maxObj + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF\n`);
 
   const pdfBytes = concatBytes(parts);
-  // Copy into a plain ArrayBuffer slice for maximum Blob compatibility
-  const copy = new Uint8Array(pdfBytes.byteLength);
-  copy.set(pdfBytes);
-  return new Blob([copy.buffer], { type: "application/pdf" });
+  return new Blob([pdfBytes], { type: "application/pdf" });
 }
 
 function toAbsoluteUrl(url: string, origin: string) {
@@ -198,6 +199,18 @@ function toAbsoluteUrl(url: string, origin: string) {
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
   const path = url.startsWith("/") ? url : `/${url}`;
   return `${origin}${path}`;
+}
+
+function urlsMatch(a: string, b: string) {
+  if (!a || !b) return false;
+  return a.split("?")[0] === b.split("?")[0];
+}
+
+function shouldIncludeCover(coverUrl: string, firstPageUrl: string) {
+  if (!coverUrl) return false;
+  if (PLACEHOLDER_COVER.test(coverUrl)) return false;
+  if (urlsMatch(coverUrl, firstPageUrl)) return false;
+  return true;
 }
 
 export async function downloadAdminBookPdf(bundle: {
@@ -210,39 +223,44 @@ export async function downloadAdminBookPdf(bundle: {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const folder = (bundle.slug || "book").replace(/[^\w.-]+/g, "-") || "book";
 
-  const queue: Array<{ label: string; url: string }> = [];
-  const cover = toAbsoluteUrl(bundle.cover_url, origin);
-  if (cover) queue.push({ label: "cover", url: cover });
-
   const orderedPages = Array.isArray(bundle.pages) ? [...bundle.pages] : [];
   orderedPages.sort((a, b) => (a.page_number ?? 0) - (b.page_number ?? 0));
+
+  const firstPageUrl = toAbsoluteUrl(orderedPages[0]?.image_url ?? "", origin);
+  const cover = toAbsoluteUrl(bundle.cover_url ?? "", origin);
+
+  const queue: Array<{ label: string; url: string }> = [];
+  if (shouldIncludeCover(cover, firstPageUrl)) {
+    queue.push({ label: "cover", url: cover });
+  }
   for (const page of orderedPages) {
     const url = toAbsoluteUrl(page?.image_url ?? "", origin);
     if (!url) continue;
-    queue.push({ label: `page ${page.page_number}`, url });
+    queue.push({
+      label: `page ${page.page_number}`,
+      url,
+    });
   }
 
   if (queue.length === 0) {
     throw new Error("No images found for this book.");
   }
 
-  const jpegPages: Array<{ jpeg: Uint8Array; width: number; height: number }> = [];
+  const jpegPages: JpegPage[] = [];
   const failures: string[] = [];
 
   for (let i = 0; i < queue.length; i++) {
     const item = queue[i];
     bundle.onProgress?.(`Preparing PDF… ${item.label} (${i + 1}/${queue.length})`);
     try {
-      const img = await loadImageFromUrl(item.url);
-      const jpeg = await imageToJpeg(img);
-      jpegPages.push(jpeg);
+      const page = await urlToJpegPage(item.url);
+      if (!page.jpeg || page.jpeg.length < 8 || !page.width || !page.height) {
+        throw new Error("Converted image was empty.");
+      }
+      jpegPages.push({ jpeg: page.jpeg, width: page.width, height: page.height });
     } catch (error) {
       const reason = error instanceof Error ? error.message : "unknown error";
       failures.push(`${item.label}: ${reason}`);
-      // Cover is optional; page failures are collected and only abort if nothing succeeds
-      if (item.label !== "cover" && jpegPages.length === 0 && i === queue.length - 1) {
-        // keep going; checked below
-      }
     }
   }
 
