@@ -9,7 +9,8 @@ type JpegPage = {
   height: number;
 };
 
-const MAX_EDGE = 1600;
+const MAX_EDGE = 4096;
+const JPEG_QUALITY = 0.95;
 const PLACEHOLDER_COVER = /trading-library-powered/i;
 
 function assertBytes(value: Uint8Array | undefined, label: string): Uint8Array {
@@ -41,7 +42,7 @@ async function fetchImageBytes(url: string): Promise<Uint8Array> {
   return new Uint8Array(buffer);
 }
 
-async function canvasToJpeg(img: HTMLImageElement, quality = 0.85): Promise<JpegPage> {
+async function canvasToJpeg(img: HTMLImageElement, quality = JPEG_QUALITY): Promise<JpegPage> {
   const naturalW = img.naturalWidth || img.width || 0;
   const naturalH = img.naturalHeight || img.height || 0;
   if (!naturalW || !naturalH) throw new Error("Image has no dimensions.");
@@ -72,9 +73,21 @@ async function canvasToJpeg(img: HTMLImageElement, quality = 0.85): Promise<Jpeg
   };
 }
 
+function toPrintUrl(url: string) {
+  const marker = "/image/upload/";
+  const at = url.indexOf(marker);
+  if (at === -1) return url;
+  const after = url.slice(at + marker.length);
+  const rest = /^(?:[a-z0-9_,.:-]+\/)+v\d+\//i.test(after)
+    ? after.replace(/^[^/]+\//, "")
+    : after;
+  return `${url.slice(0, at + marker.length)}f_jpg,q_90/${rest}`;
+}
+
 async function urlToJpegPage(url: string): Promise<JpegPage> {
+  const printUrl = toPrintUrl(url);
   try {
-    const bytes = await fetchImageBytes(url);
+    const bytes = await fetchImageBytes(printUrl);
     const objectUrl = URL.createObjectURL(new Blob([bytes]));
     try {
       const img = await decodeImage(objectUrl);
@@ -90,8 +103,26 @@ async function urlToJpegPage(url: string): Promise<JpegPage> {
       URL.revokeObjectURL(objectUrl);
     }
   } catch {
-    const img = await decodeImage(url);
-    return canvasToJpeg(img);
+    try {
+      const bytes = await fetchImageBytes(url);
+      const objectUrl = URL.createObjectURL(new Blob([bytes]));
+      try {
+        const img = await decodeImage(objectUrl);
+        if (isJpegBytes(bytes)) {
+          return {
+            jpeg: bytes,
+            width: img.naturalWidth || img.width,
+            height: img.naturalHeight || img.height,
+          };
+        }
+        return canvasToJpeg(img);
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    } catch {
+      const img = await decodeImage(printUrl);
+      return canvasToJpeg(img);
+    }
   }
 }
 

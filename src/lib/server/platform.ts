@@ -1793,6 +1793,17 @@ export const adminReplaceBookPage = createServerFn({ method: "POST" })
     return pages.map((page) => toPageRow(page));
   });
 
+function toCloudinaryPrintUrl(url: string) {
+  const marker = "/image/upload/";
+  const at = url.indexOf(marker);
+  if (at === -1) return url;
+  const after = url.slice(at + marker.length);
+  const rest = /^(?:[a-z0-9_,.:-]+\/)+v\d+\//i.test(after)
+    ? after.replace(/^[^/]+\//, "")
+    : after;
+  return `${url.slice(0, at + marker.length)}f_jpg,q_90/${rest}`;
+}
+
 /** Admin-only asset list for offline PDF download. Never exposed publicly. */
 export const adminBookDownloadBundle = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
@@ -1807,19 +1818,23 @@ export const adminBookDownloadBundle = createServerFn({ method: "GET" })
     const ordered = [...pages]
       .filter((page) => Boolean(page?.image_url) && typeof page.page_number === "number")
       .sort((a, b) => a.page_number - b.page_number)
-      .map((page) => ({
-        page_number: page.page_number,
-        image_url: String(page.image_url),
-      }));
+      .map((page) => {
+        const imageUrl = String(page.image_url);
+        return {
+          page_number: page.page_number,
+          image_url: toCloudinaryPrintUrl(imageUrl),
+        };
+      });
     if (ordered.length === 0) {
       throw new Error("This book has no page images to download yet.");
     }
+    const cover = book.cover_url ? String(book.cover_url) : "";
     return {
       id: book.id,
       title: book.title ?? "",
       subtitle: book.subtitle ?? "",
       slug: book.slug ?? "book",
-      cover_url: book.cover_url ? String(book.cover_url) : "",
+      cover_url: cover ? toCloudinaryPrintUrl(cover) : "",
       pages: ordered,
     };
   });
