@@ -80,7 +80,7 @@ export const authConfigured = !authDisabled;
 // a dynamic `*.grok-sandbox.com` host), so we hand Better Auth a dynamic baseURL:
 // it derives the origin per-request from the (proxied) host, validated against the
 // preview allowlist, which makes the OAuth redirect use the concrete preview URL.
-const explicitBaseURL = env("BETTER_AUTH_URL");
+const explicitBaseURLRaw = env("BETTER_AUTH_URL");
 // Explicit `string[]` (not a readonly tuple) — Better Auth's DynamicBaseURLConfig
 // requires a mutable `allowedHosts: string[]`.
 const previewAllowedHosts: string[] = [...PREVIEW_ALLOWED_HOSTS];
@@ -92,6 +92,33 @@ const LOCAL_DEV_ORIGINS: string[] = [
   "http://127.0.0.1:8080",
   "http://[::1]:8080",
 ];
+
+/**
+ * Vercel serves the app on www and 308s apex → www. Better Auth genericOAuth
+ * builds redirect_uri from baseURL. If baseURL is the apex host, Deriv returns
+ * to apex, the 308 hops to www, and the OAuth state cookie is often missing →
+ * login looks like a 404 / "nothing happened".
+ * Canonicalize production baseURL to www so redirect_uri matches the live host.
+ * Deriv app redirect URI must be:
+ *   https://www.slttradehub.trade/api/auth/oauth2/callback/deriv
+ * (genericOAuth path — not /api/auth/callback/deriv).
+ */
+function canonicalizeAuthBaseURL(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === SITE.domain) {
+      parsed.hostname = `www.${SITE.domain}`;
+    }
+    return parsed.origin;
+  } catch {
+    return url;
+  }
+}
+
+const explicitBaseURL = explicitBaseURLRaw
+  ? canonicalizeAuthBaseURL(explicitBaseURLRaw)
+  : undefined;
+
 const baseURL = explicitBaseURL ?? {
   // Include loopback hosts so dynamic baseURL resolves for local email/password
   // (not only the preview wildcard).

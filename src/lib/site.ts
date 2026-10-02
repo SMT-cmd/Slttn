@@ -10,7 +10,7 @@ export const SITE = {
   authorRole: "Synthetic Indices Specialist",
   telegram: "https://t.me/slttradehub",
   whatsapp: "https://chat.whatsapp.com/slttradehub",
-  url: "https://slttradehub.trade",
+  url: "https://www.slttradehub.trade",
   libraryUrl: "https://library.slttradehub.trade",
   marketingTitle: "Synthetic Indices Trading Books, Education, and Community | SLT Trade Hub",
   marketingDescription:

@@ -1,3 +1,13 @@
 {
-  "installCommand": "npm install --omit=dev --no-audit --no-fund"
+  "installCommand": "npm install --omit=dev --no-audit --no-fund",
+  "rewrites": [
+    {
+      "source": "/api/auth/callback/deriv",
+      "destination": "/api/auth/oauth2/callback/deriv"
+    },
+    {
+      "source": "/api/auth/callback/deriv/",
+      "destination": "/api/auth/oauth2/callback/deriv"
+    }
+  ]
 }
