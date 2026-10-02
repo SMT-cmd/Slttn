@@ -1702,6 +1702,10 @@ function BookEditor({
   const [deletingPageId, setDeletingPageId] = useState<string | null>(null);
   const [deletingBook, setDeletingBook] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [activePageIndex, setActivePageIndex] = useState(0);
+  const [jumpToPageInput, setJumpToPageInput] = useState("1");
+  const [moveToPageInput, setMoveToPageInput] = useState("1");
+  const [swapWithPageInput, setSwapWithPageInput] = useState("2");
 
   useEffect(() => {
     setPages((resolvedBook?.pages ?? []).filter(isBookPageRow));
@@ -1709,6 +1713,37 @@ function BookEditor({
 
   const isBusy = saving || coverUploading || pageUploadProgress.active || reordering || deletingBook;
   const visiblePages = pages.filter(isBookPageRow);
+  const activePage = visiblePages[activePageIndex] ?? null;
+
+  useEffect(() => {
+    setActivePageIndex(0);
+  }, [resolvedBook?.id]);
+
+  useEffect(() => {
+    setActivePageIndex((current) => {
+      if (visiblePages.length === 0) return 0;
+      return Math.max(0, Math.min(current, visiblePages.length - 1));
+    });
+  }, [pages, visiblePages.length]);
+
+  useEffect(() => {
+    if (!activePage) {
+      setJumpToPageInput("");
+      setMoveToPageInput("");
+      setSwapWithPageInput("");
+      return;
+    }
+    const currentPageNumber = activePageIndex + 1;
+    const defaultSwapTarget =
+      visiblePages.length <= 1
+        ? currentPageNumber
+        : currentPageNumber === visiblePages.length
+          ? currentPageNumber - 1
+          : currentPageNumber + 1;
+    setJumpToPageInput(String(currentPageNumber));
+    setMoveToPageInput(String(currentPageNumber));
+    setSwapWithPageInput(String(defaultSwapTarget));
+  }, [activePage, activePageIndex, visiblePages.length]);
 
   const requireSelectedBook = useCallback(() => {
     const resolvedId =
@@ -1728,6 +1763,24 @@ function BookEditor({
       onDraftChange({ ...draft, ...patch });
     },
     [draft, onDraftChange],
+  );
+
+  const parsePageNumberInput = useCallback(
+    (value: string, fallbackPageNumber: number) => {
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isFinite(parsed)) return fallbackPageNumber;
+      return Math.max(1, Math.min(visiblePages.length || 1, Math.floor(parsed)));
+    },
+    [visiblePages.length],
+  );
+
+  const jumpToPage = useCallback(
+    (pageNumber: number) => {
+      if (visiblePages.length === 0) return;
+      const nextIndex = Math.max(0, Math.min(visiblePages.length - 1, Math.floor(pageNumber) - 1));
+      setActivePageIndex(nextIndex);
+    },
+    [visiblePages.length],
   );
 
   const saveBook = useCallback(
@@ -1933,11 +1986,15 @@ function BookEditor({
     }
   }
 
-  async function applyPageOrder(nextPages: BookPageRow[]) {
+  async function applyPageOrder(nextPages: BookPageRow[], nextActiveIndex = activePageIndex) {
     const selectedBookId = requireSelectedBook();
     if (!selectedBookId) return;
     const previousPages = [...visiblePages];
+    const previousActivePageIndex = activePageIndex;
+    const clampedNextActiveIndex =
+      nextPages.length === 0 ? 0 : Math.max(0, Math.min(nextActiveIndex, nextPages.length - 1));
     setPages(nextPages);
+    setActivePageIndex(clampedNextActiveIndex);
     setReordering(true);
     try {
       const refreshed = await adminReorderBookPages({
@@ -1948,6 +2005,7 @@ function BookEditor({
       toast.success("Page order updated.");
     } catch (error) {
       setPages(previousPages);
+      setActivePageIndex(previousActivePageIndex);
       toast.error(error instanceof Error ? error.message : "Could not reorder pages.");
     } finally {
       setReordering(false);
@@ -1961,7 +2019,7 @@ function BookEditor({
     const nextPages = [...visiblePages];
     const [moved] = nextPages.splice(currentIndex, 1);
     nextPages.splice(nextIndex, 0, moved);
-    await applyPageOrder(nextPages);
+    await applyPageOrder(nextPages, nextIndex);
   }
 
   async function movePageToPosition(pageId: string, targetPageNumber: number) {
@@ -1972,7 +2030,7 @@ function BookEditor({
     const nextPages = [...visiblePages];
     const [moved] = nextPages.splice(currentIndex, 1);
     nextPages.splice(targetIndex, 0, moved);
-    await applyPageOrder(nextPages);
+    await applyPageOrder(nextPages, targetIndex);
   }
 
   async function swapPages(pageId: string, otherPageNumber: number) {
@@ -1983,7 +2041,7 @@ function BookEditor({
     const temp = nextPages[currentIndex];
     nextPages[currentIndex] = nextPages[otherIndex];
     nextPages[otherIndex] = temp;
-    await applyPageOrder(nextPages);
+    await applyPageOrder(nextPages, otherIndex);
   }
 
   async function deletePage(pageId: string) {
@@ -2224,36 +2282,148 @@ function BookEditor({
               <p className="mt-4 text-sm text-muted-foreground">
                 No pages yet. Upload page images for this book.
               </p>
-            ) : (
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                {visiblePages.map((page, index) => {
-                  const pageBusy = deletingPageId === page.id || reordering;
-                  return (
-                    <div key={page.id} className="rounded-lg border border-border bg-card p-3">
-                      <button
-                        type="button"
-                        className="w-full rounded-md border border-border bg-muted p-2"
-                        onClick={() => setPreviewImage(page.image_url)}
-                      >
-                        <img
-                          src={page.image_url}
-                          alt={`Page ${page.page_number}`}
-                          className="h-80 w-full rounded-md object-contain"
+            ) : activePage ? (
+              <div className="mt-4 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">
+                      Page {activePageIndex + 1} of {visiblePages.length}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Jump between pages, preview this page, or reorder it without opening the full wall.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={reordering || activePageIndex === 0}
+                      onClick={() => setActivePageIndex((current) => Math.max(0, current - 1))}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={reordering || activePageIndex === visiblePages.length - 1}
+                      onClick={() =>
+                        setActivePageIndex((current) => Math.min(visiblePages.length - 1, current + 1))
+                      }
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+                  <button
+                    type="button"
+                    className="rounded-lg border border-border bg-muted p-3"
+                    onClick={() => setPreviewImage(activePage.image_url)}
+                  >
+                    <img
+                      src={activePage.image_url}
+                      alt={`Page ${activePageIndex + 1}`}
+                      className="max-h-[70vh] w-full rounded-lg object-contain"
+                    />
+                  </button>
+
+                  <div className="space-y-4">
+                    <div className="rounded-lg border border-border bg-card p-4">
+                      <p className="text-sm font-medium">Jump to page #</p>
+                      <div className="mt-2 flex gap-2">
+                        <Input
+                          type="number"
+                          min={1}
+                          max={visiblePages.length}
+                          value={jumpToPageInput}
+                          disabled={reordering}
+                          onChange={(event) => setJumpToPageInput(event.target.value)}
                         />
-                      </button>
-                      <div className="mt-3 flex items-center justify-between gap-3">
-                        <p className="text-sm font-medium">Page {page.page_number}</p>
-                        <Button type="button" size="sm" variant="outline" onClick={() => setPreviewImage(page.image_url)}>
-                          Open preview
-                        </Button>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-2">
                         <Button
                           type="button"
                           size="sm"
                           variant="outline"
-                          disabled={pageBusy || index === 0}
-                          onClick={() => void movePage(page.id, -1)}
+                          disabled={reordering}
+                          onClick={() =>
+                            jumpToPage(parsePageNumberInput(jumpToPageInput, activePageIndex + 1))
+                          }
+                        >
+                          Go
+                        </Button>
+                      </div>
+
+                      <p className="mt-4 text-sm font-medium">Move this page to #</p>
+                      <div className="mt-2 flex gap-2">
+                        <Input
+                          type="number"
+                          min={1}
+                          max={visiblePages.length}
+                          value={moveToPageInput}
+                          disabled={reordering}
+                          onChange={(event) => setMoveToPageInput(event.target.value)}
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={reordering}
+                          onClick={() =>
+                            void movePageToPosition(
+                              activePage.id,
+                              parsePageNumberInput(moveToPageInput, activePageIndex + 1),
+                            )
+                          }
+                        >
+                          Move
+                        </Button>
+                      </div>
+
+                      <p className="mt-4 text-sm font-medium">Swap with page #</p>
+                      <div className="mt-2 flex gap-2">
+                        <Input
+                          type="number"
+                          min={1}
+                          max={visiblePages.length}
+                          value={swapWithPageInput}
+                          disabled={reordering}
+                          onChange={(event) => setSwapWithPageInput(event.target.value)}
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={reordering || visiblePages.length <= 1}
+                          onClick={() =>
+                            void swapPages(
+                              activePage.id,
+                              parsePageNumberInput(swapWithPageInput, activePageIndex + 1),
+                            )
+                          }
+                        >
+                          Swap
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-border bg-card p-4">
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setPreviewImage(activePage.image_url)}
+                        >
+                          Open preview
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={reordering || activePageIndex === 0}
+                          onClick={() => void movePage(activePage.id, -1)}
                         >
                           Move up
                         </Button>
@@ -2261,8 +2431,8 @@ function BookEditor({
                           type="button"
                           size="sm"
                           variant="outline"
-                          disabled={pageBusy || index === visiblePages.length - 1}
-                          onClick={() => void movePage(page.id, 1)}
+                          disabled={reordering || activePageIndex === visiblePages.length - 1}
+                          onClick={() => void movePage(activePage.id, 1)}
                         >
                           Move down
                         </Button>
@@ -2270,73 +2440,39 @@ function BookEditor({
                           type="button"
                           size="sm"
                           variant="loss"
-                          disabled={pageBusy}
-                          onClick={() => void deletePage(page.id)}
+                          disabled={deletingPageId === activePage.id || reordering}
+                          onClick={() => void deletePage(activePage.id)}
                         >
-                          {deletingPageId === page.id ? "Deleting…" : "Delete"}
+                          {deletingPageId === activePage.id ? "Deleting…" : "Delete"}
                         </Button>
                       </div>
-                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                        <label className="text-xs">
-                          <span className="mb-1 block font-medium">Move to page #</span>
-                          <span className="flex gap-2">
-                            <input
-                              type="number"
-                              min={1}
-                              max={visiblePages.length}
-                              defaultValue={index + 1}
-                              id={`move-to-${page.id}`}
-                              disabled={pageBusy}
-                              className="w-full rounded-md border border-border bg-background px-2 py-1"
-                            />
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              disabled={pageBusy}
-                              onClick={() => {
-                                const el = document.getElementById(`move-to-${page.id}`) as HTMLInputElement | null;
-                                const n = Number(el?.value ?? index + 1);
-                                if (Number.isFinite(n)) void movePageToPosition(page.id, n);
-                              }}
-                            >
-                              Move
-                            </Button>
-                          </span>
-                        </label>
-                        <label className="text-xs">
-                          <span className="mb-1 block font-medium">Swap with page #</span>
-                          <span className="flex gap-2">
-                            <input
-                              type="number"
-                              min={1}
-                              max={visiblePages.length}
-                              defaultValue={Math.min(visiblePages.length, index + 2)}
-                              id={`swap-with-${page.id}`}
-                              disabled={pageBusy}
-                              className="w-full rounded-md border border-border bg-background px-2 py-1"
-                            />
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              disabled={pageBusy}
-                              onClick={() => {
-                                const el = document.getElementById(`swap-with-${page.id}`) as HTMLInputElement | null;
-                                const n = Number(el?.value ?? index + 2);
-                                if (Number.isFinite(n)) void swapPages(page.id, n);
-                              }}
-                            >
-                              Swap
-                            </Button>
-                          </span>
-                        </label>
-                      </div>
                     </div>
-                  );
-                })}
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto pb-1">
+                  <div className="flex gap-2">
+                    {visiblePages.map((page, index) => {
+                      const active = index === activePageIndex;
+                      return (
+                        <button
+                          key={page.id}
+                          type="button"
+                          className={`rounded-full border px-3 py-1 text-sm ${
+                            active
+                              ? "border-navy bg-navy/10 text-navy"
+                              : "border-border bg-background text-muted-foreground"
+                          }`}
+                          onClick={() => setActivePageIndex(index)}
+                        >
+                          Page {index + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
