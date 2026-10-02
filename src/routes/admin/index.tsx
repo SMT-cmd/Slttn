@@ -322,7 +322,7 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`h-10 rounded-md px-4 text-sm ${
+      className={`h-10 shrink-0 rounded-md px-3 text-sm sm:px-4 ${
         active ? "bg-navy text-navy-foreground" : "bg-muted"
       }`}
     >
@@ -437,11 +437,11 @@ function Admin() {
 
   return (
     <Shell>
-      <div className="mx-auto max-w-7xl px-4 py-12">
+      <div className="mx-auto max-w-7xl overflow-x-hidden px-3 py-6 sm:px-4 sm:py-10 lg:py-12">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs tracking-[0.18em] uppercase text-muted-foreground">Admin</p>
-            <h1 className="mt-2 font-display text-5xl">Platform dashboard</h1>
+            <h1 className="mt-2 font-display text-3xl sm:text-4xl lg:text-5xl">Platform dashboard</h1>
             <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
               Run books, members, sales, coupons, and site settings from one workspace
               that stays open after refresh.
@@ -482,7 +482,7 @@ function Admin() {
           </div>
         ) : null}
 
-        <div className="mt-6 flex flex-wrap gap-2">
+        <div className="-mx-3 mt-6 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
           <TabButton active={workspace.activeTab === "overview"} label="Overview" onClick={() => setTab("overview")} />
           <TabButton active={workspace.activeTab === "books"} label="Books" onClick={() => setTab("books")} />
           <TabButton active={workspace.activeTab === "users"} label="Members" onClick={() => setTab("users")} />
@@ -926,17 +926,17 @@ function BooksPanel({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-xl border border-border bg-card p-4">
+    <div className="min-w-0 space-y-6">
+      <div className="rounded-xl border border-border bg-card p-3 sm:p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">Books desk</p>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-2 break-words text-sm text-muted-foreground">
               New books always start as drafts. Use Add to shelf only when the title is ready for readers. Public URL slug must match the library path you share, for example {getBookPublicPath("synthetic-indices-101")}.
             </p>
           </div>
           {workspace.booksMode !== "hub" ? (
-            <Button type="button" variant="outline" onClick={() => setBooksMode("hub")}>
+            <Button type="button" variant="outline" className="w-full shrink-0 lg:w-auto" onClick={() => setBooksMode("hub")}>
               Back to books hub
             </Button>
           ) : null}
@@ -955,7 +955,7 @@ function BooksPanel({
       ) : null}
 
       {workspace.booksMode === "hub" ? (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
           <BooksDeskActionCard
             title="Edit existing books"
             description="Browse every book on the platform, then open the editor for the one you want."
@@ -1124,11 +1124,11 @@ function BooksDeskActionCard({
   disabled?: boolean;
 }) {
   return (
-    <section className="rounded-xl border border-border bg-card p-5">
+    <section className="min-w-0 rounded-xl border border-border bg-card p-4 sm:p-5">
       <p className="font-medium">{title}</p>
       <p className="mt-2 text-sm text-muted-foreground">{description}</p>
-      <p className="mt-3 text-xs text-muted-foreground">{meta}</p>
-      <Button type="button" variant="navy" className="mt-4" disabled={disabled} onClick={onAction}>
+      <p className="mt-3 text-xs text-muted-foreground break-all">{meta}</p>
+      <Button type="button" variant="navy" className="mt-4 w-full sm:w-auto" disabled={disabled} onClick={onAction}>
         {actionLabel}
       </Button>
     </section>
@@ -1157,13 +1157,13 @@ function BooksDeskList({
   onSelect: (book: BookRow) => void;
 }) {
   return (
-    <section className="rounded-xl border border-border bg-card p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+    <section className="min-w-0 rounded-xl border border-border bg-card p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">{title}</p>
           <p className="mt-2 text-sm text-muted-foreground">{description}</p>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={onRefresh}>
+        <Button type="button" variant="outline" size="sm" className="w-full sm:w-auto" onClick={onRefresh}>
           Refresh
         </Button>
       </div>
@@ -1183,7 +1183,7 @@ function BooksDeskList({
               <button
                 key={book.id}
                 type="button"
-                className={`w-full rounded-xl border p-4 text-left ${
+                className={`w-full min-w-0 rounded-xl border p-3 text-left sm:p-4 ${
                   active ? "border-navy bg-navy/5" : "border-border bg-background"
                 }`}
                 onClick={() => onSelect(book)}
@@ -1419,7 +1419,7 @@ function CreateBookWizard({
         </Button>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2 text-xs">
+      <div className="mt-4 flex gap-2 overflow-x-auto pb-1 text-xs sm:flex-wrap sm:overflow-visible">
         {(["details", "cover", "pages", "review"] as CreateBookWizardStep[]).map((wizardStep, index) => {
           const active = step === wizardStep;
           const complete =
@@ -1540,7 +1540,7 @@ function CreateBookWizard({
               <img
                 src={createdBook?.cover_url || "/brand/trading-library-powered.png"}
                 alt={createdBook?.title || "Book cover"}
-                className="h-80 w-full rounded-xl bg-muted object-contain shadow-[var(--shadow)]"
+                className="mx-auto max-h-[42vh] w-full rounded-xl bg-muted object-contain shadow-[var(--shadow)] sm:max-h-none sm:h-80"
               />
             </div>
             <label className="mt-4 block text-sm">
@@ -2071,19 +2071,19 @@ function BookEditor({
             <img
               src={previewImage}
               alt="Full page preview"
-              className="max-h-[80vh] w-full rounded-md object-contain"
+              className="mx-auto max-h-[75vh] w-full rounded-md object-contain"
             />
           ) : null}
         </DialogContent>
       </Dialog>
 
-      <div className="grid gap-5 xl:grid-cols-[260px_1fr]">
-        <div>
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
+        <div className="min-w-0">
           <div className="rounded-xl border border-border bg-background p-3">
             <img
               src={draft.cover_url}
               alt={draft.title}
-              className="h-80 w-full rounded-xl bg-muted object-contain shadow-[var(--shadow)]"
+              className="mx-auto max-h-[42vh] w-full rounded-xl bg-muted object-contain shadow-[var(--shadow)] sm:max-h-none sm:h-80"
             />
           </div>
           <label className="mt-3 block text-sm">
@@ -2103,8 +2103,8 @@ function BookEditor({
           </p>
         </div>
 
-        <div>
-          <div className="grid gap-4 md:grid-cols-2">
+        <div className="min-w-0">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Field
               label="Book title"
               helperText="This is the name shown in the library."
@@ -2204,24 +2204,26 @@ function BookEditor({
             />
           </label>
 
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Button type="button" variant="navy" onClick={() => void saveBook()} disabled={isBusy}>
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:gap-3">
+            <Button type="button" variant="navy" className="w-full sm:w-auto" onClick={() => void saveBook()} disabled={isBusy}>
               {saving ? "Saving…" : "Save book"}
             </Button>
             <Button
               type="button"
               variant={draft.published ? "outline" : "profit"}
+              className="w-full sm:w-auto"
               onClick={() => void saveBook({ published: !draft.published })}
               disabled={isBusy}
             >
               {draft.published ? "Remove from shelf" : "Add to shelf"}
             </Button>
-            <Button type="button" variant="outline" onClick={onClearDraft} disabled={isBusy}>
+            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onClearDraft} disabled={isBusy}>
               Clear draft
             </Button>
             <Button
               type="button"
               variant="loss"
+              className="w-full sm:w-auto"
               onClick={async () => {
                 if (!window.confirm(`Delete ${draft.title} and all pages?`)) return;
                 const selectedBookId = requireSelectedBook();
@@ -2244,9 +2246,9 @@ function BookEditor({
             </Button>
           </div>
 
-          <div className="mt-6 rounded-xl border border-border bg-background p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
+          <div className="mt-6 min-w-0 rounded-xl border border-border bg-background p-3 sm:p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+              <div className="min-w-0">
                 <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">Book pages</p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Upload page images, preview them full size, reorder them, or remove one page.
@@ -2274,6 +2276,7 @@ function BookEditor({
                   multiple
                   onChange={handlePageUpload}
                   disabled={isBusy}
+                  className="max-w-full text-sm"
                 />
               </label>
             </div>
@@ -2317,23 +2320,23 @@ function BookEditor({
                   </div>
                 </div>
 
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,280px)]">
                   <button
                     type="button"
-                    className="rounded-lg border border-border bg-muted p-3"
+                    className="min-w-0 rounded-lg border border-border bg-muted p-2 sm:p-3"
                     onClick={() => setPreviewImage(activePage.image_url)}
                   >
                     <img
                       src={activePage.image_url}
                       alt={`Page ${activePageIndex + 1}`}
-                      className="max-h-[70vh] w-full rounded-lg object-contain"
+                      className="mx-auto max-h-[48vh] w-full rounded-lg object-contain sm:max-h-[60vh] lg:max-h-[70vh]"
                     />
                   </button>
 
-                  <div className="space-y-4">
-                    <div className="rounded-lg border border-border bg-card p-4">
+                  <div className="min-w-0 space-y-4">
+                    <div className="rounded-lg border border-border bg-card p-3 sm:p-4">
                       <p className="text-sm font-medium">Jump to page #</p>
-                      <div className="mt-2 flex gap-2">
+                      <div className="mt-2 flex min-w-0 gap-2">
                         <Input
                           type="number"
                           min={1}
@@ -2450,8 +2453,8 @@ function BookEditor({
                   </div>
                 </div>
 
-                <div className="overflow-x-auto pb-1">
-                  <div className="flex gap-2">
+                <div className="-mx-1 overflow-x-auto overscroll-x-contain pb-1">
+                  <div className="flex w-max min-w-full gap-2 px-1">
                     {visiblePages.map((page, index) => {
                       const active = index === activePageIndex;
                       return (
@@ -2523,7 +2526,7 @@ function UsersPanel() {
           Review members, see each role, and update tagged or banned status.
         </p>
       </div>
-      <table className="w-full text-left text-sm">
+      <table className="w-full min-w-[40rem] text-left text-sm">
         <thead>
           <tr className="border-b border-border text-muted-foreground">
             <th className="py-2">Name</th>
