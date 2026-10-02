@@ -20,6 +20,7 @@ import {
   defaultAdminWorkspace,
   loadAdminWorkspace,
   saveAdminWorkspace,
+  type AdminBooksDeskMode,
   type AdminBookWorkspaceDraft,
   type AdminWorkspaceDraft,
   type AdminWorkspaceTab,
@@ -62,6 +63,8 @@ type SalesData = NonNullable<Awaited<ReturnType<typeof adminSales>>>;
 type LogsData = NonNullable<Awaited<ReturnType<typeof adminLogs>>>;
 type SignedUpload = Awaited<ReturnType<typeof adminSignCloudinaryUpload>>;
 type BookDraft = AdminBookWorkspaceDraft;
+type BooksDeskMode = AdminBooksDeskMode;
+type CreateBookWizardStep = "details" | "cover" | "pages" | "review";
 
 type CommunityLinkForm = {
   id: string;
@@ -268,6 +271,14 @@ function isBookPageRow(value: BookPageRow | null | undefined): value is BookPage
   return Boolean(value?.id && value.image_url);
 }
 
+function getBookStatusLabel(book: Pick<BookRow, "published"> | Pick<BookDraft, "published">) {
+  return book.published ? "On the shelf" : "Draft — off the shelf";
+}
+
+function getBookPublicPath(slug: string) {
+  return `/${slug.trim() || "your-slug"}`;
+}
+
 function isCommunityLinkForm(
   value: CommunityLinkForm | null | undefined,
 ): value is CommunityLinkForm {
@@ -348,7 +359,6 @@ async function uploadFile(file: File, signed: SignedUpload) {
 function Admin() {
   const { user, isPending } = useCurrentUserState();
   const [signingOut, setSigningOut] = useState(false);
-  const [continueDismissed, setContinueDismissed] = useState(false);
   const [workspace, setWorkspace] = useState<AdminWorkspaceDraft>(() => loadAdminWorkspace());
   const checkAccess = useCallback(() => adminAccess(), []);
   const { state: gate, retry } = useAdminGate({
@@ -367,22 +377,31 @@ function Admin() {
   }, [workspace]);
 
   const setTab = useCallback((nextTab: TabKey) => {
-    setWorkspace((current) => ({ ...current, activeTab: nextTab }));
+    setWorkspace((current) => ({
+      ...current,
+      activeTab: nextTab,
+      booksMode: nextTab === "books" ? "hub" : current.booksMode,
+    }));
   }, []);
 
   const handleContinueEditing = useCallback(() => {
-    setContinueDismissed(true);
     setWorkspace((current) => ({
       ...current,
       activeTab: "books",
+      booksMode: current.selectedBookId || current.draft?.id ? "edit" : "hub",
       selectedBookId: current.selectedBookId ?? current.draft?.id ?? null,
       restoreRequestId: current.restoreRequestId + 1,
+      continueBannerDismissed: true,
     }));
   }, []);
 
   const handleClearDraft = useCallback(() => {
     clearAdminWorkspace();
-    setWorkspace((current) => ({ ...defaultAdminWorkspace(), activeTab: current.activeTab }));
+    setWorkspace((current) => ({
+      ...defaultAdminWorkspace(),
+      activeTab: current.activeTab,
+      continueBannerDismissed: true,
+    }));
     toast.success("Draft cleared.");
   }, []);
 
@@ -444,7 +463,7 @@ function Admin() {
           </Button>
         </div>
 
-        {hasWorkspaceDraft && !continueDismissed ? (
+        {hasWorkspaceDraft && !workspace.continueBannerDismissed ? (
           <div className="mt-6 flex flex-col gap-3 rounded-xl border border-border bg-card p-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-sm font-medium">Continue editing: {continueTitle}</p>
@@ -774,25 +793,41 @@ function BooksPanel({
 }) {
   const [booksState, setBooksState] = useState<QueryState<BookRow[]>>(() => createLoadingState());
   const [newBook, setNewBook] = useState<NewBookForm>(EMPTY_BOOK);
-  const [creating, setCreating] = useState(false);
   const [selectionMessage, setSelectionMessage] = useState("");
   const selectionRef = useRef({
     selectedBookId: workspace.selectedBookId,
     draftId: workspace.draft?.id ?? null,
+    booksMode: workspace.booksMode,
   });
 
   useEffect(() => {
     selectionRef.current = {
       selectedBookId: workspace.selectedBookId,
       draftId: workspace.draft?.id ?? null,
+      booksMode: workspace.booksMode,
     };
-  }, [workspace.draft?.id, workspace.selectedBookId]);
+  }, [workspace.booksMode, workspace.draft?.id, workspace.selectedBookId]);
 
-  const updateSelectedBook = useCallback(
-    (book: BookRow | null, options?: { preserveDraft?: boolean }) => {
+  const setBooksMode = useCallback(
+    (booksMode: BooksDeskMode) => {
       setWorkspace((current) => ({
         ...current,
         activeTab: "books",
+        booksMode,
+      }));
+    },
+    [setWorkspace],
+  );
+
+  const updateSelectedBook = useCallback(
+    (
+      book: BookRow | null,
+      options?: { preserveDraft?: boolean; booksMode?: BooksDeskMode; preserveContinueBannerDismissed?: boolean },
+    ) => {
+      setWorkspace((current) => ({
+        ...current,
+        activeTab: "books",
+        booksMode: options?.booksMode ?? current.booksMode,
         selectedBookId: book?.id ?? null,
         draft:
           book && options?.preserveDraft && current.draft?.id === book.id
@@ -800,6 +835,11 @@ function BooksPanel({
             : book
               ? createBookDraft(book)
               : null,
+        continueBannerDismissed: options?.preserveContinueBannerDismissed
+          ? current.continueBannerDismissed
+          : book
+            ? false
+            : current.continueBannerDismissed,
       }));
     },
     [setWorkspace],
@@ -810,7 +850,7 @@ function BooksPanel({
       setBooksState(createLoadingState());
       try {
         const rows = await adminBooks();
-        const { selectedBookId, draftId } = selectionRef.current;
+        const { selectedBookId, draftId, booksMode } = selectionRef.current;
         const selectionCandidates = [preferredBookId, selectedBookId, draftId].filter(
           (value): value is string => Boolean(value),
         );
@@ -824,7 +864,11 @@ function BooksPanel({
 
         if (matchedBook) {
           setSelectionMessage("");
-          updateSelectedBook(matchedBook, { preserveDraft: true });
+          updateSelectedBook(matchedBook, {
+            preserveDraft: true,
+            booksMode,
+            preserveContinueBannerDismissed: true,
+          });
           return;
         }
 
@@ -833,13 +877,14 @@ function BooksPanel({
           setWorkspace((current) => ({
             ...current,
             activeTab: "books",
+            booksMode: "hub",
             selectedBookId: null,
+            draft: null,
           }));
           return;
         }
 
         setSelectionMessage("");
-        updateSelectedBook(rows[0] ?? null, { preserveDraft: true });
       } catch (error: unknown) {
         setBooksState(createErrorState(error, "Could not load books."));
       }
@@ -852,6 +897,7 @@ function BooksPanel({
   }, [loadBooks, workspace.restoreRequestId]);
 
   const rows = booksState.status === "ready" ? booksState.data : [];
+  const draftRows = rows.filter((book) => !book.published);
   const selectedBook =
     rows.find((book) => book.id === workspace.selectedBookId) ??
     rows.find((book) => book.id === workspace.draft?.id) ??
@@ -862,130 +908,40 @@ function BooksPanel({
       : selectedBook
         ? createBookDraft(selectedBook)
         : null;
+  const currentBookId = workspace.selectedBookId ?? workspace.draft?.id ?? null;
+  const canOpenCurrentEditor = Boolean(currentBookId && draft);
+
+  function handleOpenCurrentEditor() {
+    if (!currentBookId || !draft) {
+      toast.error("Select or create a book first.");
+      return;
+    }
+    setWorkspace((current) => ({
+      ...current,
+      activeTab: "books",
+      booksMode: "edit",
+      selectedBookId: current.selectedBookId ?? current.draft?.id ?? null,
+      continueBannerDismissed: true,
+    }));
+  }
 
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-border bg-card p-4">
-        <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">Books desk</p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Create starts as a draft. Use Add to shelf when the title is ready for readers. Public URL slug must match the path you share (example: synthetic-indices-101).
-        </p>
-      </div>
-      <form
-        className="rounded-xl border border-border bg-card p-5"
-        onSubmit={async (event) => {
-          event.preventDefault();
-          setCreating(true);
-          try {
-            const created = await adminCreateBook({ data: newBook });
-            if (!created?.id) {
-              toast.error("We could not open the new book yet. Please try again.");
-              return;
-            }
-            setNewBook(EMPTY_BOOK);
-            await loadBooks(created.id);
-            toast.success(newBook.published ? "Book created and added to the shelf." : "Book created as a draft (off the shelf).");
-          } catch (error) {
-            toast.error(error instanceof Error ? error.message : "Could not create the book.");
-          } finally {
-            setCreating(false);
-          }
-        }}
-      >
-        <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">Create book</p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Add the main details first, then keep editing cover images and pages below.
-        </p>
-        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <Field
-            label="Book title"
-            helperText="This is the name members will see in the library."
-            value={newBook.title}
-            disabled={creating}
-            onChange={(value) => setNewBook((current) => ({ ...current, title: value }))}
-          />
-          <Field
-            label="Short description"
-            helperText="Use one short line to explain what this book is about."
-            value={newBook.subtitle}
-            disabled={creating}
-            onChange={(value) => setNewBook((current) => ({ ...current, subtitle: value }))}
-          />
-          <Field
-            label="Public URL slug (optional)"
-            helperText="Example: synthetic-indices-101. Blank uses title + short description."
-            value={newBook.slug}
-            disabled={creating}
-            onChange={(value) => setNewBook((current) => ({ ...current, slug: value }))}
-          />
-          <Field
-            label="Category"
-            helperText="Choose the shelf or topic this book belongs to."
-            value={newBook.category}
-            disabled={creating}
-            onChange={(value) => setNewBook((current) => ({ ...current, category: value }))}
-          />
-          <SelectField
-            label="Size"
-            helperText="Tell readers whether this is a short, medium, or full read."
-            value={newBook.size}
-            options={["short", "medium", "full"]}
-            disabled={creating}
-            onChange={(value) =>
-              setNewBook((current) => ({ ...current, size: value as NewBookForm["size"] }))
-            }
-          />
-          <SelectField
-            label="Launch mode"
-            helperText="Choose whether this book follows pre-launch access or full launch access."
-            value={newBook.launch_mode}
-            options={["prelaunch", "launch"]}
-            disabled={creating}
-            onChange={(value) =>
-              setNewBook((current) => ({
-                ...current,
-                launch_mode: value as NewBookForm["launch_mode"],
-              }))
-            }
-          />
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">Books desk</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              New books always start as drafts. Use Add to shelf only when the title is ready for readers. Public URL slug must match the library path you share, for example {getBookPublicPath("synthetic-indices-101")}.
+            </p>
+          </div>
+          {workspace.booksMode !== "hub" ? (
+            <Button type="button" variant="outline" onClick={() => setBooksMode("hub")}>
+              Back to books hub
+            </Button>
+          ) : null}
         </div>
-        <label className="mt-4 block text-sm">
-          <span className="mb-2 block font-medium">Full description</span>
-          <span className="mb-2 block text-sm text-muted-foreground">
-            Share the longer description shown on the book page.
-          </span>
-          <textarea
-            value={newBook.blurb}
-            disabled={creating}
-            onChange={(event) => setNewBook((current) => ({ ...current, blurb: event.target.value }))}
-            className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2"
-          />
-        </label>
-        <label className="mt-4 block rounded-lg border border-border bg-background p-4 text-sm">
-          <span className="block font-medium">Add to the shelf</span>
-          <span className="mt-1 block text-sm text-muted-foreground">
-            Turn this on so the book appears in The Trading Library for readers. Leave it off while you keep drafting.
-          </span>
-          <span className="mt-3 flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={newBook.published}
-              disabled={creating}
-              onChange={(event) =>
-                setNewBook((current) => ({ ...current, published: event.target.checked }))
-              }
-            />
-            Show this book on the public site
-          </span>
-        </label>
-        <Button type="submit" variant="navy" className="mt-4" disabled={creating}>
-          {creating ? "Creating book…" : "Create book"}
-        </Button>
-      </form>
-
-      {booksState.status === "loading" ? (
-        <PanelStateCard title="Loading books" message="Fetching books, covers, and page counts." />
-      ) : null}
+      </div>
 
       {booksState.status === "error" ? (
         <PanelStateCard
@@ -993,100 +949,718 @@ function BooksPanel({
           message={booksState.error}
           actionLabel="Retry"
           onAction={() => {
-            void loadBooks();
+            void loadBooks(workspace.selectedBookId ?? workspace.draft?.id ?? null);
           }}
         />
       ) : null}
 
-      {booksState.status === "ready" ? (
-        <div className="grid gap-6 xl:grid-cols-[280px_1fr]">
-          <aside className="rounded-xl border border-border bg-card p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">Library</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Pick one book to continue editing.
-                </p>
-              </div>
-              <Button
+      {workspace.booksMode === "hub" ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          <BooksDeskActionCard
+            title="Edit existing books"
+            description="Browse every book on the platform, then open the editor for the one you want."
+            meta={booksState.status === "ready" ? `${rows.length} total book${rows.length === 1 ? "" : "s"}` : "Load the catalog first"}
+            actionLabel="Open all books"
+            onAction={() => setBooksMode("list")}
+          />
+          <BooksDeskActionCard
+            title="Add new book"
+            description="Start with title, slug, category, and shelf intent, then continue through cover, pages, and review."
+            meta="Draft-first wizard"
+            actionLabel="Start new book"
+            onAction={() => {
+              setNewBook(EMPTY_BOOK);
+              setSelectionMessage("");
+              setBooksMode("create");
+            }}
+          />
+          <BooksDeskActionCard
+            title="Continue drafts"
+            description="Show only off-shelf books so you can keep working without scanning the full catalog."
+            meta={booksState.status === "ready" ? `${draftRows.length} draft book${draftRows.length === 1 ? "" : "s"}` : "Draft list"}
+            actionLabel="Open drafts"
+            onAction={() => setBooksMode("drafts")}
+          />
+          <BooksDeskActionCard
+            title="Open current editor"
+            description={
+              canOpenCurrentEditor
+                ? `Continue editing ${draft?.title?.trim() || "the selected book"} in the full editor.`
+                : "Shows up when a book is already selected in your admin workspace."
+            }
+            meta={canOpenCurrentEditor ? getBookPublicPath(draft?.slug ?? "") : "No current book selected"}
+            actionLabel="Open editor"
+            disabled={!canOpenCurrentEditor}
+            onAction={handleOpenCurrentEditor}
+          />
+        </div>
+      ) : null}
+
+      {workspace.booksMode === "list" ? (
+        <BooksDeskList
+          title="All books"
+          description="Pick a book to open the editor."
+          rows={rows}
+          activeBookId={currentBookId}
+          isLoading={booksState.status === "loading"}
+          emptyMessage="No books yet. Add your first title from the books hub."
+          selectionMessage={selectionMessage}
+          onRefresh={() => void loadBooks(currentBookId)}
+          onSelect={(book) => {
+            setSelectionMessage("");
+            updateSelectedBook(book, { preserveDraft: true, booksMode: "edit" });
+          }}
+        />
+      ) : null}
+
+      {workspace.booksMode === "drafts" ? (
+        <BooksDeskList
+          title="Drafts"
+          description="Only books with published=false appear here."
+          rows={draftRows}
+          activeBookId={currentBookId}
+          isLoading={booksState.status === "loading"}
+          emptyMessage="No drafts right now. Add a new book or remove a shelf title from the public shelf first."
+          selectionMessage={selectionMessage}
+          onRefresh={() => void loadBooks(currentBookId)}
+          onSelect={(book) => {
+            setSelectionMessage("");
+            updateSelectedBook(book, { preserveDraft: true, booksMode: "edit" });
+          }}
+        />
+      ) : null}
+
+      {workspace.booksMode === "create" ? (
+        <CreateBookWizard
+          form={newBook}
+          setForm={setNewBook}
+          onReload={loadBooks}
+          onBackToHub={() => setBooksMode("hub")}
+          onCreated={(book) => {
+            setSelectionMessage("");
+            setWorkspace((current) => ({
+              ...current,
+              activeTab: "books",
+              booksMode: "create",
+              selectedBookId: book.id,
+              draft: createBookDraft(book),
+              continueBannerDismissed: false,
+            }));
+          }}
+          onFinished={(book) => {
+            setSelectionMessage("");
+            setNewBook(EMPTY_BOOK);
+            setWorkspace((current) => ({
+              ...current,
+              activeTab: "books",
+              booksMode: "edit",
+              selectedBookId: book.id,
+              draft: createBookDraft(book),
+              continueBannerDismissed: false,
+            }));
+          }}
+        />
+      ) : null}
+
+      {workspace.booksMode === "edit" ? (
+        booksState.status === "loading" && !draft ? (
+          <PanelStateCard title="Loading editor" message="Fetching the selected book and its pages." />
+        ) : draft ? (
+          <BookEditor
+            book={selectedBook}
+            selectedBookId={workspace.selectedBookId}
+            rows={rows}
+            draft={draft}
+            note={workspace.note}
+            onDraftChange={(nextDraft) =>
+              setWorkspace((current) => ({
+                ...current,
+                activeTab: "books",
+                booksMode: "edit",
+                selectedBookId: nextDraft.id,
+                draft: nextDraft,
+                continueBannerDismissed: false,
+              }))
+            }
+            onNoteChange={(note) =>
+              setWorkspace((current) => ({
+                ...current,
+                note,
+                continueBannerDismissed: false,
+              }))
+            }
+            onReload={loadBooks}
+            onClearDraft={clearWorkspaceDraft}
+          />
+        ) : (
+          <>
+            {selectionMessage ? <p className="mb-3 text-sm text-muted-foreground">{selectionMessage}</p> : null}
+            <PanelStateCard
+              title="No current editor"
+              message="Pick a book from All books or Drafts, or add a new title from the books hub."
+              actionLabel="Back to books hub"
+              onAction={() => setBooksMode("hub")}
+            />
+          </>
+        )
+      ) : null}
+    </div>
+  );
+}
+
+function BooksDeskActionCard({
+  title,
+  description,
+  meta,
+  actionLabel,
+  onAction,
+  disabled,
+}: {
+  title: string;
+  description: string;
+  meta: string;
+  actionLabel: string;
+  onAction: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <section className="rounded-xl border border-border bg-card p-5">
+      <p className="font-medium">{title}</p>
+      <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+      <p className="mt-3 text-xs text-muted-foreground">{meta}</p>
+      <Button type="button" variant="navy" className="mt-4" disabled={disabled} onClick={onAction}>
+        {actionLabel}
+      </Button>
+    </section>
+  );
+}
+
+function BooksDeskList({
+  title,
+  description,
+  rows,
+  activeBookId,
+  isLoading,
+  emptyMessage,
+  selectionMessage,
+  onRefresh,
+  onSelect,
+}: {
+  title: string;
+  description: string;
+  rows: BookRow[];
+  activeBookId: string | null;
+  isLoading: boolean;
+  emptyMessage: string;
+  selectionMessage: string;
+  onRefresh: () => void;
+  onSelect: (book: BookRow) => void;
+}) {
+  return (
+    <section className="rounded-xl border border-border bg-card p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">{title}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={onRefresh}>
+          Refresh
+        </Button>
+      </div>
+
+      {selectionMessage ? <p className="mt-4 text-sm text-muted-foreground">{selectionMessage}</p> : null}
+
+      {isLoading ? (
+        <PanelStateCard title="Loading books" message="Fetching books, covers, and page counts." />
+      ) : rows.length === 0 ? (
+        <p className="mt-4 text-sm text-muted-foreground">{emptyMessage}</p>
+      ) : (
+        <div className="mt-4 space-y-3">
+          {rows.map((book) => {
+            const active = activeBookId === book.id;
+            const pageCount = book.pages?.length ?? 0;
+            return (
+              <button
+                key={book.id}
                 type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => void loadBooks(workspace.selectedBookId ?? workspace.draft?.id ?? null)}
+                className={`w-full rounded-xl border p-4 text-left ${
+                  active ? "border-navy bg-navy/5" : "border-border bg-background"
+                }`}
+                onClick={() => onSelect(book)}
               >
-                Refresh
-              </Button>
-            </div>
-            <div className="mt-4 space-y-3">
-              {rows.map((book) => {
-                const active = (workspace.selectedBookId ?? workspace.draft?.id) === book.id;
-                return (
-                  <button
-                    key={book.id}
-                    type="button"
-                    className={`w-full rounded-xl border p-3 text-left ${
-                      active ? "border-navy bg-navy/5" : "border-border bg-background"
-                    }`}
-                    onClick={() => {
-                      setSelectionMessage("");
-                      updateSelectedBook(book, { preserveDraft: true });
-                    }}
-                  >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
                     <p className="font-medium">{book.title}</p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {book.category} · {book.pages?.length ?? 0} page
-                      {(book.pages?.length ?? 0) === 1 ? "" : "s"}
+                      {pageCount} page{pageCount === 1 ? "" : "s"} · {getBookStatusLabel(book)}
                     </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {book.published ? "On the shelf" : "Draft — off the shelf"} · order{" "}
-                      {book.sort_order}
-                    </p>
-                  </button>
-                );
-              })}
-              {rows.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No books yet. Create your first book above.
-                </p>
-              ) : null}
-            </div>
-          </aside>
+                    <p className="mt-1 text-xs text-muted-foreground">{getBookPublicPath(book.slug)}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{book.category}</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
 
-          <div>
-            {draft ? (
-              <BookEditor
-                book={selectedBook}
-                selectedBookId={workspace.selectedBookId}
-                rows={rows}
-                draft={draft}
-                note={workspace.note}
-                onDraftChange={(nextDraft) =>
-                  setWorkspace((current) => ({
-                    ...current,
-                    activeTab: "books",
-                    selectedBookId: nextDraft.id,
-                    draft: nextDraft,
-                  }))
-                }
-                onNoteChange={(note) => setWorkspace((current) => ({ ...current, note }))}
-                onReload={loadBooks}
-                onClearDraft={clearWorkspaceDraft}
+function CreateBookWizard({
+  form,
+  setForm,
+  onReload,
+  onBackToHub,
+  onCreated,
+  onFinished,
+}: {
+  form: NewBookForm;
+  setForm: Dispatch<SetStateAction<NewBookForm>>;
+  onReload: (preferredBookId?: string | null) => Promise<void>;
+  onBackToHub: () => void;
+  onCreated: (book: BookRow) => void;
+  onFinished: (book: BookRow) => void;
+}) {
+  const [step, setStep] = useState<CreateBookWizardStep>("details");
+  const [creating, setCreating] = useState(false);
+  const [createdBook, setCreatedBook] = useState<BookRow | null>(null);
+  const [pages, setPages] = useState<BookPageRow[]>([]);
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [pageUploadProgress, setPageUploadProgress] = useState<PageUploadProgress>({
+    active: false,
+    stage: "idle",
+    total: 0,
+    completed: 0,
+    uploaded: 0,
+    failed: 0,
+    failedFiles: [],
+  });
+  const [finalizing, setFinalizing] = useState<"draft" | "shelf" | null>(null);
+
+  useEffect(() => {
+    setPages((createdBook?.pages ?? []).filter(isBookPageRow));
+  }, [createdBook]);
+
+  const isBusy = creating || coverUploading || pageUploadProgress.active || Boolean(finalizing);
+  const pageCount = pages.length;
+
+  async function handleCreate(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setCreating(true);
+    try {
+      const created = await adminCreateBook({
+        data: {
+          ...form,
+          published: false,
+        },
+      });
+      setCreatedBook(created);
+      onCreated(created);
+      await onReload(created.id);
+      setStep("cover");
+      toast.success("Draft created. Continue with the cover image.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not create the book.");
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function handleCoverUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || !createdBook?.id) return;
+    setCoverUploading(true);
+    try {
+      const signed = await adminSignCloudinaryUpload({
+        data: { kind: "cover", bookSlug: createdBook.slug || createdBook.title, fileName: file.name },
+      });
+      const coverUrl = await uploadFile(file, signed);
+      await adminSaveBookCover({ data: { id: createdBook.id, coverUrl } });
+      setCreatedBook((current) => (current ? { ...current, cover_url: coverUrl } : current));
+      await onReload(createdBook.id);
+      toast.success("Cover image updated.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "We could not upload the cover image.");
+    } finally {
+      event.target.value = "";
+      setCoverUploading(false);
+    }
+  }
+
+  async function handlePageUpload(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0 || !createdBook?.id) return;
+
+    setPageUploadProgress({
+      active: true,
+      stage: "uploading",
+      total: files.length,
+      completed: 0,
+      uploaded: 0,
+      failed: 0,
+      failedFiles: [],
+    });
+
+    const uploadedUrls: string[] = [];
+    const failedFiles: string[] = [];
+
+    try {
+      for (let index = 0; index < files.length; index += 3) {
+        const batch = files.slice(index, index + 3);
+        const results = await Promise.allSettled(
+          batch.map(async (file) => {
+            const signed = await adminSignCloudinaryUpload({
+              data: { kind: "page", bookSlug: createdBook.slug || createdBook.title, fileName: file.name },
+            });
+            const secureUrl = await uploadFile(file, signed);
+            return { fileName: file.name, secureUrl };
+          }),
+        );
+
+        results.forEach((result, resultIndex) => {
+          if (result.status === "fulfilled") {
+            uploadedUrls.push(result.value.secureUrl);
+          } else {
+            failedFiles.push(batch[resultIndex]?.name ?? "Unknown file");
+          }
+        });
+
+        setPageUploadProgress((current) => ({
+          ...current,
+          stage: "uploading",
+          completed: uploadedUrls.length + failedFiles.length,
+          uploaded: uploadedUrls.length,
+          failed: failedFiles.length,
+          failedFiles: [...failedFiles],
+        }));
+      }
+
+      if (uploadedUrls.length > 0) {
+        setPageUploadProgress((current) => ({
+          ...current,
+          stage: "saving",
+          completed: current.total,
+        }));
+        const nextPages = await adminCreateBookPages({
+          data: { bookId: createdBook.id, imageUrls: uploadedUrls },
+        });
+        const filteredPages = (nextPages ?? []).filter(isBookPageRow);
+        setPages(filteredPages);
+        setCreatedBook((current) => (current ? { ...current, pages: filteredPages } : current));
+        await onReload(createdBook.id);
+      }
+
+      const summary = `Done: ${uploadedUrls.length} uploaded, ${failedFiles.length} failed`;
+      if (uploadedUrls.length > 0) {
+        toast.success(summary);
+      } else {
+        toast.error(summary);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "We could not upload those page images.");
+    } finally {
+      event.target.value = "";
+      setPageUploadProgress((current) => ({
+        ...current,
+        active: false,
+        stage: "done",
+      }));
+    }
+  }
+
+  async function finalizeBook(nextPublished: boolean) {
+    if (!createdBook) {
+      toast.error("Create the book details first.");
+      return;
+    }
+    setFinalizing(nextPublished ? "shelf" : "draft");
+    try {
+      const updated = await adminUpdateBook({
+        data: {
+          id: createdBook.id,
+          title: createdBook.title,
+          subtitle: createdBook.subtitle,
+          slug: createdBook.slug,
+          category: createdBook.category,
+          size: createdBook.size === "short" || createdBook.size === "full" ? createdBook.size : "medium",
+          launch_mode: createdBook.launch_mode === "prelaunch" ? "prelaunch" : "launch",
+          blurb: createdBook.description,
+          published: nextPublished,
+          sort_order: createdBook.sort_order,
+          cover_url: createdBook.cover_url,
+        },
+      });
+      await onReload(updated.id);
+      onFinished(updated);
+      toast.success(
+        nextPublished
+          ? `Added ${updated.title} to the shelf at ${getBookPublicPath(updated.slug)}.`
+          : `Saved ${updated.title} as a draft at ${getBookPublicPath(updated.slug)}.`,
+      );
+    } catch (error) {
+      toast.error(getPlainSaveErrorMessage(error));
+    } finally {
+      setFinalizing(null);
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-border bg-card p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground">Add new book</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Move through details, cover, pages, and review without leaving the same draft.
+          </p>
+        </div>
+        <Button type="button" variant="outline" onClick={onBackToHub} disabled={isBusy}>
+          Cancel
+        </Button>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2 text-xs">
+        {(["details", "cover", "pages", "review"] as CreateBookWizardStep[]).map((wizardStep, index) => {
+          const active = step === wizardStep;
+          const complete =
+            wizardStep === "details"
+              ? Boolean(createdBook)
+              : wizardStep === "cover"
+                ? Boolean(createdBook?.cover_url)
+                : wizardStep === "pages"
+                  ? pageCount > 0
+                  : false;
+          return (
+            <span
+              key={wizardStep}
+              className={`rounded-full border px-3 py-1 ${
+                active ? "border-navy bg-navy/10 text-navy" : complete ? "border-border bg-background" : "border-border/70 bg-background/80 text-muted-foreground"
+              }`}
+            >
+              {index + 1}. {wizardStep}
+            </span>
+          );
+        })}
+      </div>
+
+      {step === "details" ? (
+        <form className="mt-5" onSubmit={handleCreate}>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <Field
+              label="Book title"
+              helperText="This is the name members will see in the library."
+              value={form.title}
+              disabled={creating}
+              onChange={(value) => setForm((current) => ({ ...current, title: value }))}
+            />
+            <Field
+              label="Subtitle"
+              helperText="Use one short line to explain what this book is about."
+              value={form.subtitle}
+              disabled={creating}
+              onChange={(value) => setForm((current) => ({ ...current, subtitle: value }))}
+            />
+            <Field
+              label="Slug"
+              helperText={`Optional. Example: synthetic-indices-101. Public path: ${getBookPublicPath(form.slug)}`}
+              value={form.slug}
+              disabled={creating}
+              onChange={(value) => setForm((current) => ({ ...current, slug: value }))}
+            />
+            <Field
+              label="Category"
+              helperText="Choose the shelf or topic this book belongs to."
+              value={form.category}
+              disabled={creating}
+              onChange={(value) => setForm((current) => ({ ...current, category: value }))}
+            />
+            <SelectField
+              label="Size"
+              helperText="Tell readers whether this is a short, medium, or full read."
+              value={form.size}
+              options={["short", "medium", "full"]}
+              disabled={creating}
+              onChange={(value) => setForm((current) => ({ ...current, size: value as NewBookForm["size"] }))}
+            />
+            <SelectField
+              label="Launch mode"
+              helperText="Choose whether this book follows pre-launch access or full launch access."
+              value={form.launch_mode}
+              options={["prelaunch", "launch"]}
+              disabled={creating}
+              onChange={(value) =>
+                setForm((current) => ({ ...current, launch_mode: value as NewBookForm["launch_mode"] }))
+              }
+            />
+          </div>
+
+          <label className="mt-4 block text-sm">
+            <span className="mb-2 block font-medium">Blurb</span>
+            <span className="mb-2 block text-sm text-muted-foreground">
+              Share the longer description shown on the book page.
+            </span>
+            <textarea
+              value={form.blurb}
+              disabled={creating}
+              onChange={(event) => setForm((current) => ({ ...current, blurb: event.target.value }))}
+              className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2"
+            />
+          </label>
+
+          <label className="mt-4 block rounded-lg border border-border bg-background p-4 text-sm">
+            <span className="block font-medium">Shelf status after review</span>
+            <span className="mt-1 block text-sm text-muted-foreground">
+              New books still start as drafts. This sets the review summary and the default finishing action.
+            </span>
+            <span className="mt-3 flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={form.published}
+                disabled={creating}
+                onChange={(event) => setForm((current) => ({ ...current, published: event.target.checked }))}
               />
-            ) : (
-              <>
-                {selectionMessage ? (
-                  <p className="mb-3 text-sm text-muted-foreground">{selectionMessage}</p>
-                ) : null}
-                <PanelStateCard
-                  title="Select a book"
-                  message="Choose a book from the list to edit details, cover image, and pages."
-                />
-              </>
-            )}
+              Add this book to the shelf when the wizard is complete
+            </span>
+          </label>
+
+          <Button type="submit" variant="navy" className="mt-4" disabled={creating}>
+            {creating ? "Creating draft…" : "Save details and continue"}
+          </Button>
+        </form>
+      ) : null}
+
+      {step === "cover" ? (
+        <div className="mt-5 space-y-4">
+          <div className="rounded-xl border border-border bg-background p-4">
+            <p className="text-sm font-medium">Cover image</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Upload the front cover for {createdBook?.title || "this book"}.
+            </p>
+            <div className="mt-4 rounded-xl border border-border bg-card p-3">
+              <img
+                src={createdBook?.cover_url || "/brand/trading-library-powered.png"}
+                alt={createdBook?.title || "Book cover"}
+                className="h-80 w-full rounded-xl bg-muted object-contain shadow-[var(--shadow)]"
+              />
+            </div>
+            <label className="mt-4 block text-sm">
+              <span className="mb-2 block font-medium">Upload cover image</span>
+              <input type="file" accept="image/*" onChange={handleCoverUpload} disabled={coverUploading} />
+            </label>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button type="button" variant="outline" onClick={() => setStep("pages")} disabled={coverUploading}>
+              Continue to pages
+            </Button>
           </div>
         </div>
       ) : null}
-    </div>
+
+      {step === "pages" ? (
+        <div className="mt-5 space-y-4">
+          <div className="rounded-xl border border-border bg-background p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">Page images</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Upload all page images now or come back later in the full editor.
+                </p>
+                {pageUploadProgress.stage !== "idle" ? (
+                  <p className="mt-2 text-sm text-muted-foreground">{getPageUploadMessage(pageUploadProgress)}</p>
+                ) : null}
+                {pageUploadProgress.failedFiles.length > 0 ? (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Failed files: {pageUploadProgress.failedFiles.join(", ")}
+                  </p>
+                ) : null}
+              </div>
+              <label className="text-sm">
+                <span className="mb-2 block font-medium">Upload page images</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handlePageUpload}
+                  disabled={pageUploadProgress.active}
+                />
+              </label>
+            </div>
+
+            {pageCount === 0 ? (
+              <p className="mt-4 text-sm text-muted-foreground">No pages yet. Upload one or many page images.</p>
+            ) : (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {pages.map((page) => (
+                  <div key={page.id} className="rounded-lg border border-border bg-card p-2">
+                    <img
+                      src={page.image_url}
+                      alt={`Page ${page.page_number}`}
+                      className="h-48 w-full rounded-md object-contain"
+                    />
+                    <p className="mt-2 text-xs text-muted-foreground">Page {page.page_number}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button type="button" variant="outline" onClick={() => setStep("cover")} disabled={pageUploadProgress.active}>
+              Back to cover
+            </Button>
+            <Button type="button" variant="navy" onClick={() => setStep("review")} disabled={pageUploadProgress.active}>
+              Continue to review
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {step === "review" ? (
+        <div className="mt-5 space-y-4">
+          <div className="rounded-xl border border-border bg-background p-4">
+            <p className="text-sm font-medium">Review</p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <div>
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Title</p>
+                <p className="mt-1 text-sm">{createdBook?.title || form.title || "Untitled book"}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Public path</p>
+                <p className="mt-1 text-sm">{getBookPublicPath(createdBook?.slug || form.slug)}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Pages</p>
+                <p className="mt-1 text-sm">{pageCount}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Shelf status</p>
+                <p className="mt-1 text-sm">{form.published ? "Ready to add to shelf" : "Keep as draft"}</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button type="button" variant="outline" onClick={() => setStep("pages")} disabled={Boolean(finalizing)}>
+              Back to pages
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void finalizeBook(false)}
+              disabled={Boolean(finalizing)}
+            >
+              {finalizing === "draft" ? "Saving draft…" : "Save draft"}
+            </Button>
+            <Button
+              type="button"
+              variant="profit"
+              onClick={() => void finalizeBook(true)}
+              disabled={Boolean(finalizing)}
+            >
+              {finalizing === "shelf" ? "Adding to shelf…" : "Add to shelf"}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </section>
   );
 }
 
