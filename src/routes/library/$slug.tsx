@@ -9,29 +9,13 @@ import {
   marketingHref,
   useSiteContext,
 } from "@/lib/site-context";
-import { bookPageDescription, bookPageTitle, PRICING } from "@/lib/site";
+import { bookPageDescription, bookPageTitle, PRICING, SITE } from "@/lib/site";
 import { formatMoney } from "@/lib/utils";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
 export const Route = createFileRoute("/library/$slug")({
   loader: ({ params }) => getBook({ data: { slug: params.slug } }),
-  head: ({ loaderData }) => {
-    if (!loaderData) {
-      return {
-        meta: [
-          { title: "Book Not Found | The Trading Library" },
-          { name: "description", content: "The requested title is not currently available." },
-        ],
-      };
-    }
-
-    return {
-      meta: [
-        { title: bookPageTitle(loaderData.title, loaderData.subtitle) },
-        { name: "description", content: bookPageDescription(loaderData.description) },
-      ],
-    };
-  },
+  head: ({ loaderData }) => getBookPageHead(loaderData),
   component: BookPage,
 });
 
@@ -143,4 +127,53 @@ export function BookPage() {
       </div>
     </Shell>
   );
+}
+
+export function getBookPageHead(book: BookRow | null | undefined) {
+  if (!book) {
+    return {
+      meta: [
+        { title: "Book Not Found | The Trading Library" },
+        { name: "description", content: "The requested title is not currently available." },
+      ],
+    };
+  }
+
+  const title = bookPageTitle(book.title, book.subtitle);
+  const description = bookPageDescription(book.description);
+  const shareUrl = `${SITE.libraryUrl}/${book.slug}`;
+  const imageUrl = toAbsoluteUrl(book.cover_url, SITE.libraryUrl);
+  const imageAlt = `${book.title} cover`;
+
+  return {
+    meta: [
+      { title },
+      { name: "description", content: description },
+      { property: "og:type", content: "website" },
+      { property: "og:title", content: title },
+      { property: "og:description", content: description },
+      { property: "og:url", content: shareUrl },
+      { property: "og:image", content: imageUrl },
+      { property: "og:image:secure_url", content: imageUrl },
+      { property: "og:image:alt", content: imageAlt },
+      { name: "twitter:title", content: title },
+      { name: "twitter:description", content: description },
+      { name: "twitter:url", content: shareUrl },
+      { name: "twitter:image", content: imageUrl },
+      { name: "twitter:image:alt", content: imageAlt },
+    ],
+  };
+}
+
+function toAbsoluteUrl(value: string | null | undefined, origin: string) {
+  if (!value) {
+    return `${origin}${SITE.ogImagePath}`;
+  }
+
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    return value;
+  }
+
+  const path = value.startsWith("/") ? value : `/${value}`;
+  return `${origin}${path}`;
 }

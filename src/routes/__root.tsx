@@ -15,13 +15,33 @@ export const Route = createRootRoute({
       isLibraryHost: false,
       currentUrl: SITE.url,
       origin: SITE.url,
+      pathname: "/",
     };
+    const isLibrarySurface =
+      siteContext.isLibraryHost ||
+      siteContext.pathname.startsWith("/library") ||
+      siteContext.pathname.startsWith("/read/");
     const title = siteContext.isLibraryHost ? SITE.libraryTitle : SITE.marketingTitle;
     const description = siteContext.isLibraryHost
       ? SITE.libraryDescription
       : SITE.marketingDescription;
     const siteName = siteContext.isLibraryHost ? SITE.library : SITE.name;
     const origin = siteContext.isLibraryHost ? SITE.libraryUrl : SITE.url;
+    const faviconLinks = isLibrarySurface
+      ? [
+          { rel: "icon", type: "image/svg+xml", href: "/library-favicon.svg" },
+          { rel: "icon", type: "image/png", href: "/brand/trading-library.png" },
+          { rel: "shortcut icon", href: "/brand/trading-library.png" },
+          { rel: "apple-touch-icon", href: "/brand/trading-library.png" },
+        ]
+      : [
+          { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+          { rel: "icon", href: "/favicon.ico", sizes: "any" },
+          { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32x32.png" },
+          { rel: "icon", type: "image/png", sizes: "16x16", href: "/favicon-16x16.png" },
+          { rel: "shortcut icon", href: "/favicon.ico" },
+          { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" },
+        ];
     const shareUrl = (() => {
       try {
         const current = new URL(siteContext.currentUrl);
@@ -61,11 +81,7 @@ export const Route = createRootRoute({
       ],
       links: [
         { rel: "canonical", href: shareUrl },
-        { rel: "icon", href: "/favicon.ico", sizes: "any" },
-        { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32x32.png" },
-        { rel: "icon", type: "image/png", sizes: "16x16", href: "/favicon-16x16.png" },
-        { rel: "shortcut icon", href: "/favicon.ico" },
-        { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" },
+        ...faviconLinks,
         { rel: "manifest", href: "/__grok/manifest.webmanifest" },
         { rel: "stylesheet", href: appCss },
         { rel: "preconnect", href: "https://fonts.googleapis.com" },
