@@ -419,7 +419,7 @@ async function syncProfileFromAuthUser(
   const safeName = safeDerivDisplayName(authUser.name);
   if (
     authUser.name &&
-    (!profile.full_name || /^Deriv\s+(?:RT|DOT|DMT|MF|MLT|CR)\d+$/i.test(profile.full_name))
+    (!profile.full_name || safeName !== authUser.name || safeDerivDisplayName(profile.full_name) !== profile.full_name)
   ) {
     updates.full_name = safeName;
   }
@@ -448,7 +448,7 @@ async function syncProfileIdentityFromAuthUser(
   const safeName = safeDerivDisplayName(authUser.name);
   if (
     authUser.name &&
-    (!profile.full_name || /^Deriv\s+(?:RT|DOT|DMT|MF|MLT|CR)\d+$/i.test(profile.full_name))
+    (!profile.full_name || safeName !== authUser.name || safeDerivDisplayName(profile.full_name) !== profile.full_name)
   ) {
     updates.full_name = safeName;
   }
