@@ -97,12 +97,12 @@ function Home() {
   return (
     <Shell>
       <section className="border-b border-border bg-background">
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
-          <div>
+        <div className="mx-auto grid max-w-6xl min-w-0 items-center gap-10 px-4 py-16 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:py-24">
+          <div className="min-w-0">
             <p className="rise text-xs tracking-[0.22em] text-muted-foreground uppercase">
               SLT Trade Hub
             </p>
-            <h1 className="rise rise-2 mt-4 font-display text-5xl font-semibold text-navy dark:text-foreground sm:text-6xl lg:text-7xl">
+            <h1 className="rise rise-2 mt-4 max-w-full font-display text-5xl font-semibold text-navy dark:text-foreground sm:text-6xl lg:text-7xl">
               For traders who protect capital and trade with intent.
             </h1>
             <p className="rise rise-3 mt-5 max-w-xl text-lg text-muted-foreground">
@@ -131,7 +131,7 @@ function Home() {
               </Button>
             </div>
           </div>
-          <div className="relative">
+          <div className="relative min-w-0">
             <div className="rounded-[28px] border border-border bg-card p-6 shadow-[var(--shadow)]">
               <div className="flex items-start justify-between gap-4">
                 <div>

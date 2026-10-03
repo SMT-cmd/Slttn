@@ -8,10 +8,10 @@ export const Route = createFileRoute("/privacy")({
       <p>
         We collect the name, email, and authentication identifiers needed to create and protect
         your account when you sign in with Google, Deriv, or email and password. When you use
-        Deriv sign-in, we read only the selected Deriv account identifier so we can create your
-        SLT session and check an optional partnership tag. We do not request or use permission
-        to place trades, make payments, view balances, create accounts, or manage your Deriv
-        account.
+        Deriv sign-in, we read only the nickname and account identifiers needed to create your
+        SLT session, show a friendly account label, and check an optional partnership tag. We do
+        not use Deriv access to place trades, make payments, view balances, create accounts, or
+        manage your Deriv account.
       </p>
       <p>
         If you choose to use library access, we also retain your linked Deriv CR number, coupon

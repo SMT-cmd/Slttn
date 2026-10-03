@@ -1,3 +1,2 @@
-# SLT Trade Hub ads.txt
-# A verified Google AdSense publisher ID has not been configured yet. Publish
-# the exact record supplied by AdSense after the account and this site are approved.
+# SLT Trade Hub — authorized Google AdSense inventory
+google.com, pub-8661087498876975, DIRECT, f08c47fec0942fa0

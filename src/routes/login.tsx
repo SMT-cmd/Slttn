@@ -18,7 +18,7 @@ export const Route = createFileRoute("/login")({
       {
         name: "description",
         content:
-          "Sign in to access The Trading Library. Deriv sign-in reads only the account identifier needed to create your session and check an optional partnership tag; it never places trades or accesses payments.",
+          "Sign in to access The Trading Library. Deriv sign-in reads only your nickname and account identifiers to create your session and check an optional partnership tag; it never places trades or accesses payments.",
       },
     ],
   }),
@@ -103,9 +103,9 @@ function Login() {
           <h1 className="mt-3 font-display text-5xl">Sign in to your library account.</h1>
           <p className="mt-4 max-w-md text-muted-foreground">
             Start with Deriv if that is your main trading account. We use the narrowest
-            available permission only to confirm the account you chose, create your login,
-            and check an optional partnership tag. We never place trades, move funds, or
-            change your Deriv account.
+            available permission only to read your nickname and CR/account identifiers,
+            create your login, and check an optional partnership tag. We never place trades,
+            move funds, view balances, or change your Deriv account.
           </p>
           <img
             src="/brand/trading-library-powered.png"
@@ -131,8 +131,8 @@ function Login() {
                     Continue with Deriv
                   </Button>
                   <p className="mt-3 text-sm text-muted-foreground">
-                    We read your chosen Deriv account ID only. No trading, payment, balance,
-                    or account-management permission is requested.
+                    We read your nickname and chosen account identifiers only. No trading,
+                    payment, balance, or account-management action is performed.
                   </p>
                   <p className="mt-3 text-xs text-muted-foreground">
                     Continuing means you agree to the{" "}

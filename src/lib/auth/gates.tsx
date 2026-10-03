@@ -120,7 +120,7 @@ export function UserButton({ compact = false }: { compact?: boolean }) {
           {label.charAt(0).toUpperCase()}
         </span>
       )}
-      <span className={compact ? "hidden text-sm font-medium xl:inline" : "text-sm font-medium"}>
+      <span className={compact ? "hidden max-w-32 truncate text-sm font-medium 2xl:inline" : "text-sm font-medium"}>
         {label}
       </span>
       {authEnabled && !gateSession && (

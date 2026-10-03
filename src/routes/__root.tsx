@@ -9,10 +9,14 @@ import { getSiteContext } from "@/lib/server/site-context";
 import { SITE } from "@/lib/site";
 import appCss from "../styles.css?url";
 
-// This public identifier is intentionally opt-in. Do not load AdSense (or
-// publish a fabricated publisher record) until the owner has an approved
-// client ID for this domain.
-const adsenseClient = import.meta.env.VITE_ADSENSE_CLIENT?.trim();
+// AdSense publisher IDs are public identifiers, not secrets. Keep the verified
+// account as a production-safe fallback while allowing deployment configuration
+// to supply the same value through VITE_ADSENSE_CLIENT.
+const VERIFIED_ADSENSE_CLIENT = "ca-pub-8661087498876975";
+const configuredAdsenseClient = import.meta.env.VITE_ADSENSE_CLIENT?.trim();
+const adsenseClient = /^ca-pub-\d{16}$/.test(configuredAdsenseClient ?? "")
+  ? configuredAdsenseClient
+  : VERIFIED_ADSENSE_CLIENT;
 
 export const Route = createRootRoute({
   loader: () => getSiteContext(),
