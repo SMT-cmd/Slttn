@@ -2,7 +2,6 @@ import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-r
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
-import { AdsenseLoader } from "@/components/adsense-loader";
 import { ThemeProvider } from "@/components/theme";
 import { SiteContext } from "@/lib/site-context";
 import { getSiteContext } from "@/lib/server/site-context";
@@ -17,6 +16,7 @@ const configuredAdsenseClient = import.meta.env.VITE_ADSENSE_CLIENT?.trim();
 const adsenseClient = /^ca-pub-\d{16}$/.test(configuredAdsenseClient ?? "")
   ? configuredAdsenseClient
   : VERIFIED_ADSENSE_CLIENT;
+const adsenseConsentBootstrap = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)};window.gtag=window.gtag||gtag;(function(){var choice=null;try{choice=localStorage.getItem("slt-consent")}catch(e){}var value=choice==="granted"?"granted":"denied";gtag("consent","default",{ad_storage:value,analytics_storage:value,ad_user_data:value,ad_personalization:value,wait_for_update:500})})();`;
 
 export const Route = createRootRoute({
   loader: () => getSiteContext(),
@@ -135,7 +135,15 @@ function Root() {
       <head>
         <HeadContent />
         {adsenseClient ? (
-          <meta name="google-adsense-account" content={adsenseClient} />
+          <>
+            <meta name="google-adsense-account" content={adsenseClient} />
+            <script dangerouslySetInnerHTML={{ __html: adsenseConsentBootstrap }} />
+            <script
+              async
+              src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClient}`}
+              crossOrigin="anonymous"
+            />
+          </>
         ) : null}
         <script
           type="application/ld+json"
@@ -144,7 +152,6 @@ function Root() {
       </head>
       <body>
         <PreviewHostBridge />
-        <AdsenseLoader client={adsenseClient} />
         <ThemeProvider>
           <SiteContext.Provider value={siteContext}>
             <AuthProvider>
