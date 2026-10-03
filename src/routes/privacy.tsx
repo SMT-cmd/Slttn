@@ -6,9 +6,18 @@ export const Route = createFileRoute("/privacy")({
     <Legal title="Privacy Policy">
       <p>Last updated 26 September 2026. SLT Trade Hub (“we”) runs slttradehub.trade and library.slttradehub.trade.</p>
       <p>
-        We collect the name, email, and authentication identifiers you give us when you sign in
-        with Google, Deriv, or email and password, plus any Deriv CR number you link, coupon
-        use, purchases, and reading activity (which book and page, when).
+        We collect the name, email, and authentication identifiers needed to create and protect
+        your account when you sign in with Google, Deriv, or email and password. When you use
+        Deriv sign-in, we read only the selected Deriv account identifier so we can create your
+        SLT session and check an optional partnership tag. We do not request or use permission
+        to place trades, make payments, view balances, create accounts, or manage your Deriv
+        account.
+      </p>
+      <p>
+        If you choose to use library access, we also retain your linked Deriv CR number, coupon
+        use, purchases, and reading activity (which book and page, when) to deliver access,
+        prevent abuse, and provide your account records. We do not sell authentication or
+        reading data.
       </p>
       <p>
         Google AdSense may use cookies to serve ads after you consent. We use Google Consent Mode

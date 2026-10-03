@@ -23,14 +23,6 @@ function sameState(left: AdminGateState, right: AdminGateState) {
   );
 }
 
-function logTransition(next: AdminGateState) {
-  console.log("[admin-gate] transition", next.status, {
-    userId: next.userId,
-    role: next.role,
-    message: next.message,
-  });
-}
-
 export function useAdminGate({
   isPending,
   userId,
@@ -58,7 +50,6 @@ export function useAdminGate({
       if (sameState(current, next)) {
         return current;
       }
-      logTransition(next);
       return next;
     });
   }, []);

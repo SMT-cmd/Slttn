@@ -181,7 +181,11 @@ const AUTH_COOKIE_PREFIX = useSharedAuthDomain ? "__Secure-app-auth" : "__Host-a
 const DERIV_AUTHORIZATION_URL = "https://auth.deriv.com/oauth2/auth";
 const DERIV_TOKEN_URL = "https://auth.deriv.com/oauth2/token";
 const DERIV_API_BASE = "https://api.derivws.com";
-const DERIV_SCOPES = ["trade", "account_manage"];
+// The app uses Deriv strictly to authenticate a visitor and identify the
+// account they chose. `trade` is the narrowest OAuth scope that permits the
+// documented read-only accounts endpoint. Do not add account_manage, payment,
+// or application_read unless a feature genuinely needs it.
+const DERIV_SCOPES = ["trade"];
 
 type DerivIdentity = {
   accountId: string;
@@ -245,27 +249,6 @@ function extractDerivAccountId(payload: unknown): string | null {
   return null;
 }
 
-function extractDerivName(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") return null;
-  if (Array.isArray(payload)) {
-    for (const entry of payload) {
-      const found = extractDerivName(entry);
-      if (found) return found;
-    }
-    return null;
-  }
-
-  const record = payload as Record<string, unknown>;
-  const direct = readObjectString(record, ["nickname", "name", "full_name", "fullName"]);
-  if (direct) return direct;
-
-  for (const value of Object.values(record)) {
-    const found = extractDerivName(value);
-    if (found) return found;
-  }
-  return null;
-}
-
 async function fetchJson(
   url: string,
   init: RequestInit,
@@ -285,29 +268,23 @@ async function fetchDerivIdentity(accessToken: string): Promise<DerivIdentity> {
   const headers = {
     accept: "application/json",
     Authorization: `Bearer ${accessToken}`,
-    "Deriv-App-ID": derivAppId,
   };
-  const [legacyAccounts, optionAccounts, nickname] = await Promise.all([
-    fetchJson(`${DERIV_API_BASE}/trading/v1/options/legacy/accounts`, {
-      headers,
-    }),
-    fetchJson(`${DERIV_API_BASE}/trading/v1/options/accounts`, {
-      headers,
-    }),
-    fetchJson(`${DERIV_API_BASE}/account/v1/nickname`, {
-      headers,
-    }).catch(() => null),
-  ]);
-
-  const accountId =
-    extractDerivAccountId(legacyAccounts) ?? extractDerivAccountId(optionAccounts);
+  // This is the current documented, read-only OAuth endpoint. The previous
+  // flow called both a legacy endpoint and a nickname endpoint in parallel;
+  // either one returning 403 could abort an otherwise valid sign-in.
+  const accounts = await fetchJson(`${DERIV_API_BASE}/trading/v1/options/accounts`, {
+    headers,
+  });
+  const accountId = extractDerivAccountId(accounts);
   if (!accountId) {
     throw new Error("Could not resolve a Deriv account identifier from OAuth");
   }
 
   return {
     accountId,
-    name: extractDerivName(nickname) ?? `Deriv ${accountId}`,
+    // Do not fetch profile, balance, trading, payment, or account-management
+    // data. A neutral display name is sufficient for this app's login record.
+    name: `Deriv ${accountId}`,
   };
 }
 

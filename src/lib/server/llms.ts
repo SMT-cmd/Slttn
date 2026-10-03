@@ -9,13 +9,15 @@ export function renderLlmsTxt() {
     `${SITE.name} is an education and community platform for synthetic indices traders. ` +
     `It covers Volatility, Boom & Crash, Step, Jump, and Range markets. It provides ` +
     `educational books, secure online reading, pricing and access information, and community links. ` +
-    `It does not provide financial advice or trading signals.\n\n` +
+    `It does not provide financial advice, trading signals, brokerage, account management, or payment services.\n\n` +
     `## Two connected websites\n\n` +
     `- Main site: ${SITE.url} — ${SITE.marketingDescription}\n` +
     `- The Trading Library: ${SITE.libraryUrl} — ${SITE.libraryDescription}\n\n` +
     `The main site explains the service, pricing, support, and community. The Trading Library is ` +
     `the book catalog and the public home for individual book pages. The reader is authenticated ` +
-    `and intentionally excluded from search indexing.\n\n` +
+    `and intentionally excluded from search indexing. Deriv sign-in is used only to create an SLT ` +
+    `session and identify the chosen account for an optional partnership-tag check; the site does ` +
+    `not place trades, move funds, manage Deriv accounts, or access balances.\n\n` +
     `## Important public pages\n\n` +
     `- ${SITE.url}/about\n` +
     `- ${SITE.url}/pricing\n` +

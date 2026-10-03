@@ -213,7 +213,9 @@ function siteMetadataPlugin(): Plugin {
 function shouldIgnoreUseClientDirectiveWarning(
   warning: { code?: string; id?: string; message?: string },
 ): boolean {
-  const normalizedId = warning.id?.replace(/^\u0000/, "");
+  const normalizedId = warning.id?.startsWith(String.fromCharCode(0))
+    ? warning.id.slice(1)
+    : warning.id;
 
   return (
     warning.code === "MODULE_LEVEL_DIRECTIVE" &&
