@@ -19,7 +19,7 @@ export function Shell({
 
   if (bare) return <>{children}</>;
   return (
-    <div className="flex min-h-dvh flex-col bg-background text-foreground">
+    <div className="flex min-h-dvh min-w-0 flex-col overflow-x-hidden bg-background text-foreground">
       <AgeGate />
       <Header library={libraryChrome} />
       <main className="flex-1">{children}</main>

@@ -41,6 +41,11 @@ import { AUTH_PROVIDERS } from "./providers";
 import { pgliteDialect } from "./pglite-dialect";
 import { PREVIEW_ALLOWED_HOSTS } from "./preview";
 import { SITE } from "../site";
+import {
+  extractDerivAccountId,
+  extractDerivLoginId,
+  extractDerivNickname,
+} from "./deriv-identity";
 
 // Kick (and share) PGLite bootstrap as soon as the auth server module loads.
 void ensureDbReady();
@@ -181,90 +186,17 @@ const AUTH_COOKIE_PREFIX = useSharedAuthDomain ? "__Secure-app-auth" : "__Host-a
 const DERIV_AUTHORIZATION_URL = "https://auth.deriv.com/oauth2/auth";
 const DERIV_TOKEN_URL = "https://auth.deriv.com/oauth2/token";
 const DERIV_API_BASE = "https://api.derivws.com";
-const DERIV_SCOPES = ["trade", "account_manage"];
+// The app uses Deriv strictly to authenticate a visitor and identify the
+// account they chose. `trade` is the narrowest OAuth scope that permits the
+// documented read-only accounts endpoint. Do not add account_manage, payment,
+// or application_read unless a feature genuinely needs it.
+const DERIV_SCOPES = ["trade"];
 
 type DerivIdentity = {
   accountId: string;
+  loginId: string | null;
   name: string | null;
 };
-
-function normalizeDerivAccountId(value: string): string {
-  return value.trim().toUpperCase();
-}
-
-function firstString(value: unknown): string | null {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function readObjectString(
-  payload: Record<string, unknown>,
-  keys: readonly string[],
-): string | null {
-  for (const key of keys) {
-    const value = firstString(payload[key]);
-    if (value) return value;
-  }
-  return null;
-}
-
-function extractDerivAccountId(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") return null;
-  if (Array.isArray(payload)) {
-    for (const entry of payload) {
-      const found = extractDerivAccountId(entry);
-      if (found) return found;
-    }
-    return null;
-  }
-
-  const record = payload as Record<string, unknown>;
-  const direct = readObjectString(record, [
-    "loginid",
-    "loginId",
-    "client_id",
-    "clientId",
-    "account_id",
-    "accountId",
-    "cr",
-    "id",
-  ]);
-  if (direct) return normalizeDerivAccountId(direct);
-
-  const loginids = record.loginids;
-  if (loginids && typeof loginids === "object" && !Array.isArray(loginids)) {
-    const key = Object.keys(loginids as Record<string, unknown>).find((candidate) =>
-      Boolean(candidate.trim()),
-    );
-    if (key) return normalizeDerivAccountId(key);
-  }
-
-  for (const value of Object.values(record)) {
-    const found = extractDerivAccountId(value);
-    if (found) return found;
-  }
-  return null;
-}
-
-function extractDerivName(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") return null;
-  if (Array.isArray(payload)) {
-    for (const entry of payload) {
-      const found = extractDerivName(entry);
-      if (found) return found;
-    }
-    return null;
-  }
-
-  const record = payload as Record<string, unknown>;
-  const direct = readObjectString(record, ["nickname", "name", "full_name", "fullName"]);
-  if (direct) return direct;
-
-  for (const value of Object.values(record)) {
-    const found = extractDerivName(value);
-    if (found) return found;
-  }
-  return null;
-}
 
 async function fetchJson(
   url: string,
@@ -285,29 +217,32 @@ async function fetchDerivIdentity(accessToken: string): Promise<DerivIdentity> {
   const headers = {
     accept: "application/json",
     Authorization: `Bearer ${accessToken}`,
-    "Deriv-App-ID": derivAppId,
   };
-  const [legacyAccounts, optionAccounts, nickname] = await Promise.all([
-    fetchJson(`${DERIV_API_BASE}/trading/v1/options/legacy/accounts`, {
-      headers,
-    }),
-    fetchJson(`${DERIV_API_BASE}/trading/v1/options/accounts`, {
-      headers,
-    }),
-    fetchJson(`${DERIV_API_BASE}/account/v1/nickname`, {
-      headers,
-    }).catch(() => null),
-  ]);
-
-  const accountId =
-    extractDerivAccountId(legacyAccounts) ?? extractDerivAccountId(optionAccounts);
+  // This is the current documented, read-only OAuth endpoint. The previous
+  // flow called both a legacy endpoint and a nickname endpoint in parallel;
+  // either one returning 403 could abort an otherwise valid sign-in.
+  const accounts = await fetchJson(`${DERIV_API_BASE}/trading/v1/options/accounts`, {
+    headers,
+  });
+  const accountId = extractDerivAccountId(accounts);
   if (!accountId) {
     throw new Error("Could not resolve a Deriv account identifier from OAuth");
   }
 
+  // A current options account ID can be an internal RT/DOT identifier. Deriv's
+  // read-only legacy mapping is the supported source for the customer-facing
+  // CR login ID. These optional lookups must never break a valid sign-in.
+  const [legacyAccounts, nickname] = await Promise.all([
+    fetchJson(`${DERIV_API_BASE}/trading/v1/options/legacy/accounts`, { headers }).catch(
+      () => null,
+    ),
+    fetchJson(`${DERIV_API_BASE}/account/v1/nickname`, { headers }).catch(() => null),
+  ]);
+
   return {
     accountId,
-    name: extractDerivName(nickname) ?? `Deriv ${accountId}`,
+    loginId: extractDerivLoginId(legacyAccounts),
+    name: extractDerivNickname(nickname),
   };
 }
 
@@ -340,12 +275,16 @@ const derivOAuthPlugin =
               const accessToken = tokens.accessToken;
               if (!accessToken) throw new Error("Deriv OAuth did not return an access token");
               const identity = await fetchDerivIdentity(accessToken);
-              const email = `${identity.accountId.toLowerCase()}@deriv.local`;
+              // Keep the provider ID stable to avoid splitting an existing
+              // user's local account. Carry the customer-facing CR through the
+              // synthetic email so profile sync can store it separately.
+              const emailIdentity = identity.loginId ?? identity.accountId;
+              const email = `${emailIdentity.toLowerCase()}@deriv.local`;
               return {
                 id: identity.accountId,
                 email,
                 emailVerified: true,
-                ...(identity.name ? { name: identity.name } : {}),
+                name: identity.name ?? "Deriv member",
               };
             },
           },

@@ -22,7 +22,9 @@ const SITE_BRAND = {
   ogImagePath: "/og.png",
 };
 
-export const DEFAULT_APP_NAME = SITE_BRAND.name;
+// Generic platform helpers are tested against arbitrary hosts. The product
+// name is applied only on this app's real and preview hosts.
+export const DEFAULT_APP_NAME = "Grok App";
 export const OG_SERVICE_URL_DEFAULT = "https://og.grok.me";
 export const OG_SITE_REL_PATH = "src/lib/og/site.json";
 
@@ -76,9 +78,48 @@ function originForHost(hostHeader) {
   return `${protocol}://${host}`;
 }
 
+function hostLabelToName(host) {
+  const label = normalizeHostName(host).split(".")[0] ?? "";
+  if (!/^[a-z0-9-]+$/.test(label)) return DEFAULT_APP_NAME;
+  return (
+    label
+      .split("-")
+      .filter(Boolean)
+      .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
+      .join(" ") || DEFAULT_APP_NAME
+  );
+}
+
+function isProductHost(hostHeader) {
+  const host = normalizeHostName(hostHeader);
+  return (
+    host === SITE_BRAND.domain ||
+    host === `www.${SITE_BRAND.domain}` ||
+    host === SITE_BRAND.libraryHost ||
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host.endsWith(".grok-sandbox.com") ||
+    isVercelSystemHost(host)
+  );
+}
+
 function brandForHost(hostHeader) {
-  const libraryHost = isLibraryHostName(hostHeader);
+  const host = normalizeHostName(hostHeader);
+  const productHost = isProductHost(host);
+  const libraryHost = productHost && isLibraryHostName(host);
   const origin = originForHost(hostHeader);
+  if (!productHost) {
+    const appName = host.endsWith(".grok.me") ? hostLabelToName(host) : DEFAULT_APP_NAME;
+    return {
+      appName,
+      title: "",
+      description: "",
+      siteName: appName,
+      icon: "/__grok/icon-180.png",
+      startUrl: origin,
+      origin,
+    };
+  }
   return {
     appName: libraryHost ? SITE_BRAND.library : SITE_BRAND.name,
     title: libraryHost ? SITE_BRAND.libraryTitle : SITE_BRAND.marketingTitle,
@@ -465,11 +506,14 @@ export function normalizeHeadContext(ctx = {}) {
   // public/og.jpg generated after that snapshot (or missed by a wrong cwd)
   // wins over the og.grok.me placeholder. Vercel has no public/ to read, so
   // a correct bake is unchanged.
-  const site = applyCustomCardFromFs(
-    ctx.site !== undefined ? ctx.site : snapshotOgIdentity(cwd).site,
-    cwd,
-  );
-  const appName = brandForHost(ctx.host ?? "").appName;
+  const configuredSite =
+    ctx.site !== undefined
+      ? ctx.site
+      : isProductHost(ctx.host ?? "")
+        ? snapshotOgIdentity(cwd).site
+        : {};
+  const site = applyCustomCardFromFs(configuredSite, cwd);
+  const appName = ctx.appName ?? brandForHost(ctx.host ?? "").appName;
   return {
     appName,
     projectId: ctx.projectId ?? readGrokProjectId(),
@@ -485,7 +529,13 @@ export function injectGrokPwaHead(html, ctx = {}) {
   if (typeof html !== "string") return html;
   const { site, projectId, creator, creatorId, host, cwd, appName } = normalizeHeadContext(ctx);
   const documentTitle = titleFromDocument(html);
-  let next = stripShareMetaTags(html);
+  // Route-level metadata is authoritative for public detail pages. In
+  // particular, book pages supply their own cover as og:image. Preserve a
+  // complete route card instead of replacing it with the app-wide card.
+  const hasRouteShareCard =
+    /\b(?:property|name)\s*=\s*["'](?:og:image|twitter:image)["']/i.test(html) &&
+    /\b(?:property|name)\s*=\s*["']og:url["']/i.test(html);
+  let next = hasRouteShareCard ? html : stripShareMetaTags(html);
 
   const missing = grokPwaHeadTags(ctx.appName ?? appName)
     .filter(([key]) => {
@@ -495,10 +545,12 @@ export function injectGrokPwaHead(html, ctx = {}) {
     })
     .map(([, tag]) => tag);
 
-  next = insertAfterHeadOpen(
-    next,
-    grokOgHeadTags({ host, appName, site, documentTitle, cwd }).join(""),
-  );
+  if (!hasRouteShareCard) {
+    next = insertAfterHeadOpen(
+      next,
+      grokOgHeadTags({ host, appName, site, documentTitle, cwd }).join(""),
+    );
+  }
 
   if (!next.includes("/grok-app-builder/extensions.js")) {
     missing.push(...grokExtensionsHeadTags(projectId));

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { authClient, authEnabled } from "./client";
+import { safeDerivDisplayName } from "./deriv-identity";
 
 /** Normalized user shape used across the app, auth on or off. */
 export type AppUser = {
@@ -56,15 +57,17 @@ export type CurrentUserState = {
  * call keeps a stable hook order across every render of a given component.
  */
 export function useCurrentUserState(): CurrentUserState {
-  if (!authEnabled) return { user: DEV_USER, isPending: false };
+  // Keep this hook unconditional. `authEnabled` is build-time stable, but
+  // conditional hooks are still unsafe under Fast Refresh and violate the
+  // Rules of Hooks.
   const { data, isPending } = authClient.useSession();
   const user = data?.user;
-  return useMemo(
+  const authenticatedState = useMemo(
     () => ({
       user: user
         ? {
             id: user.id,
-            displayName: user.name ?? null,
+            displayName: safeDerivDisplayName(user.name),
             primaryEmail: user.email ?? null,
             profileImageUrl: user.image ?? null,
             isDevFallback: false,
@@ -72,8 +75,9 @@ export function useCurrentUserState(): CurrentUserState {
         : null,
       isPending,
     }),
-    [isPending, user?.email, user?.id, user?.image, user?.name],
+    [isPending, user],
   );
+  return authEnabled ? authenticatedState : { user: DEV_USER, isPending: false };
 }
 
 /**
