@@ -18,8 +18,12 @@ export const SITE = {
   libraryTitle: "Synthetic Indices Trading Book Library | The Trading Library",
   libraryDescription:
     "Browse The Trading Library for synthetic indices trading books on Volatility, Boom & Crash, Step, Jump, and Range, with secure online reading, clear pricing, and member access options.",
-  ogImagePath: "/og.png",
-  ogImageAlt: "SLT Trade Hub share card for synthetic indices trading books and education",
+  marketingBrandImagePath: "/brand/slt-logo.png",
+  libraryBrandImagePath: "/brand/trading-library.png",
+  marketingOgImagePath: "/og.png",
+  libraryOgImagePath: "/og.jpg",
+  marketingOgImageAlt: "SLT Trade Hub share card for synthetic indices trading books and education",
+  libraryOgImageAlt: "The Trading Library share card for synthetic indices trading books",
 };
 
 export function bookPageTitle(title: string, subtitle?: string | null) {

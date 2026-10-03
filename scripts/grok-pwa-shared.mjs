@@ -485,7 +485,13 @@ export function injectGrokPwaHead(html, ctx = {}) {
   if (typeof html !== "string") return html;
   const { site, projectId, creator, creatorId, host, cwd, appName } = normalizeHeadContext(ctx);
   const documentTitle = titleFromDocument(html);
-  let next = stripShareMetaTags(html);
+  // Route-level metadata is authoritative for public detail pages. In
+  // particular, book pages supply their own cover as og:image. Preserve a
+  // complete route card instead of replacing it with the app-wide card.
+  const hasRouteShareCard =
+    /\b(?:property|name)\s*=\s*["'](?:og:image|twitter:image)["']/i.test(html) &&
+    /\b(?:property|name)\s*=\s*["']og:url["']/i.test(html);
+  let next = hasRouteShareCard ? html : stripShareMetaTags(html);
 
   const missing = grokPwaHeadTags(ctx.appName ?? appName)
     .filter(([key]) => {
@@ -495,10 +501,12 @@ export function injectGrokPwaHead(html, ctx = {}) {
     })
     .map(([, tag]) => tag);
 
-  next = insertAfterHeadOpen(
-    next,
-    grokOgHeadTags({ host, appName, site, documentTitle, cwd }).join(""),
-  );
+  if (!hasRouteShareCard) {
+    next = insertAfterHeadOpen(
+      next,
+      grokOgHeadTags({ host, appName, site, documentTitle, cwd }).join(""),
+    );
+  }
 
   if (!next.includes("/grok-app-builder/extensions.js")) {
     missing.push(...grokExtensionsHeadTags(projectId));

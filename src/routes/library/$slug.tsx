@@ -47,6 +47,18 @@ export function BookPage() {
     launched
       ? book.download_public_cents / 100
       : book.download_prelaunch_cents / 100;
+  const bookSchema = {
+    "@context": "https://schema.org",
+    "@type": "Book",
+    name: book.title,
+    ...(book.subtitle ? { alternativeHeadline: book.subtitle } : {}),
+    description: bookPageDescription(book.description),
+    image: toAbsoluteUrl(book.cover_url, SITE.libraryUrl),
+    url: `${SITE.libraryUrl}/${book.slug}`,
+    author: { "@type": "Person", name: book.author },
+    inLanguage: "en",
+    publisher: { "@type": "Organization", name: SITE.name, url: SITE.url },
+  };
 
   function goRead() {
     if (!book) return;
@@ -72,6 +84,10 @@ export function BookPage() {
   return (
     <Shell library>
       <div className="mx-auto grid max-w-6xl gap-12 px-4 py-14 lg:grid-cols-[0.9fr_1.1fr]">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(bookSchema) }}
+        />
         <img
           src={book.cover_url}
           alt=""
@@ -192,7 +208,7 @@ export function getBookPageHead(
 
 function toAbsoluteUrl(value: string | null | undefined, origin: string) {
   if (!value) {
-    return `${origin}${SITE.ogImagePath}`;
+    return `${origin}${SITE.libraryOgImagePath}`;
   }
 
   if (value.startsWith("http://") || value.startsWith("https://")) {

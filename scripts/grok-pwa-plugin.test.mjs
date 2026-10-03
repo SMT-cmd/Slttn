@@ -123,6 +123,15 @@ test("does not duplicate twitter:card or og:title", () => {
   assert.equal(twice.split('property="og:title"').length - 1, 1);
 });
 
+test("preserves a complete route share card such as a book cover", () => {
+  const html =
+    '<html><head><title>Book</title><meta property="og:title" content="Book"><meta property="og:url" content="https://library.example/book"><meta property="og:image" content="https://library.example/cover.jpg"><meta name="twitter:image" content="https://library.example/cover.jpg"></head></html>';
+  const out = injectGrokPwaHead(html, { appName: "Wild Race" });
+  assert.match(out, /property="og:image" content="https:\/\/library\.example\/cover\.jpg"/);
+  assert.match(out, /property="og:url" content="https:\/\/library\.example\/book"/);
+  assert.equal(out.split('property="og:image"').length - 1, 1);
+});
+
 test("a baked site.image is treated as a custom card", () => {
   const out = injectGrokPwaHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
@@ -503,4 +512,3 @@ test("vite plugin bakes og identity as a virtual module", () => {
   assert.match(plugin, /virtual:grok-og-identity/);
   assert.match(plugin, /snapshotOgIdentity/);
 });
-
