@@ -1,0 +1,8 @@
+# SLT Trade Hub
+
+SLT Trade Hub is an education and community platform for synthetic indices traders. It covers Volatility, Boom & Crash, Step, Jump, and Range markets through educational books, secure online reading, clear access information, and community links. It does not provide financial advice or trading signals.
+
+Main site: https://www.slttradehub.trade — service, pricing, support, and community.
+The Trading Library: https://library.slttradehub.trade — public catalog and individual book pages.
+
+Sitemap: https://www.slttradehub.trade/sitemap.xml

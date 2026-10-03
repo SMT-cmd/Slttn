@@ -152,7 +152,11 @@ function siteMetadataPlugin(): Plugin {
         try {
           const rawUrl = req.url ?? "";
           const pathOnly = rawUrl.split("?", 1)[0] ?? "";
-          if (pathOnly !== "/sitemap.xml" && pathOnly !== "/robots.txt") {
+          if (
+            pathOnly !== "/sitemap.xml" &&
+            pathOnly !== "/robots.txt" &&
+            pathOnly !== "/llms.txt"
+          ) {
             next();
             return;
           }
@@ -171,6 +175,17 @@ function siteMetadataPlugin(): Plugin {
             res.setHeader("content-type", "text/plain; charset=utf-8");
             res.setHeader("cache-control", "no-cache");
             res.end(mod.renderRobotsTxt());
+            return;
+          }
+
+          if (pathOnly === "/llms.txt") {
+            const mod = (await server.ssrLoadModule("/src/lib/server/llms.ts")) as {
+              renderLlmsTxt: () => string;
+            };
+            res.statusCode = 200;
+            res.setHeader("content-type", "text/plain; charset=utf-8");
+            res.setHeader("cache-control", "no-cache");
+            res.end(mod.renderLlmsTxt());
             return;
           }
 
