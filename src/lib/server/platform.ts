@@ -239,6 +239,12 @@ function parseSettingInput(key: string, value: string) {
       if (!label || !url) {
         throw new Error(`Community link ${index + 1} is missing its name or link.`);
       }
+      try {
+        const parsedUrl = new URL(url);
+        if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") throw new Error("unsupported protocol");
+      } catch {
+        throw new Error(`Community link ${index + 1} needs a valid http(s) link.`);
+      }
       return { label, url } satisfies CommunityLinkSetting;
     });
   }
@@ -1007,6 +1013,7 @@ export const adminAccess = createServerFn({ method: "GET" })
 
 export const authUiConfig = createServerFn({ method: "GET" }).handler(async () => {
   return {
+    derivEnabled: Boolean(process.env.DERIV_APP_ID?.trim()),
     googleEnabled: Boolean(
       process.env.GOOGLE_CLIENT_ID?.trim() && process.env.GOOGLE_CLIENT_SECRET?.trim(),
     ),

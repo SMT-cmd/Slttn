@@ -11,6 +11,7 @@ export function renderRobotsTxt() {
     "Disallow: /read/",
     "",
     `Sitemap: ${SITE.url}/sitemap.xml`,
+    `Sitemap: ${SITE.libraryUrl}/sitemap.xml`,
     "",
   ].join("\n");
 }

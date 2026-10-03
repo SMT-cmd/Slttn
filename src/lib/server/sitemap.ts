@@ -60,7 +60,9 @@ function renderEntry(entry: SitemapEntry) {
 }
 
 export async function renderSitemapXml() {
-  const books = await listCatalogBooks(false);
+  // Crawlers should still receive the two public site roots and all marketing pages
+  // if the catalog database is temporarily unavailable.
+  const books = await listCatalogBooks(false).catch(() => []);
 
   const entries: SitemapEntry[] = [
     ...MARKETING_ROUTES.map((route) => ({

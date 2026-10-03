@@ -88,7 +88,7 @@ async function urlToJpegPage(url: string): Promise<JpegPage> {
   const printUrl = toPrintUrl(url);
   try {
     const bytes = await fetchImageBytes(printUrl);
-    const objectUrl = URL.createObjectURL(new Blob([bytes]));
+    const objectUrl = URL.createObjectURL(new Blob([new Uint8Array(bytes)]));
     try {
       const img = await decodeImage(objectUrl);
       if (isJpegBytes(bytes)) {
@@ -105,7 +105,7 @@ async function urlToJpegPage(url: string): Promise<JpegPage> {
   } catch {
     try {
       const bytes = await fetchImageBytes(url);
-      const objectUrl = URL.createObjectURL(new Blob([bytes]));
+      const objectUrl = URL.createObjectURL(new Blob([new Uint8Array(bytes)]));
       try {
         const img = await decodeImage(objectUrl);
         if (isJpegBytes(bytes)) {
@@ -222,7 +222,7 @@ export function buildJpegPdf(pages: JpegPage[]): Blob {
   write(`trailer\n<< /Size ${maxObj + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF\n`);
 
   const pdfBytes = concatBytes(parts);
-  return new Blob([pdfBytes], { type: "application/pdf" });
+  return new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
 }
 
 function toAbsoluteUrl(url: string, origin: string) {

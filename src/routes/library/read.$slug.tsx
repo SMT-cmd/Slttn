@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Lock } from "lucide-react";
+import { toast } from "sonner";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { acceptTos, getBook, logPage, readerPayload } from "@/lib/server/platform";
@@ -116,8 +117,9 @@ export function Reader() {
       await acceptTos();
       setHasAcceptedTerms(true);
       setTos(false);
-    } catch {
+    } catch (error) {
       setHasAcceptedTerms(false);
+      toast.error(error instanceof Error ? error.message : "We could not record your acceptance. Please try again.");
     } finally {
       setAcceptingTerms(false);
     }

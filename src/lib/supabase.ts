@@ -23,6 +23,7 @@ export type SupabaseQueryBuilder<T> = PromiseLike<SupabaseResult<T>> & {
   upsert(value: JsonValue | JsonValue[], options?: UpsertOptions): SupabaseQueryBuilder<T>;
   eq(column: string, value: QueryValue): SupabaseQueryBuilder<T>;
   gt(column: string, value: QueryValue): SupabaseQueryBuilder<T>;
+  filter(column: string, operator: string, value: QueryValue): SupabaseQueryBuilder<T>;
   in(column: string, values: QueryValue[]): SupabaseQueryBuilder<T>;
   or(expression: string): SupabaseQueryBuilder<T>;
   order(column: string, options?: OrderOptions): SupabaseQueryBuilder<T>;
@@ -142,6 +143,11 @@ class RestQueryBuilder<T> implements SupabaseQueryBuilder<T> {
 
   gt(column: string, value: QueryValue) {
     this.filters.push([column, `gt.${stringifyValue(value)}`]);
+    return this;
+  }
+
+  filter(column: string, operator: string, value: QueryValue) {
+    this.filters.push([column, `${operator}.${stringifyValue(value)}`]);
     return this;
   }
 

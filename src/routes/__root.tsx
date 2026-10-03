@@ -116,6 +116,10 @@ function Root() {
             siteContext.isLibraryHost ? "/brand/trading-library.png" : "/brand/slt-logo.png"
           }`,
         },
+        hasPart: [
+          { "@id": `${SITE.url}#website` },
+          { "@id": `${SITE.libraryUrl}#website` },
+        ],
       },
       {
         "@type": "WebSite",
@@ -126,6 +130,9 @@ function Root() {
           ? SITE.libraryDescription
           : SITE.marketingDescription,
         publisher: {
+          "@id": `${siteContext.isLibraryHost ? SITE.libraryUrl : SITE.url}#organization`,
+        },
+        isPartOf: {
           "@id": `${siteContext.isLibraryHost ? SITE.libraryUrl : SITE.url}#organization`,
         },
         inLanguage: "en",
