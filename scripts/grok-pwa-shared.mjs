@@ -211,22 +211,17 @@ export function renderWebManifest(hostHeader) {
       theme_color: "#0E2744",
       icons: [
         {
-          src: "/favicon.ico",
-          sizes: "48x48",
-          type: "image/x-icon",
-        },
-        {
-          src: "/apple-touch-icon.png",
+          src: brand.icon,
           sizes: "180x180",
           type: "image/png",
         },
         {
-          src: "/icon-192.png",
+          src: brand.icon,
           sizes: "192x192",
           type: "image/png",
         },
         {
-          src: "/icon-512.png",
+          src: brand.icon,
           sizes: "512x512",
           type: "image/png",
         },

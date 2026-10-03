@@ -15,7 +15,11 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
 export const Route = createFileRoute("/library/$slug")({
   loader: ({ params }) => getBook({ data: { slug: params.slug } }),
-  head: ({ loaderData }) => getBookPageHead(loaderData),
+  head: ({ loaderData }) =>
+    getBookPageHead(loaderData, {
+      shareUrl: loaderData ? `${SITE.libraryUrl}/${loaderData.slug}` : SITE.libraryUrl,
+      canonicalUrl: loaderData ? `${SITE.libraryUrl}/${loaderData.slug}` : SITE.libraryUrl,
+    }),
   component: BookPage,
 });
 
@@ -129,7 +133,16 @@ export function BookPage() {
   );
 }
 
-export function getBookPageHead(book: BookRow | null | undefined) {
+type BookHeadOptions = {
+  canonicalUrl?: string;
+  noIndex?: boolean;
+  shareUrl?: string;
+};
+
+export function getBookPageHead(
+  book: BookRow | null | undefined,
+  options: BookHeadOptions = {},
+) {
   if (!book) {
     return {
       meta: [
@@ -141,27 +154,39 @@ export function getBookPageHead(book: BookRow | null | undefined) {
 
   const title = bookPageTitle(book.title, book.subtitle);
   const description = bookPageDescription(book.description);
-  const shareUrl = `${SITE.libraryUrl}/${book.slug}`;
+  const shareUrl = options.shareUrl ?? `${SITE.libraryUrl}/${book.slug}`;
+  const canonicalUrl = options.canonicalUrl ?? shareUrl;
   const imageUrl = toAbsoluteUrl(book.cover_url, SITE.libraryUrl);
+  const imageType = inferImageMimeType(imageUrl);
   const imageAlt = `${book.title} cover`;
+  const robots = options.noIndex
+    ? "noindex,nofollow,max-image-preview:large"
+    : "index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1";
 
   return {
     meta: [
       { title },
       { name: "description", content: description },
-      { property: "og:type", content: "website" },
+      { name: "robots", content: robots },
+      { property: "og:type", content: "book" },
+      { property: "og:site_name", content: SITE.library },
       { property: "og:title", content: title },
       { property: "og:description", content: description },
       { property: "og:url", content: shareUrl },
       { property: "og:image", content: imageUrl },
       { property: "og:image:secure_url", content: imageUrl },
+      { property: "og:image:type", content: imageType },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "1600" },
       { property: "og:image:alt", content: imageAlt },
+      { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: title },
       { name: "twitter:description", content: description },
       { name: "twitter:url", content: shareUrl },
       { name: "twitter:image", content: imageUrl },
       { name: "twitter:image:alt", content: imageAlt },
     ],
+    links: [{ rel: "canonical", href: canonicalUrl }],
   };
 }
 
@@ -176,4 +201,12 @@ function toAbsoluteUrl(value: string | null | undefined, origin: string) {
 
   const path = value.startsWith("/") ? value : `/${value}`;
   return `${origin}${path}`;
+}
+
+function inferImageMimeType(value: string) {
+  const normalized = value.toLowerCase();
+  if (normalized.endsWith(".png")) return "image/png";
+  if (normalized.endsWith(".webp")) return "image/webp";
+  if (normalized.endsWith(".svg")) return "image/svg+xml";
+  return "image/jpeg";
 }
