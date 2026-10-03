@@ -923,7 +923,7 @@ function BooksPanel({
 
   useEffect(() => {
     void loadBooks(workspace.selectedBookId ?? workspace.draft?.id ?? null);
-  }, [loadBooks, workspace.restoreRequestId]);
+  }, [loadBooks, workspace.draft?.id, workspace.restoreRequestId, workspace.selectedBookId]);
 
   const rows = booksState.status === "ready" ? booksState.data : [];
   const draftRows = rows.filter((book) => !book.published);

@@ -56,10 +56,12 @@ export type CurrentUserState = {
  * call keeps a stable hook order across every render of a given component.
  */
 export function useCurrentUserState(): CurrentUserState {
-  if (!authEnabled) return { user: DEV_USER, isPending: false };
+  // Keep this hook unconditional. `authEnabled` is build-time stable, but
+  // conditional hooks are still unsafe under Fast Refresh and violate the
+  // Rules of Hooks.
   const { data, isPending } = authClient.useSession();
   const user = data?.user;
-  return useMemo(
+  const authenticatedState = useMemo(
     () => ({
       user: user
         ? {
@@ -72,8 +74,9 @@ export function useCurrentUserState(): CurrentUserState {
         : null,
       isPending,
     }),
-    [isPending, user?.email, user?.id, user?.image, user?.name],
+    [isPending, user],
   );
+  return authEnabled ? authenticatedState : { user: DEV_USER, isPending: false };
 }
 
 /**

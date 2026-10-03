@@ -40,6 +40,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   return <ThemeCtx.Provider value={value}>{children}</ThemeCtx.Provider>;
 }
 
+// This module intentionally exports the provider and its consumer hook.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useTheme() {
   const ctx = useContext(ThemeCtx);
   if (!ctx) throw new Error("Theme missing");

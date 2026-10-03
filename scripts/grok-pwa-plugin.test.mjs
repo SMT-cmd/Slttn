@@ -272,6 +272,7 @@ test("published VITE_PUBLIC_HOSTNAME wins over request Host for og:image", () =>
   try {
     const vercelHost = injectGrokPwaHead("<html><head><title>RACK</title></head></html>", {
       host: "01a020b6-803a-71a2-bb47-e2bec57eb9a2-662k8x1l1-xai-org.vercel.app",
+      cwd: mkdtempSync(join(tmpdir(), "grok-og-public-host-")),
       site: { title: "RACK", card: "custom" },
     });
     assert.match(
@@ -282,6 +283,7 @@ test("published VITE_PUBLIC_HOSTNAME wins over request Host for og:image", () =>
 
     const otherPublicHost = injectGrokPwaHead("<html><head><title>RACK</title></head></html>", {
       host: "custom.example.com",
+      cwd: mkdtempSync(join(tmpdir(), "grok-og-custom-host-")),
       site: { title: "RACK", card: "custom" },
     });
     assert.match(
@@ -315,6 +317,7 @@ test("emits og:image for a public host and prefers a custom card", () => {
   const placeholder = injectGrokPwaHead("<html><head></head></html>", {
     appName: "Wild Race",
     host: "wild-race.grok.me",
+    cwd: mkdtempSync(join(tmpdir(), "grok-og-placeholder-")),
     site: { title: "Wild Race" },
   });
   assert.match(
@@ -326,6 +329,7 @@ test("emits og:image for a public host and prefers a custom card", () => {
   const custom = injectGrokPwaHead("<html><head></head></html>", {
     appName: "Wild Race",
     host: "wild-race.grok.me",
+    cwd: mkdtempSync(join(tmpdir(), "grok-og-custom-card-")),
     site: { title: "Wild Race", card: "custom", type: "x:game" },
   });
   assert.match(custom, /property="og:image" content="https:\/\/wild-race\.grok\.me\/og\.jpg"/);
@@ -335,6 +339,7 @@ test("emits og:image for a public host and prefers a custom card", () => {
 test("placeholder og:image appends site.color when it is 6-digit hex", () => {
   const themed = injectGrokPwaHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
+    cwd: mkdtempSync(join(tmpdir(), "grok-og-themed-")),
     site: { title: "Wild Race", color: "#FF4D2E" },
   });
   assert.match(
@@ -344,6 +349,7 @@ test("placeholder og:image appends site.color when it is 6-digit hex", () => {
 
   const invalid = injectGrokPwaHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
+    cwd: mkdtempSync(join(tmpdir(), "grok-og-invalid-color-")),
     site: { title: "Wild Race", color: "red" },
   });
   assert.doesNotMatch(invalid, /color=/);
@@ -458,7 +464,7 @@ test("strips install params from the app link", () => {
 });
 
 test("names the install page from host slug", () => {
-  assert.equal(appNameFromHost("localhost:8080"), "Grok App");
+  assert.equal(appNameFromHost("localhost:8080"), "SLT Trade Hub");
   assert.equal(appNameFromHost("172.17.154.217:8080"), "Grok App");
   assert.equal(appNameFromHost("wild-race.grok.me"), "Wild Race");
 });

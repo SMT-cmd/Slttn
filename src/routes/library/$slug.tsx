@@ -155,6 +155,8 @@ type BookHeadOptions = {
   shareUrl?: string;
 };
 
+// Shared by the public detail and protected reader routes.
+// eslint-disable-next-line react-refresh/only-export-components
 export function getBookPageHead(
   book: BookRow | null | undefined,
   options: BookHeadOptions = {},
