@@ -8,8 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Shell } from "@/components/layout/shell";
 import { SITE } from "@/lib/site";
 import { useSiteContext } from "@/lib/site-context";
+import { authUiConfig } from "@/lib/server/platform";
 
 export const Route = createFileRoute("/login")({
+  loader: () => authUiConfig(),
   head: () => ({
     meta: [
       { title: `Sign In | ${SITE.name}` },
@@ -53,6 +55,7 @@ const secondaryProviders = AUTH_PROVIDERS.filter((provider) => provider.label !=
 
 function Login() {
   const siteContext = useSiteContext();
+  const authConfig = Route.useLoaderData();
   const [mode, setMode] = useState<"in" | "up">("in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -112,7 +115,7 @@ function Login() {
         <div className="rounded-xl border border-border bg-card p-6 sm:p-8">
           {authEnabled ? (
             <div className="space-y-4">
-              {derivProvider ? (
+              {derivProvider && authConfig.derivEnabled ? (
                 <div className="rounded-xl border border-profit/30 bg-profit/6 p-4">
                   <p className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
                     Primary option
@@ -134,17 +137,19 @@ function Login() {
               ) : null}
 
               <div className="space-y-3">
-                {secondaryProviders.map((p) => (
-                  <Button
-                    key={p.providerId}
-                    type="button"
-                    variant={p.label === "Google" ? "navy" : "outline"}
-                    className="w-full"
-                    onClick={() => signIn(p.providerId, { callbackURL: nextPath, errorCallbackURL: `/login?next=${encodeURIComponent(nextPath)}` })}
-                  >
-                    Continue with {p.label}
-                  </Button>
-                ))}
+                {secondaryProviders
+                  .filter((provider) => provider.label !== "Google" || authConfig.googleEnabled)
+                  .map((p) => (
+                    <Button
+                      key={p.providerId}
+                      type="button"
+                      variant={p.label === "Google" ? "navy" : "outline"}
+                      className="w-full"
+                      onClick={() => signIn(p.providerId, { callbackURL: nextPath, errorCallbackURL: `/login?next=${encodeURIComponent(nextPath)}` })}
+                    >
+                      Continue with {p.label}
+                    </Button>
+                  ))}
               </div>
             </div>
           ) : (
