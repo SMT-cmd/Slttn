@@ -3,12 +3,23 @@ import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Lock } from "lucide-react";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { acceptTos, logPage, readerPayload } from "@/lib/server/platform";
+import { acceptTos, getBook, logPage, readerPayload } from "@/lib/server/platform";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { SITE } from "@/lib/site";
 import { libraryBookHref, libraryHomeHref, useSiteContext } from "@/lib/site-context";
+import { getBookPageHead } from "./$slug";
 
 export const Route = createFileRoute("/library/read/$slug")({
+  loader: ({ params }) => getBook({ data: { slug: params.slug } }),
+  head: ({ loaderData }) =>
+    getBookPageHead(loaderData, {
+      shareUrl: loaderData
+        ? `${SITE.libraryUrl}/read/${loaderData.slug}`
+        : `${SITE.libraryUrl}/read`,
+      canonicalUrl: loaderData ? `${SITE.libraryUrl}/${loaderData.slug}` : SITE.libraryUrl,
+      noIndex: true,
+    }),
   component: Reader,
 });
 
@@ -23,6 +34,7 @@ export function Reader() {
   const [page, setPage] = useState(0);
   const [tos, setTos] = useState(false);
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
+  const [acceptingTerms, setAcceptingTerms] = useState(false);
 
   useEffect(() => {
     if (isPending || !user || !slug) return;
@@ -97,6 +109,20 @@ export function Reader() {
     "top-3/4",
   ];
 
+  async function proceedPastTerms() {
+    if (acceptingTerms) return;
+    setAcceptingTerms(true);
+    try {
+      await acceptTos();
+      setHasAcceptedTerms(true);
+      setTos(false);
+    } catch {
+      setHasAcceptedTerms(false);
+    } finally {
+      setAcceptingTerms(false);
+    }
+  }
+
   return (
     <div
       className="no-select min-h-dvh bg-navy text-navy-foreground"
@@ -114,21 +140,32 @@ export function Reader() {
             <input
               type="checkbox"
               checked={hasAcceptedTerms}
-              onChange={(event) => setHasAcceptedTerms(event.target.checked)}
+              disabled={acceptingTerms}
+              onChange={(event) => {
+                const checked = event.target.checked;
+                setHasAcceptedTerms(checked);
+                if (checked) {
+                  void proceedPastTerms();
+                }
+              }}
               className="mt-1 size-4 rounded border border-border accent-[var(--color-navy)]"
             />
-            <span>I have read and accepted the terms and conditions</span>
+            <span>
+              I have read and accepted the{" "}
+              <Link to="/terms" className="underline">
+                terms and conditions
+              </Link>
+            </span>
           </label>
           <Button
             variant="navy"
             className="mt-4 w-full"
-            disabled={!hasAcceptedTerms}
-            onClick={async () => {
-              await acceptTos();
-              setTos(false);
+            disabled={!hasAcceptedTerms || acceptingTerms}
+            onClick={() => {
+              void proceedPastTerms();
             }}
           >
-            I accept the terms
+            {acceptingTerms ? "Opening your book…" : "I accept the terms"}
           </Button>
           <Link to="/terms" className="mt-2 block text-center text-sm underline">
             Read the terms

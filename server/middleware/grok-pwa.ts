@@ -16,6 +16,7 @@
  */
 import installPageTemplate from "../../scripts/install-page.html?raw";
 import { grokOgIdentity } from "virtual:grok-og-identity";
+import { renderRobotsTxt } from "../../src/lib/server/robots";
 import { renderSitemapXml } from "../../src/lib/server/sitemap";
 import {
   acceptsHtml,
@@ -75,6 +76,15 @@ export default async function grokPwaMiddleware(
     return new Response(await renderSitemapXml(), {
       headers: {
         "content-type": "application/xml; charset=utf-8",
+        "cache-control": "no-cache",
+      },
+    });
+  }
+
+  if (path === "/robots.txt") {
+    return new Response(renderRobotsTxt(), {
+      headers: {
+        "content-type": "text/plain; charset=utf-8",
         "cache-control": "no-cache",
       },
     });

@@ -17,31 +17,35 @@ export const Route = createRootRoute({
       origin: SITE.url,
       pathname: "/",
     };
-    const isLibrarySurface =
-      siteContext.isLibraryHost ||
-      siteContext.pathname.startsWith("/library") ||
-      siteContext.pathname.startsWith("/read/");
     const title = siteContext.isLibraryHost ? SITE.libraryTitle : SITE.marketingTitle;
     const description = siteContext.isLibraryHost
       ? SITE.libraryDescription
       : SITE.marketingDescription;
     const siteName = siteContext.isLibraryHost ? SITE.library : SITE.name;
     const origin = siteContext.isLibraryHost ? SITE.libraryUrl : SITE.url;
-    const faviconLinks = isLibrarySurface
+    const brandIcon = siteContext.isLibraryHost
+      ? "/brand/trading-library.png"
+      : "/brand/slt-logo.png";
+    const faviconLinks = siteContext.isLibraryHost
       ? [
-          { rel: "icon", type: "image/svg+xml", href: "/library-favicon.svg" },
-          { rel: "icon", type: "image/png", href: "/brand/trading-library.png" },
-          { rel: "shortcut icon", href: "/brand/trading-library.png" },
-          { rel: "apple-touch-icon", href: "/brand/trading-library.png" },
+          { rel: "icon", type: "image/png", href: brandIcon },
+          { rel: "shortcut icon", href: brandIcon },
+          { rel: "apple-touch-icon", href: brandIcon },
         ]
       : [
-          { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
-          { rel: "icon", href: "/favicon.ico", sizes: "any" },
-          { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32x32.png" },
-          { rel: "icon", type: "image/png", sizes: "16x16", href: "/favicon-16x16.png" },
-          { rel: "shortcut icon", href: "/favicon.ico" },
-          { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" },
+          { rel: "icon", type: "image/png", href: brandIcon },
+          { rel: "shortcut icon", href: brandIcon },
+          { rel: "apple-touch-icon", sizes: "180x180", href: brandIcon },
         ];
+    const isNoIndexPath =
+      siteContext.pathname === "/login" ||
+      siteContext.pathname === "/account" ||
+      siteContext.pathname === "/checkout" ||
+      siteContext.pathname.startsWith("/admin") ||
+      siteContext.pathname.startsWith("/read/");
+    const robotsContent = isNoIndexPath
+      ? "noindex,nofollow,max-image-preview:large"
+      : "index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1";
     const shareUrl = (() => {
       try {
         const current = new URL(siteContext.currentUrl);
@@ -59,7 +63,7 @@ export const Route = createRootRoute({
         { title },
         { name: "description", content: description },
         { name: "theme-color", content: "#0E2744" },
-        { name: "robots", content: "index,follow" },
+        { name: "robots", content: robotsContent },
         { property: "og:type", content: "website" },
         { property: "og:locale", content: "en_US" },
         { property: "og:site_name", content: siteName },
@@ -98,11 +102,45 @@ export const Route = createRootRoute({
 
 function Root() {
   const siteContext = Route.useLoaderData();
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${siteContext.isLibraryHost ? SITE.libraryUrl : SITE.url}#organization`,
+        name: siteContext.isLibraryHost ? SITE.library : SITE.name,
+        url: siteContext.isLibraryHost ? SITE.libraryUrl : SITE.url,
+        logo: {
+          "@type": "ImageObject",
+          url: `${siteContext.isLibraryHost ? SITE.libraryUrl : SITE.url}${
+            siteContext.isLibraryHost ? "/brand/trading-library.png" : "/brand/slt-logo.png"
+          }`,
+        },
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${siteContext.isLibraryHost ? SITE.libraryUrl : SITE.url}#website`,
+        name: siteContext.isLibraryHost ? SITE.library : SITE.name,
+        url: siteContext.isLibraryHost ? SITE.libraryUrl : SITE.url,
+        description: siteContext.isLibraryHost
+          ? SITE.libraryDescription
+          : SITE.marketingDescription,
+        publisher: {
+          "@id": `${siteContext.isLibraryHost ? SITE.libraryUrl : SITE.url}#organization`,
+        },
+        inLanguage: "en",
+      },
+    ],
+  };
 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
       </head>
       <body>
         <PreviewHostBridge />
