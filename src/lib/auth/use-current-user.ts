@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { authClient, authEnabled } from "./client";
+import { safeDerivDisplayName } from "./deriv-identity";
 
 /** Normalized user shape used across the app, auth on or off. */
 export type AppUser = {
@@ -66,7 +67,7 @@ export function useCurrentUserState(): CurrentUserState {
       user: user
         ? {
             id: user.id,
-            displayName: user.name ?? null,
+            displayName: safeDerivDisplayName(user.name),
             primaryEmail: user.email ?? null,
             profileImageUrl: user.image ?? null,
             isDevFallback: false,
