@@ -1,10 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Bot, MessageCircle, Users } from "lucide-react";
+import { ArrowUpRight, Bot, MessageCircle, Users } from "lucide-react";
 import { Shell } from "@/components/layout/shell";
 import { Button } from "@/components/ui/button";
+import { publicSettings } from "@/lib/server/platform";
 import { SITE } from "@/lib/site";
 
 export const Route = createFileRoute("/community")({
+  loader: async () => {
+    try {
+      return await publicSettings();
+    } catch {
+      return null;
+    }
+  },
   head: () => ({
     meta: [
       { title: `Synthetic Indices Trading Community | ${SITE.name}` },
@@ -19,6 +27,8 @@ export const Route = createFileRoute("/community")({
 });
 
 function Community() {
+  const settings = Route.useLoaderData();
+  const links = getCommunityLinks(settings);
   return (
     <Shell>
       <div className="mx-auto max-w-4xl px-4 py-16">
@@ -29,27 +39,24 @@ function Community() {
           Optional alerts can support your plan, but they never replace the books or your
           own discipline.
         </p>
-        <div className="mt-10 grid gap-4">
-          <div className="rounded-xl border border-border bg-card p-6">
-            <MessageCircle className="size-5 text-primary" />
-            <h2 className="mt-3 font-display text-3xl">Telegram</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              The main SLT room for trade review, execution talk, and clear market discussion.
-            </p>
-            <Button asChild variant="navy" className="mt-4">
-              <a href={SITE.telegram}>Open Telegram</a>
-            </Button>
-          </div>
-          <div className="rounded-xl border border-border bg-card p-6">
-            <Users className="size-5 text-profit" />
-            <h2 className="mt-3 font-display text-3xl">WhatsApp</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Useful for trading-day reminders, session notes, and quick updates.
-            </p>
-            <Button asChild variant="outline" className="mt-4">
-              <a href={SITE.whatsapp}>Open WhatsApp</a>
-            </Button>
-          </div>
+        <div className="mt-10 grid gap-4 sm:grid-cols-2">
+          {links.map((link, index) => {
+            const Icon = communityIcon(link.label, index);
+            return (
+              <div key={`${link.label}-${link.url}`} className="rounded-xl border border-border bg-card p-6">
+                <Icon className={index % 2 === 0 ? "size-5 text-primary" : "size-5 text-profit"} />
+                <h2 className="mt-3 font-display text-3xl">{link.label}</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Join the {link.label} space for focused community updates and discussion.
+                </p>
+                <Button asChild variant={index % 2 === 0 ? "navy" : "outline"} className="mt-4">
+                  <a href={link.url} target="_blank" rel="noreferrer">
+                    Open {link.label} <ArrowUpRight className="size-4" />
+                  </a>
+                </Button>
+              </div>
+            );
+          })}
           <div className="rounded-xl border border-border bg-card p-6">
             <Bot className="size-5 text-loss" />
             <h2 className="mt-3 font-display text-3xl">Market alerts</h2>
@@ -72,4 +79,42 @@ function Community() {
       </div>
     </Shell>
   );
+}
+
+type CommunityLink = { label: string; url: string };
+
+function getCommunityLinks(settings: Record<string, unknown> | null): CommunityLink[] {
+  const configured = Array.isArray(settings?.community_links)
+    ? settings.community_links.filter(isCommunityLink).filter((link) => isSafeExternalUrl(link.url))
+    : [];
+  return configured.length > 0
+    ? configured
+    : [{ label: "Telegram", url: SITE.telegram }, { label: "WhatsApp", url: SITE.whatsapp }];
+}
+
+function isCommunityLink(value: unknown): value is CommunityLink {
+  if (!value || typeof value !== "object") return false;
+  const link = value as Record<string, unknown>;
+  return (
+    typeof link.label === "string" &&
+    link.label.trim().length > 0 &&
+    typeof link.url === "string" &&
+    link.url.trim().length > 0
+  );
+}
+
+function isSafeExternalUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+function communityIcon(label: string, index: number) {
+  const name = label.toLowerCase();
+  if (name.includes("telegram") || name.includes("chat") || name.includes("group")) return MessageCircle;
+  if (name.includes("whatsapp") || name.includes("community")) return Users;
+  return index % 2 === 0 ? MessageCircle : Users;
 }

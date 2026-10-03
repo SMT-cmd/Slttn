@@ -240,6 +240,29 @@ function normalizeSettings(settings: Record<string, unknown>): SettingsForm {
   };
 }
 
+function synchronizePrimaryCommunityLinks(
+  links: Array<{ label: string; url: string }>,
+  settings: Pick<SettingsForm, "telegram_url" | "whatsapp_url">,
+) {
+  const next = [...links];
+  const primaryLinks = [
+    { label: "Telegram", url: settings.telegram_url.trim() },
+    { label: "WhatsApp", url: settings.whatsapp_url.trim() },
+  ];
+  for (const primary of primaryLinks) {
+    if (!primary.url) continue;
+    const existingIndex = next.findIndex(
+      (link) => link.label.trim().toLowerCase() === primary.label.toLowerCase(),
+    );
+    if (existingIndex >= 0) {
+      next[existingIndex] = { ...next[existingIndex], url: primary.url };
+    } else {
+      next.push(primary);
+    }
+  }
+  return next;
+}
+
 function formatDateTime(value: string | null | undefined) {
   if (!value) return "—";
   const date = new Date(value);
@@ -584,9 +607,12 @@ function HomePanel() {
           }
 
           setSaving(true);
-          const communityLinks = form.community_links
-            .map((link) => ({ label: link.label.trim(), url: link.url.trim() }))
-            .filter((link) => link.label.length > 0 && link.url.length > 0);
+          const communityLinks = synchronizePrimaryCommunityLinks(
+            form.community_links
+              .map((link) => ({ label: link.label.trim(), url: link.url.trim() }))
+              .filter((link) => link.label.length > 0 && link.url.length > 0),
+            form,
+          );
 
           const saves: Array<[string, string]> = [
             ["global_prelaunch", String(form.global_prelaunch)],
