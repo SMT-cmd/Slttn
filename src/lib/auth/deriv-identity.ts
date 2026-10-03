@@ -1,5 +1,8 @@
 const DERIV_LOGIN_ID = /^(?:CR|VRTC)\d+$/i;
-const RAW_DERIV_ACCOUNT_ID = /^(?:RT|DOT|DMT|MF|MLT)\d+$/i;
+// Deriv has issued several internal prefixes (including RT, ROT, DOT, DMT,
+// MF, and MLT). Treat any provider-shaped letters+digits value as an internal
+// identifier so a future prefix can never leak into the person's display name.
+const RAW_DERIV_ACCOUNT_ID = /^(?!(?:CR|VRTC)\d+$)[A-Z]{2,5}\d{5,}$/i;
 
 function firstString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
