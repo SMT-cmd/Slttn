@@ -233,7 +233,8 @@ function parseSettingInput(key: string, value: string) {
     if (!popup.title.trim() || !popup.message.trim() || !popup.primaryLabel.trim() || !popup.secondaryLabel.trim()) {
       throw new Error("Popup title, message, and button labels are required.");
     }
-    if (!validatePopupUrl(popup.primaryUrl)) throw new Error("The community destination must be a valid http(s) link.");
+    if (!validatePopupUrl(popup.primaryUrl, true)) throw new Error("The Telegram destination must be a valid link.");
+    if (!validatePopupUrl(popup.whatsappUrl, true)) throw new Error("The WhatsApp destination must be a valid link.");
     if (popup.flyerUrl && !validatePopupUrl(popup.flyerUrl, true)) throw new Error("The flyer must use a valid uploaded or site image link.");
     if (popup.enabled && !popup.flyerUrl) throw new Error("Upload the final flyer before enabling the popup.");
     if (popup.startsAt && popup.endsAt && Date.parse(popup.startsAt) >= Date.parse(popup.endsAt)) {
@@ -2014,8 +2015,15 @@ export const publicSettings = createServerFn({ method: "GET" }).handler(async ()
 export const publicPrelaunchPopup = createServerFn({ method: "GET" }).handler(async () => {
   try {
     const db = getSupabaseAdmin();
-    const raw = await getSetting(db, "prelaunch_popup", JSON.stringify(DEFAULT_PRELAUNCH_POPUP));
-    return normalizePrelaunchPopup(JSON.parse(raw));
+    const settings = await getSettingsMap(db);
+    const raw = settingToString(settings.prelaunch_popup, JSON.stringify(DEFAULT_PRELAUNCH_POPUP));
+    const popup = normalizePrelaunchPopup(JSON.parse(raw));
+    const communityLinks = Array.isArray(settings.community_links) ? settings.community_links : [];
+    const telegram = communityLinks.find((link) => /hq|telegram/i.test(link.label) && validatePopupUrl(link.url))?.url
+      ?? (typeof settings.telegram_url === "string" && validatePopupUrl(settings.telegram_url) ? settings.telegram_url : popup.primaryUrl);
+    const whatsapp = communityLinks.find((link) => /whatsapp/i.test(link.label) && validatePopupUrl(link.url))?.url
+      ?? (typeof settings.whatsapp_url === "string" && validatePopupUrl(settings.whatsapp_url) ? settings.whatsapp_url : popup.whatsappUrl);
+    return { ...popup, primaryUrl: telegram, whatsappUrl: whatsapp };
   } catch (error) {
     console.error("[prelaunch-popup] Could not load popup settings.", error);
     return { ...DEFAULT_PRELAUNCH_POPUP, enabled: false };

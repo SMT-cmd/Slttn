@@ -9,6 +9,9 @@ export type PrelaunchPopupConfig = {
   primaryLabel: string;
   secondaryLabel: string;
   primaryUrl: string;
+  whatsappUrl: string;
+  telegramLabel: string;
+  whatsappLabel: string;
   flyerUrl: string;
   flyerAlt: string;
   startsAt: string | null;
@@ -27,7 +30,10 @@ export const DEFAULT_PRELAUNCH_POPUP: PrelaunchPopupConfig = {
   footer: "Educational content. Trading involves risk.",
   primaryLabel: "Join the Community",
   secondaryLabel: "Continue to Website",
-  primaryUrl: "https://t.me/slttradehub",
+  primaryUrl: "/community",
+  whatsappUrl: "/community",
+  telegramLabel: "Join Telegram HQ",
+  whatsappLabel: "Join WhatsApp Community",
   // The official book cover is a safe built-in campaign fallback. Admin can
   // replace it with the full flyer without a deployment.
   flyerUrl: "/covers/synthetic-indices-101.png",
@@ -65,6 +71,9 @@ export function normalizePrelaunchPopup(value: unknown): PrelaunchPopupConfig {
     primaryLabel: text("primaryLabel", DEFAULT_PRELAUNCH_POPUP.primaryLabel),
     secondaryLabel: text("secondaryLabel", DEFAULT_PRELAUNCH_POPUP.secondaryLabel),
     primaryUrl: text("primaryUrl", DEFAULT_PRELAUNCH_POPUP.primaryUrl),
+    whatsappUrl: text("whatsappUrl", DEFAULT_PRELAUNCH_POPUP.whatsappUrl),
+    telegramLabel: text("telegramLabel", DEFAULT_PRELAUNCH_POPUP.telegramLabel),
+    whatsappLabel: text("whatsappLabel", DEFAULT_PRELAUNCH_POPUP.whatsappLabel),
     flyerUrl: isUnpublishedV1 ? DEFAULT_PRELAUNCH_POPUP.flyerUrl : text("flyerUrl", DEFAULT_PRELAUNCH_POPUP.flyerUrl),
     flyerAlt: text("flyerAlt", DEFAULT_PRELAUNCH_POPUP.flyerAlt),
     startsAt: nullableDate("startsAt", DEFAULT_PRELAUNCH_POPUP.startsAt),

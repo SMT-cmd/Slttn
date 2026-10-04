@@ -64,11 +64,14 @@ export function PrelaunchPopup({ config, preview = false, onPreviewClose }: Prop
             <DialogDescription id="prelaunch-popup-description" className="mt-5 whitespace-pre-line text-sm leading-6 sm:text-base">
               {config.message}
             </DialogDescription>
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-7 grid gap-3 sm:grid-cols-2">
               <Button asChild variant="navy" size="lg">
-                <a href={config.primaryUrl} target="_blank" rel="noreferrer">{config.primaryLabel}<ArrowUpRight className="size-4" /></a>
+                <a href={config.primaryUrl} target="_blank" rel="noreferrer">{config.telegramLabel}<ArrowUpRight className="size-4" /></a>
               </Button>
-              <Button type="button" variant="outline" size="lg" onClick={dismiss}>{config.secondaryLabel}</Button>
+              <Button asChild variant="profit" size="lg">
+                <a href={config.whatsappUrl} target="_blank" rel="noreferrer">{config.whatsappLabel}<ArrowUpRight className="size-4" /></a>
+              </Button>
+              <Button type="button" variant="outline" size="lg" className="sm:col-span-2" onClick={dismiss}>{config.secondaryLabel}</Button>
             </div>
             <p className="mt-6 border-t border-border pt-4 text-xs text-muted-foreground">{config.footer}</p>
           </div>

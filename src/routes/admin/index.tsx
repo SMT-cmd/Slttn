@@ -241,6 +241,7 @@ function normalizeSettings(settings: Record<string, unknown>): SettingsForm {
   if (typeof popup === "string") {
     try { popup = JSON.parse(popup); } catch { popup = DEFAULT_PRELAUNCH_POPUP; }
   }
+  const normalizedPopup = normalizePrelaunchPopup(popup);
   return {
     global_prelaunch:
       typeof settings.global_prelaunch === "boolean" ? settings.global_prelaunch : true,
@@ -249,7 +250,11 @@ function normalizeSettings(settings: Record<string, unknown>): SettingsForm {
     telegram_url: typeof settings.telegram_url === "string" ? settings.telegram_url : "",
     whatsapp_url: typeof settings.whatsapp_url === "string" ? settings.whatsapp_url : "",
     community_links: normalizeCommunityLinks(settings.community_links),
-    prelaunch_popup: normalizePrelaunchPopup(popup),
+    prelaunch_popup: {
+      ...normalizedPopup,
+      primaryUrl: normalizedPopup.primaryUrl === "/community" && typeof settings.telegram_url === "string" ? settings.telegram_url : normalizedPopup.primaryUrl,
+      whatsappUrl: normalizedPopup.whatsappUrl === "/community" && typeof settings.whatsapp_url === "string" ? settings.whatsapp_url : normalizedPopup.whatsappUrl,
+    },
   };
 }
 
@@ -854,11 +859,13 @@ function HomePanel() {
           </label>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <Field label="Title" value={form.prelaunch_popup.title} onChange={(value) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, title: value } } : c)} />
-            <Field label="Primary button label" value={form.prelaunch_popup.primaryLabel} onChange={(value) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, primaryLabel: value } } : c)} />
+            <Field label="Telegram button label" value={form.prelaunch_popup.telegramLabel} onChange={(value) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, telegramLabel: value } } : c)} />
             <label className="md:col-span-2 text-sm"><span className="mb-2 block font-medium">Message</span><Textarea value={form.prelaunch_popup.message} onChange={(e) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, message: e.target.value } } : c)} /></label>
             <Field label="Secondary button label" value={form.prelaunch_popup.secondaryLabel} onChange={(value) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, secondaryLabel: value } } : c)} />
             <Field label="Footer" value={form.prelaunch_popup.footer} onChange={(value) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, footer: value } } : c)} />
-            <Field label="Community destination" helperText="Use the verified HQ/community onboarding link." value={form.prelaunch_popup.primaryUrl} onChange={(value) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, primaryUrl: value } } : c)} />
+            <Field label="Telegram HQ destination" helperText="Use the verified HQ or Telegram onboarding link." value={form.prelaunch_popup.primaryUrl} onChange={(value) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, primaryUrl: value } } : c)} />
+            <Field label="WhatsApp button label" value={form.prelaunch_popup.whatsappLabel} onChange={(value) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, whatsappLabel: value } } : c)} />
+            <Field label="WhatsApp community destination" helperText="Use the verified WhatsApp community invite." value={form.prelaunch_popup.whatsappUrl} onChange={(value) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, whatsappUrl: value } } : c)} />
             <Field label="Flyer alternative text" value={form.prelaunch_popup.flyerAlt} onChange={(value) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, flyerAlt: value } } : c)} />
             <label className="text-sm"><span className="mb-2 block font-medium">Starts ({PRELAUNCH_TIME_ZONE})</span><Input type="datetime-local" value={toLagosInput(form.prelaunch_popup.startsAt)} onChange={(e) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, startsAt: fromLagosInput(e.target.value) } } : c)} /></label>
             <label className="text-sm"><span className="mb-2 block font-medium">Ends ({PRELAUNCH_TIME_ZONE})</span><Input type="datetime-local" value={toLagosInput(form.prelaunch_popup.endsAt)} onChange={(e) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, endsAt: fromLagosInput(e.target.value) } } : c)} /></label>
