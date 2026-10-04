@@ -15,6 +15,7 @@ $$;
 
 create table if not exists public.profiles (
   id text primary key,
+  user_id text unique,
   email text,
   full_name text,
   cr_number text,
@@ -27,6 +28,10 @@ create table if not exists public.profiles (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+update public.profiles
+set user_id = coalesce(user_id, id)
+where user_id is null;
 
 create table if not exists public.books (
   id uuid primary key default gen_random_uuid(),

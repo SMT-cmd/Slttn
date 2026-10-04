@@ -18,6 +18,10 @@ import {
 import { isAllowlistedAdminEmail } from "@/lib/admin/access";
 import { PRICING, SITE } from "@/lib/site";
 import { getSupabaseAdmin } from "@/lib/supabase";
+import {
+  derivLoginIdFromSyntheticEmail,
+  safeDerivDisplayName,
+} from "@/lib/auth/deriv-identity";
 
 type SupabaseAdmin = ReturnType<typeof getSupabaseAdmin>;
 type LaunchModeValue = "prelaunch" | "launch" | "public";
@@ -29,6 +33,7 @@ type AuthUserRow = {
 };
 
 type ProfileRecord = {
+  id?: string | null;
   user_id: string;
   full_name: string | null;
   email: string | null;
@@ -307,7 +312,10 @@ function toBookRow(book: CatalogBook, pageCount = 0, pages?: CatalogPage[]): Boo
 
 function assertSupabase<T>(result: { data: T; error: { message: string } | null }) {
   if (result.error) {
-    throw new Error(result.error.message);
+    // Keep database/schema details in server logs. Raw Postgres messages can
+    // expose implementation details and should never become page copy.
+    console.error("[data] Supabase request failed:", result.error.message);
+    throw new Error("We couldn't complete that request right now. Please try again.");
   }
   return result.data;
 }
@@ -408,7 +416,13 @@ async function syncProfileFromAuthUser(
 ) {
   const updates: Record<string, string | null> = {};
   if (authUser.email && authUser.email !== profile.email) updates.email = authUser.email;
-  if (authUser.name && !profile.full_name) updates.full_name = authUser.name;
+  const safeName = safeDerivDisplayName(authUser.name);
+  if (
+    authUser.name &&
+    (!profile.full_name || safeName !== authUser.name || safeDerivDisplayName(profile.full_name) !== profile.full_name)
+  ) {
+    updates.full_name = safeName;
+  }
   if (Object.keys(updates).length > 0) {
     const refreshed = assertSupabase(
       await db
@@ -431,7 +445,13 @@ async function syncProfileIdentityFromAuthUser(
 ) {
   const updates: Record<string, string | null> = {};
   if (authUser.email && authUser.email !== profile.email) updates.email = authUser.email;
-  if (authUser.name && !profile.full_name) updates.full_name = authUser.name;
+  const safeName = safeDerivDisplayName(authUser.name);
+  if (
+    authUser.name &&
+    (!profile.full_name || safeName !== authUser.name || safeDerivDisplayName(profile.full_name) !== profile.full_name)
+  ) {
+    updates.full_name = safeName;
+  }
   if (Object.keys(updates).length === 0) {
     return normalizeProfile(profile);
   }
@@ -511,18 +531,29 @@ async function syncDerivFromOAuth(db: SupabaseAdmin, profile: ProfileRecord) {
   const linked = linkedAccounts?.[0];
   if (!linked) return normalizeProfile(profile);
 
+  const authUser = await getAuthUser(db, profile.user_id);
+  const emailLoginId = derivLoginIdFromSyntheticEmail(authUser.email);
+  const linkedLoginId = /^CR\d+$/i.test(linked.accountId)
+    ? linked.accountId.toUpperCase()
+    : null;
+  const savedLoginId = /^CR\d+$/i.test(profile.deriv_cr ?? "")
+    ? profile.deriv_cr!.toUpperCase()
+    : null;
+  const customerLoginId = emailLoginId ?? linkedLoginId ?? savedLoginId;
+  const tagLookupId = customerLoginId ?? linked.accountId;
+
   let tagged = Boolean(profile.is_tagged ?? profile.deriv_tagged);
   if (canCheckDerivTags()) {
     try {
-      const result = await checkDerivClientTags([linked.accountId]);
-      tagged = result.get(linked.accountId) ?? false;
+      const result = await checkDerivClientTags([tagLookupId]);
+      tagged = result.get(tagLookupId) ?? false;
     } catch {
       tagged = Boolean(profile.is_tagged ?? profile.deriv_tagged);
     }
   }
 
   if (
-    profile.deriv_cr !== linked.accountId ||
+    profile.deriv_cr !== customerLoginId ||
     profile.deriv_client_id !== linked.accountId ||
     tagged !== Boolean(profile.is_tagged ?? profile.deriv_tagged)
   ) {
@@ -530,7 +561,7 @@ async function syncDerivFromOAuth(db: SupabaseAdmin, profile: ProfileRecord) {
       await db
         .from("profiles")
         .update({
-          deriv_cr: linked.accountId,
+          deriv_cr: customerLoginId,
           deriv_client_id: linked.accountId,
           deriv_linked_at: profile.deriv_linked_at ?? new Date().toISOString(),
           deriv_tagged: tagged,
@@ -561,6 +592,7 @@ async function ensureProfile(db: SupabaseAdmin, userId: string) {
     await db
       .from("profiles")
       .insert({
+        id: userId,
         user_id: userId,
         full_name: authUser.name,
         email: authUser.email,
@@ -608,6 +640,7 @@ async function ensureAllowlistedAdminProfile(
     await db
       .from("profiles")
       .insert({
+        id: userId,
         user_id: userId,
         full_name: authUser.name,
         email: authUser.email,
@@ -987,13 +1020,24 @@ async function refreshPendingPurchases(db: SupabaseAdmin, userId: string) {
 }
 
 export const listBooks = createServerFn({ method: "GET" }).handler(async () => {
-  return loadBooksWithPages(false);
+  try {
+    return await loadBooksWithPages(false);
+  } catch (error) {
+    console.error("[catalog] Could not load the public shelf:", error);
+    // Keep the marketing homepage usable during a temporary catalog outage.
+    return [];
+  }
 });
 
 export const getBook = createServerFn({ method: "GET" })
   .validator(z.object({ slug: z.string() }))
   .handler(async ({ data }) => {
-    return getPublicBook(data.slug);
+    try {
+      return await getPublicBook(data.slug);
+    } catch (error) {
+      console.error("[catalog] Could not load a public book:", error);
+      return null;
+    }
   });
 
 export const getMe = createServerFn({ method: "GET" })

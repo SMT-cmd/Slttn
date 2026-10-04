@@ -60,6 +60,7 @@ export function CookieBanner() {
       ad_personalization: value,
     });
     window.localStorage.setItem(KEY, granted ? "granted" : "denied");
+    window.dispatchEvent(new Event("slt-consent-updated"));
     setOpen(false);
   }
 

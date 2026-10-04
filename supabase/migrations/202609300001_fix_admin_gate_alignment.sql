@@ -21,6 +21,12 @@ alter table if exists public.profiles
   add column if not exists role text default 'member',
   add column if not exists banned boolean default false;
 
+update public.profiles
+set
+  id = coalesce(id, user_id),
+  user_id = coalesce(user_id, id)
+where id is null or user_id is null;
+
 create table if not exists public.purchases (
   id text primary key,
   user_id text,
@@ -82,6 +88,6 @@ alter table if exists public.reading_logs
   add column if not exists user_id text,
   add column if not exists book_id text;
 
-create index if not exists profiles_user_id_idx on public.profiles (user_id);
+create unique index if not exists profiles_user_id_idx on public.profiles (user_id);
 create index if not exists profiles_lower_email_idx on public.profiles (lower(email));
 create index if not exists profiles_role_idx on public.profiles (role);

@@ -8,6 +8,16 @@ import { getSiteContext } from "@/lib/server/site-context";
 import { SITE } from "@/lib/site";
 import appCss from "../styles.css?url";
 
+// AdSense publisher IDs are public identifiers, not secrets. Keep the verified
+// account as a production-safe fallback while allowing deployment configuration
+// to supply the same value through VITE_ADSENSE_CLIENT.
+const VERIFIED_ADSENSE_CLIENT = "ca-pub-8661087498876975";
+const configuredAdsenseClient = import.meta.env.VITE_ADSENSE_CLIENT?.trim();
+const adsenseClient = /^ca-pub-\d{16}$/.test(configuredAdsenseClient ?? "")
+  ? configuredAdsenseClient
+  : VERIFIED_ADSENSE_CLIENT;
+const adsenseConsentBootstrap = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)};window.gtag=window.gtag||gtag;(function(){var choice=null;try{choice=localStorage.getItem("slt-consent")}catch(e){}var value=choice==="granted"?"granted":"denied";gtag("consent","default",{ad_storage:value,analytics_storage:value,ad_user_data:value,ad_personalization:value,wait_for_update:500})})();`;
+
 export const Route = createRootRoute({
   loader: () => getSiteContext(),
   head: ({ loaderData }) => {
@@ -23,20 +33,17 @@ export const Route = createRootRoute({
       : SITE.marketingDescription;
     const siteName = siteContext.isLibraryHost ? SITE.library : SITE.name;
     const origin = siteContext.isLibraryHost ? SITE.libraryUrl : SITE.url;
-    const brandIcon = siteContext.isLibraryHost
-      ? "/brand/trading-library.png"
-      : "/brand/slt-logo.png";
-    const faviconLinks = siteContext.isLibraryHost
-      ? [
-          { rel: "icon", type: "image/png", href: brandIcon },
-          { rel: "shortcut icon", href: brandIcon },
-          { rel: "apple-touch-icon", href: brandIcon },
-        ]
-      : [
-          { rel: "icon", type: "image/png", href: brandIcon },
-          { rel: "shortcut icon", href: brandIcon },
-          { rel: "apple-touch-icon", sizes: "180x180", href: brandIcon },
-        ];
+    const brandIconPath = siteContext.isLibraryHost
+      ? SITE.libraryBrandImagePath
+      : SITE.marketingBrandImagePath;
+    // Make the favicon host-specific. Absolute URLs ensure a visitor on the
+    // library never receives the main site's mark from a shared asset cache.
+    const brandIcon = `${origin}${brandIconPath}`;
+    const faviconLinks = [
+      { rel: "icon", type: "image/png", href: brandIcon },
+      { rel: "shortcut icon", type: "image/png", href: brandIcon },
+      { rel: "apple-touch-icon", sizes: "180x180", href: brandIcon },
+    ];
     const isNoIndexPath =
       siteContext.pathname === "/login" ||
       siteContext.pathname === "/account" ||
@@ -54,7 +61,6 @@ export const Route = createRootRoute({
         return origin;
       }
     })();
-    const ogImage = `${SITE.url}${SITE.ogImagePath}`;
 
     return {
       meta: [
@@ -64,24 +70,8 @@ export const Route = createRootRoute({
         { name: "description", content: description },
         { name: "theme-color", content: "#0E2744" },
         { name: "robots", content: robotsContent },
-        { property: "og:type", content: "website" },
-        { property: "og:locale", content: "en_US" },
-        { property: "og:site_name", content: siteName },
-        { property: "og:title", content: title },
-        { property: "og:description", content: description },
-        { property: "og:url", content: shareUrl },
-        { property: "og:image", content: ogImage },
-        { property: "og:image:secure_url", content: ogImage },
-        { property: "og:image:type", content: "image/png" },
-        { property: "og:image:width", content: "1200" },
-        { property: "og:image:height", content: "630" },
-        { property: "og:image:alt", content: SITE.ogImageAlt },
-        { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:title", content: title },
-        { name: "twitter:description", content: description },
-        { name: "twitter:url", content: shareUrl },
-        { name: "twitter:image", content: ogImage },
-        { name: "twitter:image:alt", content: SITE.ogImageAlt },
+        { name: "application-name", content: siteName },
+        { name: "author", content: SITE.author },
       ],
       links: [
         { rel: "canonical", href: shareUrl },
@@ -113,7 +103,7 @@ function Root() {
         logo: {
           "@type": "ImageObject",
           url: `${siteContext.isLibraryHost ? SITE.libraryUrl : SITE.url}${
-            siteContext.isLibraryHost ? "/brand/trading-library.png" : "/brand/slt-logo.png"
+            siteContext.isLibraryHost ? SITE.libraryBrandImagePath : SITE.marketingBrandImagePath
           }`,
         },
         hasPart: [
@@ -144,6 +134,17 @@ function Root() {
     <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
+        {adsenseClient ? (
+          <>
+            <meta name="google-adsense-account" content={adsenseClient} />
+            <script dangerouslySetInnerHTML={{ __html: adsenseConsentBootstrap }} />
+            <script
+              async
+              src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClient}`}
+              crossOrigin="anonymous"
+            />
+          </>
+        ) : null}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
