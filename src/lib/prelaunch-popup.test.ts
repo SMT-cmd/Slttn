@@ -5,6 +5,8 @@ import { DEFAULT_PRELAUNCH_POPUP, isPopupScheduled, normalizePrelaunchPopup, pop
 test("prelaunch defaults preserve the requested WAT end time and browser frequency", () => {
   assert.equal(DEFAULT_PRELAUNCH_POPUP.endsAt, "2026-10-10T19:59:00.000Z");
   assert.equal(DEFAULT_PRELAUNCH_POPUP.frequency, "browser");
+  assert.equal(DEFAULT_PRELAUNCH_POPUP.enabled, true);
+  assert.equal(DEFAULT_PRELAUNCH_POPUP.flyerUrl, "/covers/synthetic-indices-101.png");
 });
 
 test("schedule requires enablement, media, destination, and an active window", () => {
@@ -19,6 +21,13 @@ test("normalization and version keys isolate revised announcements", () => {
   assert.equal(config.version, 4);
   assert.equal(config.frequency, "session");
   assert.equal(popupDismissalKey(config), "slt-prelaunch-popup:4");
+});
+
+test("the unpublished v1 placeholder upgrades to the visible built-in campaign", () => {
+  const config = normalizePrelaunchPopup({ version: 1, enabled: false, flyerUrl: "" });
+  assert.equal(config.enabled, true);
+  assert.equal(config.version, 2);
+  assert.equal(config.flyerUrl, "/covers/synthetic-indices-101.png");
 });
 
 test("popup links allow safe web URLs and site-relative media only", () => {

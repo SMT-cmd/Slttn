@@ -19,9 +19,8 @@ export type PrelaunchPopupConfig = {
 export const PRELAUNCH_TIME_ZONE = "Africa/Lagos (WAT, UTC+1)";
 
 export const DEFAULT_PRELAUNCH_POPUP: PrelaunchPopupConfig = {
-  // Keep disabled until the supplied final flyer has been uploaded in Admin.
-  enabled: false,
-  version: 1,
+  enabled: true,
+  version: 2,
   title: "Synthetic Indices 101 — Book Prelaunch",
   message:
     "Launching 10 October 2026 📘\n\nJoin the SLT Trade Hub community for FREE online access to the 73-page Synthetic Indices 101 book and toolkit, plus a 3-Day FREE Live Class focused on understanding Synthetic Indices before trading.\n\nThe first live session starts on 10 October at 9 p.m. WAT (Nigerian time).\n\nOnline reading is free for community members, including people who join during prelaunch. Downloading the book is a separate paid option.",
@@ -29,7 +28,9 @@ export const DEFAULT_PRELAUNCH_POPUP: PrelaunchPopupConfig = {
   primaryLabel: "Join the Community",
   secondaryLabel: "Continue to Website",
   primaryUrl: "https://t.me/slttradehub",
-  flyerUrl: "",
+  // The official book cover is a safe built-in campaign fallback. Admin can
+  // replace it with the full flyer without a deployment.
+  flyerUrl: "/covers/synthetic-indices-101.png",
   flyerAlt: "Synthetic Indices 101 book prelaunch flyer",
   // 4 October 2026 00:00 WAT through 10 October 2026 20:59 WAT.
   startsAt: "2026-10-03T23:00:00.000Z",
@@ -51,10 +52,11 @@ export function normalizePrelaunchPopup(value: unknown): PrelaunchPopupConfig {
   };
   const frequency = record.frequency;
 
+  const isUnpublishedV1 = record.version === 1 && record.enabled === false && record.flyerUrl === "";
   return {
-    enabled: typeof record.enabled === "boolean" ? record.enabled : DEFAULT_PRELAUNCH_POPUP.enabled,
+    enabled: isUnpublishedV1 ? true : typeof record.enabled === "boolean" ? record.enabled : DEFAULT_PRELAUNCH_POPUP.enabled,
     version:
-      typeof record.version === "number" && Number.isInteger(record.version) && record.version > 0
+      isUnpublishedV1 ? DEFAULT_PRELAUNCH_POPUP.version : typeof record.version === "number" && Number.isInteger(record.version) && record.version > 0
         ? record.version
         : DEFAULT_PRELAUNCH_POPUP.version,
     title: text("title", DEFAULT_PRELAUNCH_POPUP.title),
@@ -63,7 +65,7 @@ export function normalizePrelaunchPopup(value: unknown): PrelaunchPopupConfig {
     primaryLabel: text("primaryLabel", DEFAULT_PRELAUNCH_POPUP.primaryLabel),
     secondaryLabel: text("secondaryLabel", DEFAULT_PRELAUNCH_POPUP.secondaryLabel),
     primaryUrl: text("primaryUrl", DEFAULT_PRELAUNCH_POPUP.primaryUrl),
-    flyerUrl: text("flyerUrl", DEFAULT_PRELAUNCH_POPUP.flyerUrl),
+    flyerUrl: isUnpublishedV1 ? DEFAULT_PRELAUNCH_POPUP.flyerUrl : text("flyerUrl", DEFAULT_PRELAUNCH_POPUP.flyerUrl),
     flyerAlt: text("flyerAlt", DEFAULT_PRELAUNCH_POPUP.flyerAlt),
     startsAt: nullableDate("startsAt", DEFAULT_PRELAUNCH_POPUP.startsAt),
     endsAt: nullableDate("endsAt", DEFAULT_PRELAUNCH_POPUP.endsAt),

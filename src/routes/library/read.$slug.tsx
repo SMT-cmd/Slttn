@@ -38,24 +38,47 @@ export function Reader() {
   const [acceptingTerms, setAcceptingTerms] = useState(false);
   const [turnDirection, setTurnDirection] = useState<"next" | "previous">("next");
   const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [preloadProgress, setPreloadProgress] = useState({ loaded: 0, total: 0 });
 
   useEffect(() => {
     if (isPending || !user || !slug) return;
     setError(null);
     setData(null);
+    let cancelled = false;
     readerPayload({ data: { slug } })
-      .then((d) => {
+      .then(async (d) => {
+        if (!d?.profile) throw new Error("Your reader profile is still being prepared. Please reopen the book.");
+        setPreloadProgress({ loaded: 0, total: d.pages.length });
+        // Decode every accessible page before presenting the reader. Page turns
+        // then swap already-decoded bitmaps instead of flashing a blank page
+        // while the next Cloudinary image downloads.
+        await Promise.all(
+          d.pages.map(
+            (bookPage) =>
+              new Promise<void>((resolve) => {
+                const image = new Image();
+                const finish = () => {
+                  if (!cancelled) setPreloadProgress((current) => ({ ...current, loaded: current.loaded + 1 }));
+                  resolve();
+                };
+                image.onload = () => { void image.decode().catch(() => undefined).finally(finish); };
+                image.onerror = finish;
+                image.src = bookPage.image_url;
+              }),
+          ),
+        );
+        if (cancelled) return;
         const maxPageIndex = Math.max(d.pages.length - 1, 0);
         const nextPage = Math.min(Math.max(d.resumePageIndex ?? 0, 0), maxPageIndex);
         setPage(nextPage);
         setData(d);
-        if (!d?.profile) throw new Error("Your reader profile is still being prepared. Please reopen the book.");
         setTos(!d.profile.tos_accepted_at);
         setHasAcceptedTerms(false);
       })
       .catch((e: unknown) =>
-        setError(e instanceof Error ? e.message : "We could not open this book."),
+        { if (!cancelled) setError(e instanceof Error ? e.message : "We could not open this book."); },
       );
+    return () => { cancelled = true; };
   }, [isPending, user, slug]);
 
   useEffect(() => {
@@ -90,7 +113,7 @@ export function Reader() {
     );
   }
   if (!data) {
-    return <div className="grid min-h-dvh place-items-center text-muted-foreground">Setting the page…</div>;
+    return <div className="grid min-h-dvh place-items-center bg-navy px-6 text-center text-navy-foreground"><div><p className="font-display text-3xl">Preparing your book…</p><p className="mt-2 text-sm text-navy-foreground/70">{preloadProgress.total ? `Loading page ${Math.min(preloadProgress.loaded + 1, preloadProgress.total)} of ${preloadProgress.total}` : "Checking your access"}</p><div className="mx-auto mt-5 h-1.5 w-56 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-white transition-[width] duration-300" style={{ width: preloadProgress.total ? `${(preloadProgress.loaded / preloadProgress.total) * 100}%` : "8%" }} /></div></div></div>;
   }
 
   const current = data.pages[page];
@@ -201,6 +224,8 @@ export function Reader() {
               src={current.image_url}
               alt={`${data.book.title} page ${page + 1}`}
               className="block w-full select-none"
+              loading="eager"
+              decoding="sync"
               draggable={false}
             />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/4 via-transparent to-black/8" />
