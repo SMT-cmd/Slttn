@@ -36,6 +36,8 @@ export function Reader() {
   const [tos, setTos] = useState(false);
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [acceptingTerms, setAcceptingTerms] = useState(false);
+  const [turnDirection, setTurnDirection] = useState<"next" | "previous">("next");
+  const [touchStart, setTouchStart] = useState<number | null>(null);
 
   useEffect(() => {
     if (isPending || !user || !slug) return;
@@ -47,6 +49,7 @@ export function Reader() {
         const nextPage = Math.min(Math.max(d.resumePageIndex ?? 0, 0), maxPageIndex);
         setPage(nextPage);
         setData(d);
+        if (!d?.profile) throw new Error("Your reader profile is still being prepared. Please reopen the book.");
         setTos(!d.profile.tos_accepted_at);
         setHasAcceptedTerms(false);
       })
@@ -58,8 +61,8 @@ export function Reader() {
   useEffect(() => {
     if (!data) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight") setPage((p) => Math.min(p + 1, data.pages.length - 1));
-      if (e.key === "ArrowLeft") setPage((p) => Math.max(p - 1, 0));
+      if (e.key === "ArrowRight") { setTurnDirection("next"); setPage((p) => Math.min(p + 1, data.pages.length - 1)); }
+      if (e.key === "ArrowLeft") { setTurnDirection("previous"); setPage((p) => Math.max(p - 1, 0)); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -104,11 +107,7 @@ export function Reader() {
     );
   }
   const showLock = data.lockedFrom !== null && page === data.pages.length - 1;
-  const watermarkRows = [
-    "top-1/4",
-    "top-1/2",
-    "top-3/4",
-  ];
+  const watermarkTiles = Array.from({ length: 12 }, (_, index) => index);
 
   async function proceedPastTerms() {
     if (acceptingTerms) return;
@@ -187,9 +186,17 @@ export function Reader() {
         </p>
       </header>
 
-      <div className="relative mx-auto grid min-h-[calc(100dvh-8rem)] max-w-3xl place-items-center px-3 py-6">
+      <div className="relative mx-auto grid min-h-[calc(100dvh-8rem)] max-w-3xl place-items-center px-3 py-6"
+        onTouchStart={(event) => setTouchStart(event.changedTouches[0]?.clientX ?? null)}
+        onTouchEnd={(event) => {
+          if (touchStart === null) return;
+          const distance = (event.changedTouches[0]?.clientX ?? touchStart) - touchStart;
+          if (distance < -55) { setTurnDirection("next"); setPage((p) => Math.min(data.pages.length - 1, p + 1)); }
+          if (distance > 55) { setTurnDirection("previous"); setPage((p) => Math.max(0, p - 1)); }
+          setTouchStart(null);
+        }}>
         {current ? (
-          <article className="page-flip relative z-10 w-full overflow-hidden rounded-md bg-paper shadow-[var(--shadow)]">
+          <article key={current.id} className={`page-turn page-turn-${turnDirection} relative z-10 w-full overflow-hidden rounded-md bg-paper shadow-[var(--shadow)]`}>
             <img
               src={current.image_url}
               alt={`${data.book.title} page ${page + 1}`}
@@ -197,14 +204,16 @@ export function Reader() {
               draggable={false}
             />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/4 via-transparent to-black/8" />
-            {watermarkRows.map((topClass, index) => (
+            <div className="pointer-events-none absolute inset-0 grid grid-cols-2 grid-rows-6 overflow-hidden mix-blend-multiply" aria-hidden="true">
+            {watermarkTiles.map((index) => (
               <p
-                key={`${topClass}-${index}`}
-                className={`pointer-events-none absolute inset-x-6 ${topClass} rotate-[-18deg] text-center text-sm tracking-[0.28em] text-white/18 uppercase sm:text-base`}
+                key={index}
+                className="flex rotate-[-22deg] items-center justify-center whitespace-nowrap px-2 text-center text-[10px] font-semibold tracking-[0.12em] text-navy/22 uppercase sm:text-sm"
               >
                 {data.watermark}
               </p>
             ))}
+            </div>
             <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-black/45 px-4 py-3 text-[11px] tracking-[0.2em] text-white/80 uppercase">
               <span>{data.book.author}</span>
               <span>Page {page + 1}</span>
@@ -243,7 +252,7 @@ export function Reader() {
           variant="outline"
           className="border-white/20 bg-transparent text-navy-foreground"
           disabled={page === 0}
-          onClick={() => setPage((p) => Math.max(0, p - 1))}
+          onClick={() => { setTurnDirection("previous"); setPage((p) => Math.max(0, p - 1)); }}
         >
           <ChevronLeft className="size-4" /> Previous
         </Button>
@@ -251,7 +260,7 @@ export function Reader() {
           variant="outline"
           className="border-white/20 bg-transparent text-navy-foreground"
           disabled={page >= data.pages.length - 1}
-          onClick={() => setPage((p) => Math.min(data.pages.length - 1, p + 1))}
+          onClick={() => { setTurnDirection("next"); setPage((p) => Math.min(data.pages.length - 1, p + 1)); }}
         >
           Next <ChevronRight className="size-4" />
         </Button>

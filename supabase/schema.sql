@@ -139,3 +139,9 @@ values
     )
   )
 on conflict (key) do nothing;
+
+-- Reader identity compatibility for databases upgraded from the application migrations.
+alter table if exists public.profiles
+  add column if not exists deriv_cr text,
+  add column if not exists deriv_client_id text,
+  add column if not exists deriv_tagged boolean not null default false;

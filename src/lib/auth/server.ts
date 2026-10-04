@@ -284,7 +284,11 @@ const derivOAuthPlugin =
                 id: identity.accountId,
                 email,
                 emailVerified: true,
-                name: identity.name ?? "Deriv member",
+                // Deriv currently exposes the user's nickname, not a verified
+                // legal-name field. Keep the name empty when none is returned
+                // so the account desk can request an explicit watermark name
+                // instead of persisting a misleading generic label.
+                name: identity.name ?? "",
               };
             },
           },

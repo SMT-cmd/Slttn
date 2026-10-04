@@ -67,7 +67,7 @@ export function useCurrentUserState(): CurrentUserState {
       user: user
         ? {
             id: user.id,
-            displayName: safeDerivDisplayName(user.name),
+            displayName: safeDerivDisplayName(user.name) || null,
             primaryEmail: user.email ?? null,
             profileImageUrl: user.image ?? null,
             isDevFallback: false,

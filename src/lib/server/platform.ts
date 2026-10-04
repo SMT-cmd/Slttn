@@ -438,11 +438,8 @@ async function syncProfileFromAuthUser(
   const updates: Record<string, string | null> = {};
   if (authUser.email && authUser.email !== profile.email) updates.email = authUser.email;
   const safeName = safeDerivDisplayName(authUser.name);
-  if (
-    authUser.name &&
-    (!profile.full_name || safeName !== authUser.name || safeDerivDisplayName(profile.full_name) !== profile.full_name)
-  ) {
-    updates.full_name = safeName;
+  if ((safeName && !profile.full_name) || (profile.full_name && !safeDerivDisplayName(profile.full_name))) {
+    updates.full_name = safeName || null;
   }
   if (Object.keys(updates).length > 0) {
     const refreshed = assertSupabase(
@@ -453,8 +450,8 @@ async function syncProfileFromAuthUser(
         .select("*")
         .limit(1)
         .single(),
-    ) as ProfileRecord;
-    return syncDerivFromOAuth(db, refreshed);
+    ) as ProfileRecord | null;
+    return syncDerivFromOAuth(db, refreshed?.user_id ? refreshed : profile);
   }
   return syncDerivFromOAuth(db, profile);
 }
@@ -467,11 +464,8 @@ async function syncProfileIdentityFromAuthUser(
   const updates: Record<string, string | null> = {};
   if (authUser.email && authUser.email !== profile.email) updates.email = authUser.email;
   const safeName = safeDerivDisplayName(authUser.name);
-  if (
-    authUser.name &&
-    (!profile.full_name || safeName !== authUser.name || safeDerivDisplayName(profile.full_name) !== profile.full_name)
-  ) {
-    updates.full_name = safeName;
+  if ((safeName && !profile.full_name) || (profile.full_name && !safeDerivDisplayName(profile.full_name))) {
+    updates.full_name = safeName || null;
   }
   if (Object.keys(updates).length === 0) {
     return normalizeProfile(profile);
@@ -485,8 +479,8 @@ async function syncProfileIdentityFromAuthUser(
       .select("*")
       .limit(1)
       .single(),
-  ) as ProfileRecord;
-  return normalizeProfile(refreshed);
+  ) as ProfileRecord | null;
+  return normalizeProfile(refreshed?.user_id ? refreshed : profile);
 }
 
 async function resolveProfileForSession(
@@ -592,8 +586,8 @@ async function syncDerivFromOAuth(db: SupabaseAdmin, profile: ProfileRecord) {
         .select("*")
         .limit(1)
         .single(),
-    ) as ProfileRecord;
-    return normalizeProfile(updated);
+    ) as ProfileRecord | null;
+    return normalizeProfile(updated?.user_id ? updated : profile);
   }
 
   return normalizeProfile(profile);
@@ -615,14 +609,21 @@ async function ensureProfile(db: SupabaseAdmin, userId: string) {
       .insert({
         id: userId,
         user_id: userId,
-        full_name: authUser.name,
+        full_name: safeDerivDisplayName(authUser.name) || null,
         email: authUser.email,
         role: (admins?.length ?? 0) === 0 ? "admin" : "member",
       })
       .select("*")
       .limit(1)
       .single(),
-  ) as ProfileRecord;
+  ) as ProfileRecord | null;
+  if (!inserted?.user_id) {
+    const recovered = assertSupabase(
+      await db.from("profiles").select("*").eq("user_id", userId).limit(1),
+    ) as ProfileRecord[] | null;
+    if (!recovered?.[0]) throw new Error("Your reader profile could not be prepared. Please sign out and sign in again.");
+    return syncDerivFromOAuth(db, recovered[0]);
+  }
   return syncDerivFromOAuth(db, inserted);
 }
 
@@ -795,6 +796,9 @@ async function accessForBook(db: SupabaseAdmin, profile: Profile, book: BookRow)
   await refreshPendingPurchases(db, profile.user_id);
   if (profile.banned) return { canRead: false, canDownload: false, via: "none" as const };
   if (profile.role === "admin") return { canRead: true, canDownload: true, via: "admin" as const };
+  // A current partner verification grants online reading across the library.
+  // Downloads remain a separate paid entitlement.
+  if (profile.deriv_tagged) return { canRead: true, canDownload: false, via: "partner" as const };
 
   const subscriptions = assertSupabase(
     await db
@@ -1066,7 +1070,9 @@ export const getMe = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const db = getSupabaseAdmin();
     await refreshPendingPurchases(db, context.userId);
-    return ensureProfile(db, context.userId);
+    const profile = await ensureProfile(db, context.userId);
+    if (profile.deriv_tagged) await ensureTaggedMemberCoupon(db, profile.user_id);
+    return profile;
   });
 
 export const adminAccess = createServerFn({ method: "GET" })
@@ -1090,6 +1096,7 @@ export const updateProfileName = createServerFn({ method: "POST" })
   .validator(z.object({ fullName: z.string().min(2).max(80) }))
   .handler(async ({ context, data }) => {
     const db = getSupabaseAdmin();
+    await ensureProfile(db, context.userId);
     assertSupabase(
       await db.from("profiles").update({ full_name: data.fullName.trim() }).eq("user_id", context.userId),
     );
@@ -1114,6 +1121,7 @@ export const acceptTos = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const db = getSupabaseAdmin();
+    await ensureProfile(db, context.userId);
     assertSupabase(
       await db
         .from("profiles")
@@ -1127,8 +1135,7 @@ export const linkDeriv = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(
     z.object({
-      cr: z.string().min(2).max(64),
-      partnerCode: z.string().max(80).optional(),
+      cr: z.string().regex(/^(?:CR|VRTC)\d+$/i, "Enter a valid Deriv CR or VRTC login ID."),
     }),
   )
   .handler(async ({ context, data }) => {
@@ -1138,18 +1145,15 @@ export const linkDeriv = createServerFn({ method: "POST" })
     if (profile.banned) throw new Error("This account has been suspended.");
 
     const identifier = data.cr.trim().toUpperCase();
-    let tagged = false;
-    if (canCheckDerivTags()) {
-      try {
-        const matches = await checkDerivClientTags([identifier]);
-        tagged = matches.get(identifier) ?? false;
-      } catch {
-        tagged = false;
-      }
+    if (!canCheckDerivTags()) {
+      throw new Error("Partner verification is temporarily unavailable. The Deriv partner token with application_read access must be configured.");
     }
-    if (!tagged) {
-      const expected = (await getSetting(db, "partner_code", "SLT-PARTNER")).trim().toUpperCase();
-      tagged = expected.length > 0 && expected === (data.partnerCode ?? "").trim().toUpperCase();
+    let tagged: boolean;
+    try {
+      const matches = await checkDerivClientTags([identifier]);
+      tagged = matches.get(identifier) ?? false;
+    } catch {
+      throw new Error("Deriv could not verify the partnership right now. Your existing access has not been changed; please try again shortly.");
     }
 
     const updated = assertSupabase(
@@ -1168,8 +1172,23 @@ export const linkDeriv = createServerFn({ method: "POST" })
         .single(),
     ) as ProfileRecord;
 
+    if (tagged) await ensureTaggedMemberCoupon(db, context.userId);
     return { tagged, cr: updated.deriv_cr ?? identifier };
   });
+
+async function ensureTaggedMemberCoupon(db: SupabaseAdmin, userId: string) {
+  const existing = assertSupabase(
+    await db.from("coupons").select("id, code").eq("user_id", userId).gt("uses_remaining", 0)
+      .in("kind", ["tagged_free", "tagged_paid"]).limit(1),
+  ) as Array<{ id: string; code: string }> | null;
+  if (existing?.[0]) return existing[0];
+  const code = randomCode("SLT");
+  const inserted = assertSupabase(
+    await db.from("coupons").insert({ code, user_id: userId, kind: "tagged_free", paid_cents: 0, uses_remaining: 999 })
+      .select("id, code").limit(1).single(),
+  ) as { id: string; code: string };
+  return inserted;
+}
 
 export const generateMemberCoupon = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -1429,6 +1448,7 @@ export const logPage = createServerFn({ method: "POST" })
   .validator(z.object({ slug: z.string(), pageIndex: z.number().int().min(0) }))
   .handler(async ({ context, data }) => {
     const db = getSupabaseAdmin();
+    await ensureProfile(db, context.userId);
     const book = await getPublicBook(data.slug);
     if (!book) return { ok: false };
     assertSupabase(
@@ -1461,7 +1481,15 @@ export const myLibrary = createServerFn({ method: "GET" })
         .eq("user_id", context.userId)
         .order("created_at", { ascending: false }),
     ) as Array<{ kind: string; amount_cents: number; created_at: string; book_id: string | null }> | null;
-    return { profile, coupons, purchases };
+    const books = await loadBooksWithPages(false);
+    const shelf = await Promise.all(books.map(async (book) => ({
+      id: book.id,
+      slug: book.slug,
+      title: book.title,
+      cover_url: book.cover_url,
+      access: await accessForBook(db, profile, book),
+    })));
+    return { profile, coupons, purchases, shelf: shelf.filter((item) => item.access.canRead || item.access.canDownload) };
   });
 
 export const deleteMyAccount = createServerFn({ method: "POST" })

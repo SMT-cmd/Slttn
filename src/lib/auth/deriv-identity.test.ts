@@ -18,8 +18,8 @@ describe("Deriv identity normalization", () => {
     assert.equal(extractDerivNickname({ data: { nickname: "Ada Trader" } }), "Ada Trader");
     assert.equal(extractDerivNickname({ nickname: "RT91648386" }), null);
     assert.equal(extractDerivNickname({ nickname: "ROT91648386" }), null);
-    assert.equal(safeDerivDisplayName("Deriv RT91648386"), "Deriv member");
-    assert.equal(safeDerivDisplayName("Deriv ROT91648386"), "Deriv member");
+    assert.equal(safeDerivDisplayName("Deriv RT91648386"), "");
+    assert.equal(safeDerivDisplayName("Deriv ROT91648386"), "");
     assert.equal(safeDerivDisplayName("Ada Trader"), "Ada Trader");
   });
 

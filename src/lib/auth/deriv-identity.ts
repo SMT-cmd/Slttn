@@ -93,7 +93,11 @@ export function derivLoginIdFromSyntheticEmail(email: string | null | undefined)
 export function safeDerivDisplayName(name: string | null | undefined) {
   const value = name?.trim() ?? "";
   const raw = value.replace(/^Deriv\s+/i, "");
-  return !value || RAW_DERIV_ACCOUNT_ID.test(raw) || DERIV_LOGIN_ID.test(raw)
-    ? "Deriv member"
+  return !value || /^member$/i.test(raw) || RAW_DERIV_ACCOUNT_ID.test(raw) || DERIV_LOGIN_ID.test(raw)
+    ? ""
     : value;
+}
+
+export function hasUsableDerivName(name: string | null | undefined) {
+  return safeDerivDisplayName(name).length >= 2;
 }

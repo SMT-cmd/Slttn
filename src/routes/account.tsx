@@ -9,6 +9,7 @@ import {
   exportMyData,
   generateMemberCoupon,
   getMe,
+  myLibrary,
   linkDeriv,
   redeemCoupon,
   updateProfileName,
@@ -27,17 +28,21 @@ function Account() {
   const [me, setMe] = useState<Profile | null>(null);
   const [name, setName] = useState("");
   const [cr, setCr] = useState("");
-  const [partner, setPartner] = useState("");
   const [code, setCode] = useState("");
+  const [memberCode, setMemberCode] = useState("");
+  const [shelf, setShelf] = useState<Awaited<ReturnType<typeof myLibrary>>["shelf"]>([]);
   const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     if (isPending || !user) return;
-    getMe()
-      .then((p) => {
+    Promise.all([getMe(), myLibrary()])
+      .then(([p, library]) => {
         setMe(p);
         setName(p.full_name ?? "");
         setCr(p.deriv_cr ?? "");
+        setShelf(library.shelf);
+        const activeCode = (library.coupons ?? []).find((coupon) => (coupon.uses_remaining ?? 0) > 0)?.code;
+        setMemberCode(activeCode ?? "");
       })
       .catch((e: unknown) => toast.error(e instanceof Error ? e.message : "Could not load account."));
   }, [isPending, user]);
@@ -99,40 +104,39 @@ function Account() {
         </section>
 
         <section className="mt-6 rounded-xl border border-border bg-card p-6">
+          <div className="flex items-end justify-between gap-4">
+            <div><p className="text-xs tracking-[.16em] text-muted-foreground uppercase">My shelf</p><h2 className="mt-1 font-display text-3xl">Books you can read</h2></div>
+            <Badge tone="muted">{shelf.length} {shelf.length === 1 ? "book" : "books"}</Badge>
+          </div>
+          {shelf.length ? <div className="mt-5 grid gap-3 sm:grid-cols-2">{shelf.map((book) => <a key={book.id} href={`/read/${book.slug}`} className="flex items-center gap-3 rounded-lg border border-border bg-background p-3 transition hover:border-primary"><img src={book.cover_url} alt="" className="h-20 w-14 rounded object-cover"/><span><span className="block font-medium">{book.title}</span><span className="text-xs text-muted-foreground">{book.access.canDownload ? "Paid download + reader" : "Online reader"}</span></span></a>)}</div> : <p className="mt-4 text-sm text-muted-foreground">Your claimed and purchased books will appear here. Verified SLT partner members receive online reading access automatically.</p>}
+        </section>
+
+        <section className="mt-6 rounded-xl border border-border bg-card p-6">
           <div className="flex items-center gap-2">
             <h2 className="font-display text-2xl">Deriv partnership</h2>
             {me?.deriv_tagged ? <Badge tone="green">Tagged</Badge> : <Badge tone="muted">Not tagged</Badge>}
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            Link your CR so we can check the official partner tag. If the Deriv API keys are
-            not on this host yet, use the SLT partner code from the community.
+            Your Deriv CR is checked directly against the official SLT partner account. No trading, balance, or payment permission is used.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="cr">CR number</Label>
               <Input id="cr" value={cr} onChange={(e) => setCr(e.target.value)} placeholder="CR123456" />
             </div>
-            <div>
-              <Label htmlFor="pc">Partner code</Label>
-              <Input
-                id="pc"
-                value={partner}
-                onChange={(e) => setPartner(e.target.value)}
-                placeholder="SLT-PARTNER"
-              />
-            </div>
+            <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">Not tagged? Contact Deriv support and ask whether your CR can be attributed to the SLT Trade Hub partner account, then return and check again. For the correct referral link, contact the SLT support desk.</div>
           </div>
           <Button
             className="mt-4"
             variant="navy"
             onClick={async () => {
               try {
-                const res = await linkDeriv({ data: { cr, partnerCode: partner } });
+                const res = await linkDeriv({ data: { cr } });
                 setMe((m) => (m ? { ...m, deriv_tagged: res.tagged, deriv_cr: res.cr } : m));
                 toast.success(
                   res.tagged
-                    ? "Tagged. You can generate a member coupon."
-                    : "CR saved. Not tagged yet — ask the desk or use the partner code.",
+                    ? "Verified. Your online library access and member coupon are ready."
+                    : "This CR is not currently tagged to the SLT partner account.",
                 );
               } catch (e) {
                 toast.error(e instanceof Error ? e.message : "Could not link Deriv.");
@@ -141,6 +145,7 @@ function Account() {
           >
             Link Deriv
           </Button>
+          {!me?.deriv_tagged ? <div className="mt-4 flex flex-wrap gap-2"><Button asChild variant="outline" size="sm"><a href="https://deriv.com/contact_us/" target="_blank" rel="noreferrer">Open Deriv support</a></Button><Button asChild variant="outline" size="sm"><Link to="/support">Contact SLT support</Link></Button></div> : null}
         </section>
 
         <section className="mt-6 rounded-xl border border-border bg-card p-6">
@@ -159,13 +164,14 @@ function Account() {
                     toast.message("Public launch is on. Pay $5 from checkout to get a coupon.");
                     return;
                   }
+                  setMemberCode(res.code);
                   toast.success(`Coupon ${res.code}`);
                 } catch (e) {
                   toast.error(e instanceof Error ? e.message : "Could not create a coupon.");
                 }
               }}
             >
-              Generate member coupon
+              {memberCode ? "Show member coupon" : "Generate member coupon"}
             </Button>
             <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Redeem a code" />
             <Button
@@ -182,6 +188,7 @@ function Account() {
               Redeem
             </Button>
           </div>
+          {memberCode ? <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-profit/25 bg-profit/10 p-3"><code className="font-semibold tracking-wider">{memberCode}</code><Button type="button" size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(memberCode); toast.success("Coupon copied."); }}>Copy</Button></div> : null}
         </section>
 
         <section className="mt-10 border-t border-border pt-8">
