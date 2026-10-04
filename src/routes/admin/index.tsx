@@ -10,9 +10,10 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { Shell } from "@/components/layout/shell";
+import { PrelaunchPopup } from "@/components/prelaunch-popup";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
 import { ADMIN_ACCESS_TIMEOUT_MS } from "@/lib/admin/access";
 import { useAdminGate } from "@/lib/admin/gate";
 import {
@@ -55,6 +56,12 @@ import {
   type BookRow,
 } from "@/lib/server/platform";
 import { formatMoney } from "@/lib/utils";
+import {
+  DEFAULT_PRELAUNCH_POPUP,
+  PRELAUNCH_TIME_ZONE,
+  normalizePrelaunchPopup,
+  type PrelaunchPopupConfig,
+} from "@/lib/prelaunch-popup";
 
 export const Route = createFileRoute("/admin/")({ component: Admin });
 
@@ -82,6 +89,7 @@ type SettingsForm = {
   telegram_url: string;
   whatsapp_url: string;
   community_links: CommunityLinkForm[];
+  prelaunch_popup: PrelaunchPopupConfig;
 };
 
 type QueryState<T> =
@@ -229,6 +237,10 @@ function normalizeCommunityLinks(value: unknown): CommunityLinkForm[] {
 }
 
 function normalizeSettings(settings: Record<string, unknown>): SettingsForm {
+  let popup: unknown = settings.prelaunch_popup;
+  if (typeof popup === "string") {
+    try { popup = JSON.parse(popup); } catch { popup = DEFAULT_PRELAUNCH_POPUP; }
+  }
   return {
     global_prelaunch:
       typeof settings.global_prelaunch === "boolean" ? settings.global_prelaunch : true,
@@ -237,7 +249,19 @@ function normalizeSettings(settings: Record<string, unknown>): SettingsForm {
     telegram_url: typeof settings.telegram_url === "string" ? settings.telegram_url : "",
     whatsapp_url: typeof settings.whatsapp_url === "string" ? settings.whatsapp_url : "",
     community_links: normalizeCommunityLinks(settings.community_links),
+    prelaunch_popup: normalizePrelaunchPopup(popup),
   };
+}
+
+function toLagosInput(value: string | null) {
+  if (!value) return "";
+  const date = new Date(Date.parse(value) + 60 * 60 * 1000);
+  return date.toISOString().slice(0, 16);
+}
+
+function fromLagosInput(value: string) {
+  if (!value) return null;
+  return new Date(`${value}:00+01:00`).toISOString();
 }
 
 function synchronizePrimaryCommunityLinks(
@@ -536,6 +560,8 @@ function HomePanel() {
   );
   const [form, setForm] = useState<SettingsForm | null>(null);
   const [saving, setSaving] = useState(false);
+  const [popupPreview, setPopupPreview] = useState(false);
+  const [flyerUploading, setFlyerUploading] = useState(false);
 
   const loadOverview = useCallback(async () => {
     setOverviewState(createLoadingState());
@@ -621,6 +647,7 @@ function HomePanel() {
             ["telegram_url", form.telegram_url],
             ["whatsapp_url", form.whatsapp_url],
             ["community_links", JSON.stringify(communityLinks)],
+            ["prelaunch_popup", JSON.stringify(form.prelaunch_popup)],
           ];
           try {
             await Promise.all(
@@ -803,6 +830,59 @@ function HomePanel() {
             ) : null}
           </div>
         </div>
+        <section className="mt-4 rounded-xl border border-border bg-background p-4 sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="font-medium">Prelaunch Popup</p>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                Manage the homepage announcement. Schedule times are shown in {PRELAUNCH_TIME_ZONE} and stored as UTC.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setPopupPreview(true)}>Preview</Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setForm((current) => current ? { ...current, prelaunch_popup: { ...current.prelaunch_popup, version: current.prelaunch_popup.version + 1 } } : current)}
+              >Reset for visitors</Button>
+            </div>
+          </div>
+          <label className="mt-4 flex items-center gap-3 rounded-lg border border-border bg-card p-4 text-sm">
+            <input type="checkbox" checked={form.prelaunch_popup.enabled} onChange={(event) => setForm((current) => current ? { ...current, prelaunch_popup: { ...current.prelaunch_popup, enabled: event.target.checked } } : current)} />
+            <span><span className="block font-medium">Enable popup</span><span className="text-muted-foreground">Visitors see it only while the schedule is active and a flyer is present.</span></span>
+          </label>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <Field label="Title" value={form.prelaunch_popup.title} onChange={(value) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, title: value } } : c)} />
+            <Field label="Primary button label" value={form.prelaunch_popup.primaryLabel} onChange={(value) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, primaryLabel: value } } : c)} />
+            <label className="md:col-span-2 text-sm"><span className="mb-2 block font-medium">Message</span><Textarea value={form.prelaunch_popup.message} onChange={(e) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, message: e.target.value } } : c)} /></label>
+            <Field label="Secondary button label" value={form.prelaunch_popup.secondaryLabel} onChange={(value) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, secondaryLabel: value } } : c)} />
+            <Field label="Footer" value={form.prelaunch_popup.footer} onChange={(value) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, footer: value } } : c)} />
+            <Field label="Community destination" helperText="Use the verified HQ/community onboarding link." value={form.prelaunch_popup.primaryUrl} onChange={(value) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, primaryUrl: value } } : c)} />
+            <Field label="Flyer alternative text" value={form.prelaunch_popup.flyerAlt} onChange={(value) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, flyerAlt: value } } : c)} />
+            <label className="text-sm"><span className="mb-2 block font-medium">Starts ({PRELAUNCH_TIME_ZONE})</span><Input type="datetime-local" value={toLagosInput(form.prelaunch_popup.startsAt)} onChange={(e) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, startsAt: fromLagosInput(e.target.value) } } : c)} /></label>
+            <label className="text-sm"><span className="mb-2 block font-medium">Ends ({PRELAUNCH_TIME_ZONE})</span><Input type="datetime-local" value={toLagosInput(form.prelaunch_popup.endsAt)} onChange={(e) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, endsAt: fromLagosInput(e.target.value) } } : c)} /></label>
+            <label className="text-sm"><span className="mb-2 block font-medium">Display frequency</span><select className="h-11 w-full rounded-md border border-border bg-card px-3" value={form.prelaunch_popup.frequency} onChange={(e) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, frequency: e.target.value as PrelaunchPopupConfig["frequency"] } } : c)}><option value="browser">Once per browser</option><option value="session">Once per session</option><option value="visit">Every visit</option></select></label>
+            <label className="text-sm"><span className="mb-2 block font-medium">Announcement version</span><Input type="number" min={1} value={form.prelaunch_popup.version} onChange={(e) => setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, version: Math.max(1, Number(e.target.value) || 1) } } : c)} /></label>
+          </div>
+          <div className="mt-4 rounded-lg border border-border bg-card p-4">
+            <p className="text-sm font-medium">Final flyer</p>
+            {form.prelaunch_popup.flyerUrl ? <img src={form.prelaunch_popup.flyerUrl} alt={form.prelaunch_popup.flyerAlt} className="mt-3 max-h-64 w-auto max-w-full object-contain" /> : <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">No flyer is stored yet. Upload the supplied final artwork before enabling the popup.</p>}
+            <Input className="mt-3" type="file" accept="image/png,image/jpeg,image/webp" disabled={flyerUploading} onChange={async (event) => {
+              const file = event.target.files?.[0]; if (!file) return;
+              if (!file.type.startsWith("image/") || file.size > 12 * 1024 * 1024) { toast.error("Choose a PNG, JPEG, or WebP image under 12 MB."); return; }
+              setFlyerUploading(true);
+              try {
+                const signed = await adminSignCloudinaryUpload({ data: { kind: "popup", bookSlug: "prelaunch", fileName: file.name } });
+                const url = await uploadFile(file, signed);
+                setForm((c) => c ? { ...c, prelaunch_popup: { ...c.prelaunch_popup, flyerUrl: url } } : c);
+                toast.success("Flyer uploaded. Save settings to publish it.");
+              } catch (error) { toast.error(error instanceof Error ? error.message : "Could not upload flyer."); }
+              finally { event.target.value = ""; setFlyerUploading(false); }
+            }} />
+          </div>
+        </section>
+        {popupPreview ? <PrelaunchPopup config={{ ...form.prelaunch_popup, enabled: true }} preview onPreviewClose={() => setPopupPreview(false)} /> : null}
         <Button type="submit" variant="navy" className="mt-4" disabled={saving}>
           {saving ? "Saving settings…" : "Save settings"}
         </Button>

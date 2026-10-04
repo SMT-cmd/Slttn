@@ -22,6 +22,11 @@ import {
   derivLoginIdFromSyntheticEmail,
   safeDerivDisplayName,
 } from "@/lib/auth/deriv-identity";
+import {
+  DEFAULT_PRELAUNCH_POPUP,
+  normalizePrelaunchPopup,
+  validatePopupUrl,
+} from "@/lib/prelaunch-popup";
 
 type SupabaseAdmin = ReturnType<typeof getSupabaseAdmin>;
 type LaunchModeValue = "prelaunch" | "launch" | "public";
@@ -164,6 +169,7 @@ const DEFAULT_SETTINGS: Record<string, SettingValue> = {
     { label: "Telegram", url: SITE.telegram },
     { label: "WhatsApp", url: SITE.whatsapp },
   ],
+  prelaunch_popup: JSON.stringify(DEFAULT_PRELAUNCH_POPUP),
 };
 
 function normalizeLaunchMode(mode: string | null | undefined): LaunchModeValue {
@@ -220,6 +226,21 @@ function settingToString(value: unknown, fallback = "") {
 }
 
 function parseSettingInput(key: string, value: string) {
+  if (key === "prelaunch_popup") {
+    let parsed: unknown;
+    try { parsed = JSON.parse(value); } catch { throw new Error("Popup settings are not valid."); }
+    const popup = normalizePrelaunchPopup(parsed);
+    if (!popup.title.trim() || !popup.message.trim() || !popup.primaryLabel.trim() || !popup.secondaryLabel.trim()) {
+      throw new Error("Popup title, message, and button labels are required.");
+    }
+    if (!validatePopupUrl(popup.primaryUrl)) throw new Error("The community destination must be a valid http(s) link.");
+    if (popup.flyerUrl && !validatePopupUrl(popup.flyerUrl, true)) throw new Error("The flyer must use a valid uploaded or site image link.");
+    if (popup.enabled && !popup.flyerUrl) throw new Error("Upload the final flyer before enabling the popup.");
+    if (popup.startsAt && popup.endsAt && Date.parse(popup.startsAt) >= Date.parse(popup.endsAt)) {
+      throw new Error("The popup end date must be after its start date.");
+    }
+    return JSON.stringify(popup);
+  }
   if (key === "global_prelaunch") {
     return value === "true";
   }
@@ -1715,7 +1736,7 @@ export const adminSignCloudinaryUpload = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(
     z.object({
-      kind: z.enum(["cover", "page"]),
+      kind: z.enum(["cover", "page", "popup"]),
       bookSlug: z.string().min(1),
       fileName: z.string().optional(),
     }),
@@ -1960,6 +1981,17 @@ export const adminLogs = createServerFn({ method: "GET" })
 export const publicSettings = createServerFn({ method: "GET" }).handler(async () => {
   const db = getSupabaseAdmin();
   return getSettingsMap(db);
+});
+
+export const publicPrelaunchPopup = createServerFn({ method: "GET" }).handler(async () => {
+  try {
+    const db = getSupabaseAdmin();
+    const raw = await getSetting(db, "prelaunch_popup", JSON.stringify(DEFAULT_PRELAUNCH_POPUP));
+    return normalizePrelaunchPopup(JSON.parse(raw));
+  } catch (error) {
+    console.error("[prelaunch-popup] Could not load popup settings.", error);
+    return { ...DEFAULT_PRELAUNCH_POPUP, enabled: false };
+  }
 });
 
 export const adminSaveSetting = createServerFn({ method: "POST" })

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import {
   BookOpen,
   Shield,
@@ -10,8 +11,10 @@ import {
 } from "lucide-react";
 import { Shell } from "@/components/layout/shell";
 import { BookCard } from "@/components/book-card";
+import { PrelaunchPopup } from "@/components/prelaunch-popup";
 import { Button } from "@/components/ui/button";
-import { listBooks } from "@/lib/server/platform";
+import { listBooks, publicPrelaunchPopup } from "@/lib/server/platform";
+import type { PrelaunchPopupConfig } from "@/lib/prelaunch-popup";
 import { SITE } from "@/lib/site";
 import { useSiteContext } from "@/lib/site-context";
 import { LibraryCatalogContent } from "./library/index";
@@ -89,6 +92,12 @@ const QUOTES = [
 function Home() {
   const books = Route.useLoaderData();
   const siteContext = useSiteContext();
+  const [popup, setPopup] = useState<PrelaunchPopupConfig | null>(null);
+
+  useEffect(() => {
+    if (siteContext.isLibraryHost) return;
+    void publicPrelaunchPopup().then(setPopup).catch(() => setPopup(null));
+  }, [siteContext.isLibraryHost]);
 
   if (siteContext.isLibraryHost) {
     return <LibraryCatalogContent books={books} />;
@@ -96,6 +105,7 @@ function Home() {
 
   return (
     <Shell>
+      <PrelaunchPopup config={popup} />
       <section className="border-b border-border bg-background">
         <div className="mx-auto grid max-w-6xl min-w-0 items-center gap-10 px-4 py-16 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:py-24">
           <div className="min-w-0">

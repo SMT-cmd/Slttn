@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-export type CloudinaryUploadKind = "cover" | "page";
+export type CloudinaryUploadKind = "cover" | "page" | "popup";
 
 export type SignedCloudinaryUpload = {
   apiKey: string;
@@ -55,7 +55,8 @@ export function createSignedCloudinaryUpload(input: UploadSignatureInput): Signe
   const apiSecret = readServerEnv("CLOUDINARY_API_SECRET");
   const safeSlug = slugifySegment(input.bookSlug);
   const safeFile = slugifySegment(input.fileName ?? `${input.kind}-${Date.now()}`);
-  const folder = `slt-trade-hub/${input.kind === "cover" ? "covers" : "pages"}/${safeSlug}`;
+  const folderName = input.kind === "cover" ? "covers" : input.kind === "page" ? "pages" : "announcements";
+  const folder = `slt-trade-hub/${folderName}/${safeSlug}`;
   const publicId = `${safeSlug}-${safeFile}-${Date.now()}`;
   const tags = [`slt-trade-hub`, input.kind, safeSlug].join(",");
   const timestamp = Math.floor(Date.now() / 1000);
