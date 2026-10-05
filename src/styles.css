@@ -207,6 +207,34 @@
   );
 }
 
+.reader-watermark {
+  position: absolute;
+  left: -6%;
+  width: 112%;
+  overflow: hidden;
+  margin: 0;
+  padding: 0.45rem 1rem;
+  transform: rotate(-5deg);
+  border-block: 1px solid color-mix(in oklab, var(--navy) 5%, transparent);
+  background: color-mix(in oklab, white 4%, transparent);
+  color: color-mix(in oklab, var(--navy) 12%, transparent);
+  font-size: clamp(0.55rem, 1.5vw, 0.8rem);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.reader-watermark-top {
+  top: 31%;
+}
+
+.reader-watermark-bottom {
+  bottom: 22%;
+}
+
 .no-select {
   user-select: none;
   -webkit-user-select: none;

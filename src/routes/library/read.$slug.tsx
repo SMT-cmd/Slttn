@@ -130,7 +130,6 @@ export function Reader() {
     );
   }
   const showLock = data.lockedFrom !== null && page === data.pages.length - 1;
-  const watermarkTiles = Array.from({ length: 12 }, (_, index) => index);
 
   async function proceedPastTerms() {
     if (acceptingTerms) return;
@@ -229,15 +228,9 @@ export function Reader() {
               draggable={false}
             />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/4 via-transparent to-black/8" />
-            <div className="pointer-events-none absolute inset-0 grid grid-cols-2 grid-rows-6 overflow-hidden mix-blend-multiply" aria-hidden="true">
-            {watermarkTiles.map((index) => (
-              <p
-                key={index}
-                className="flex rotate-[-22deg] items-center justify-center whitespace-nowrap px-2 text-center text-[10px] font-semibold tracking-[0.12em] text-navy/22 uppercase sm:text-sm"
-              >
-                {data.watermark}
-              </p>
-            ))}
+            <div className="reader-watermarks pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+              <p className="reader-watermark reader-watermark-top">{data.watermark}</p>
+              <p className="reader-watermark reader-watermark-bottom">{data.watermark}</p>
             </div>
             <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-black/45 px-4 py-3 text-[11px] tracking-[0.2em] text-white/80 uppercase">
               <span>{data.book.author}</span>
