@@ -31,6 +31,7 @@ import { signOut } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import {
   adminAccess,
+  adminAnonymousMessages,
   adminBookDownloadBundle,
   adminBooks,
   adminCoupons,
@@ -51,9 +52,11 @@ import {
   adminSetTagged,
   adminSignCloudinaryUpload,
   adminUpdateBook,
+  adminUpdateAnonymousMessage,
   adminUsers,
   type BookPageRow,
   type BookRow,
+  type AnonymousMessageRow,
 } from "@/lib/server/platform";
 import { formatMoney } from "@/lib/utils";
 import {
@@ -543,6 +546,7 @@ function Admin() {
           <TabButton active={workspace.activeTab === "users"} label="Members" onClick={() => setTab("users")} />
           <TabButton active={workspace.activeTab === "coupons"} label="Coupons" onClick={() => setTab("coupons")} />
           <TabButton active={workspace.activeTab === "sales"} label="Sales" onClick={() => setTab("sales")} />
+          <TabButton active={workspace.activeTab === "anonymous"} label="Anonymous inbox" onClick={() => setTab("anonymous")} />
         </div>
 
         <div className="mt-8">
@@ -553,6 +557,7 @@ function Admin() {
           {workspace.activeTab === "users" ? <UsersPanel /> : null}
           {workspace.activeTab === "coupons" ? <CouponsPanel /> : null}
           {workspace.activeTab === "sales" ? <SalesPanel /> : null}
+          {workspace.activeTab === "anonymous" ? <AnonymousMessagesPanel /> : null}
         </div>
       </div>
     </Shell>
@@ -2696,6 +2701,33 @@ function BookEditor({
       </div>
     </section>
   );
+}
+
+function AnonymousMessagesPanel() {
+  const [state, setState] = useState<QueryState<AnonymousMessageRow[]>>(() => createLoadingState());
+  const load = useCallback(async () => {
+    setState(createLoadingState());
+    try { setState(createReadyState(await adminAnonymousMessages())); }
+    catch (error) { setState(createErrorState(error, "Could not load anonymous messages.")); }
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+  if (state.status === "loading") return <PanelStateCard title="Loading anonymous inbox" message="Fetching private submissions." />;
+  if (state.status === "error") return <PanelStateCard title="Inbox unavailable" message={state.error} actionLabel="Retry" onAction={() => void load()} />;
+  return <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs tracking-[.16em] text-muted-foreground uppercase">Private inbox</p><h2 className="mt-2 font-display text-3xl">Anonymous messages</h2><p className="mt-2 text-sm text-muted-foreground">Submissions contain no name, email, account ID, or browser key. Mark items read or archive them after review.</p></div><Button type="button" variant="outline" size="sm" onClick={() => void load()}>Refresh</Button></div>
+    <div className="mt-6 space-y-4">{state.data.length ? state.data.map((item) => <AnonymousAdminCard key={item.id} item={item} onSaved={load} />) : <p className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">No anonymous messages yet.</p>}</div>
+  </section>;
+}
+
+function AnonymousAdminCard({ item, onSaved }: { item: AnonymousMessageRow; onSaved: () => Promise<void> }) {
+  const [status, setStatus] = useState(item.status);
+  const [note, setNote] = useState(item.admin_note ?? "");
+  const [saving, setSaving] = useState(false);
+  return <article className="rounded-xl border border-border bg-background p-4 sm:p-5">
+    <div className="flex flex-wrap items-center justify-between gap-2"><code className="text-xs font-semibold">{item.public_id}</code><span className="text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString()}</span></div>
+    {item.context ? <p className="mt-4 text-xs font-semibold tracking-wide text-primary uppercase">{item.context}</p> : null}<p className="mt-2 whitespace-pre-wrap text-sm leading-6">{item.message}</p>
+    <div className="mt-4 grid gap-3 sm:grid-cols-[12rem_1fr_auto]"><label className="text-sm"><span className="mb-1 block font-medium">Status</span><select className="h-11 w-full rounded-md border border-border bg-card px-3" value={status} onChange={(event) => setStatus(event.target.value as AnonymousMessageRow["status"])}><option value="new">New</option><option value="read">Read</option><option value="archived">Archived</option></select></label><label className="text-sm"><span className="mb-1 block font-medium">Private admin note</span><Input value={note} maxLength={1000} onChange={(event) => setNote(event.target.value)} placeholder="Optional follow-up note" /></label><div className="flex items-end"><Button type="button" variant="navy" disabled={saving} onClick={async () => { setSaving(true); try { await adminUpdateAnonymousMessage({ data: { id: item.id, status, adminNote: note } }); toast.success("Message updated."); await onSaved(); } catch (error) { toast.error(error instanceof Error ? error.message : "Could not update message."); } finally { setSaving(false); } }}>{saving ? "Saving…" : "Save"}</Button></div></div>
+  </article>;
 }
 
 function UsersPanel() {

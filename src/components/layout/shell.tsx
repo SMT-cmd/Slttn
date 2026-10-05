@@ -4,6 +4,7 @@ import { Footer } from "./footer";
 import { AgeGate } from "./age-gate";
 import { CookieBanner } from "./cookie-banner";
 import { useSiteContext } from "@/lib/site-context";
+import { ProfileNameGate } from "./profile-name-gate";
 
 export function Shell({
   children,
@@ -21,6 +22,7 @@ export function Shell({
   return (
     <div className="flex min-h-dvh min-w-0 flex-col overflow-x-hidden bg-background text-foreground">
       <AgeGate />
+      <ProfileNameGate />
       <Header library={libraryChrome} />
       <main className="flex-1">{children}</main>
       <Footer library={libraryChrome} />

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import {
@@ -158,6 +159,17 @@ export type BookRow = {
   pages?: BookPageRow[];
 };
 
+export type AnonymousMessageRow = {
+  id: string;
+  public_id: string;
+  message: string;
+  context: string | null;
+  status: "new" | "read" | "archived";
+  admin_note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 const PREVIEW_PAGES = 3;
 const DEFAULT_SETTINGS: Record<string, SettingValue> = {
   global_prelaunch: true,
@@ -193,6 +205,10 @@ function slugify(value: string) {
 
 function randomCode(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+}
+
+function anonymousAuthorHash(authorKey: string) {
+  return createHash("sha256").update(`slt-anonymous:${authorKey.trim()}`).digest("hex");
 }
 
 function requireNumber(value: number | null | undefined, fallback = 0) {
@@ -2029,6 +2045,75 @@ export const publicPrelaunchPopup = createServerFn({ method: "GET" }).handler(as
     return { ...DEFAULT_PRELAUNCH_POPUP, enabled: false };
   }
 });
+
+const anonymousSubmissionSchema = z.object({
+  authorKey: z.string().uuid(),
+  message: z.string().trim().min(10, "Write at least 10 characters.").max(3000),
+  context: z.string().trim().max(120).optional(),
+});
+
+export const submitAnonymousMessage = createServerFn({ method: "POST" })
+  .validator(anonymousSubmissionSchema)
+  .handler(async ({ data }) => {
+    const db = getSupabaseAdmin();
+    const authorKeyHash = anonymousAuthorHash(data.authorKey);
+    await hitRate(db, `anonymous:${authorKeyHash}`, 5, 60 * 60 * 1000);
+    const publicId = `ANON-${randomUUID().replace(/-/g, "").slice(0, 10).toUpperCase()}`;
+    const inserted = assertSupabase(
+      await db.from("anonymous_messages").insert({
+        id: randomUUID(),
+        public_id: publicId,
+        author_key_hash: authorKeyHash,
+        message: data.message,
+        context: data.context || null,
+      }).select("public_id, status, created_at").limit(1).single(),
+    ) as Pick<AnonymousMessageRow, "public_id" | "status" | "created_at">;
+    return inserted;
+  });
+
+export const myAnonymousMessages = createServerFn({ method: "POST" })
+  .validator(z.object({ authorKey: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    const db = getSupabaseAdmin();
+    const rows = assertSupabase(
+      await db.from("anonymous_messages")
+        .select("public_id, message, context, status, created_at, updated_at")
+        .eq("author_key_hash", anonymousAuthorHash(data.authorKey))
+        .order("created_at", { ascending: false }).limit(50),
+    ) as Array<Omit<AnonymousMessageRow, "id" | "author_key_hash" | "admin_note">> | null;
+    return rows ?? [];
+  });
+
+export const adminAnonymousMessages = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const db = getSupabaseAdmin();
+    await requireAdmin(db, context.userId);
+    const rows = assertSupabase(
+      await db.from("anonymous_messages")
+        .select("id, public_id, message, context, status, admin_note, created_at, updated_at")
+        .order("created_at", { ascending: false }).limit(300),
+    ) as AnonymousMessageRow[] | null;
+    return rows ?? [];
+  });
+
+export const adminUpdateAnonymousMessage = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(z.object({
+    id: z.string().uuid(),
+    status: z.enum(["new", "read", "archived"]),
+    adminNote: z.string().trim().max(1000),
+  }))
+  .handler(async ({ context, data }) => {
+    const db = getSupabaseAdmin();
+    await requireAdmin(db, context.userId);
+    assertSupabase(await db.from("anonymous_messages").update({
+      status: data.status,
+      admin_note: data.adminNote || null,
+      updated_at: new Date().toISOString(),
+    }).eq("id", data.id));
+    return { ok: true };
+  });
 
 export const adminSaveSetting = createServerFn({ method: "POST" })
   .middleware([authMiddleware])

@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AccountRouteImport } from './routes/account'
+import { Route as AnonymousRouteImport } from './routes/anonymous'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as CommunityRouteImport } from './routes/community'
 import { Route as ContactRouteImport } from './routes/contact'
@@ -52,6 +53,11 @@ const AboutRoute = AboutRouteImport.update({
 const AccountRoute = AccountRouteImport.update({
   id: '/account',
   path: '/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnonymousRoute = AnonymousRouteImport.update({
+  id: '/anonymous',
+  path: '/anonymous',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CheckoutRoute = CheckoutRouteImport.update({
@@ -160,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/$slug': typeof SlugRoute
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
+  '/anonymous': typeof AnonymousRoute
   '/checkout': typeof CheckoutRoute
   '/community': typeof CommunityRoute
   '/contact': typeof ContactRoute
@@ -186,6 +193,7 @@ export interface FileRoutesByTo {
   '/$slug': typeof SlugRoute
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
+  '/anonymous': typeof AnonymousRoute
   '/checkout': typeof CheckoutRoute
   '/community': typeof CommunityRoute
   '/contact': typeof ContactRoute
@@ -213,6 +221,7 @@ export interface FileRoutesById {
   '/$slug': typeof SlugRoute
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
+  '/anonymous': typeof AnonymousRoute
   '/checkout': typeof CheckoutRoute
   '/community': typeof CommunityRoute
   '/contact': typeof ContactRoute
@@ -241,6 +250,7 @@ export interface FileRouteTypes {
     | '/$slug'
     | '/about'
     | '/account'
+    | '/anonymous'
     | '/checkout'
     | '/community'
     | '/contact'
@@ -267,6 +277,7 @@ export interface FileRouteTypes {
     | '/$slug'
     | '/about'
     | '/account'
+    | '/anonymous'
     | '/checkout'
     | '/community'
     | '/contact'
@@ -293,6 +304,7 @@ export interface FileRouteTypes {
     | '/$slug'
     | '/about'
     | '/account'
+    | '/anonymous'
     | '/checkout'
     | '/community'
     | '/contact'
@@ -320,6 +332,7 @@ export interface RootRouteChildren {
   SlugRoute: typeof SlugRoute
   AboutRoute: typeof AboutRoute
   AccountRoute: typeof AccountRoute
+  AnonymousRoute: typeof AnonymousRoute
   CheckoutRoute: typeof CheckoutRoute
   CommunityRoute: typeof CommunityRoute
   ContactRoute: typeof ContactRoute
@@ -370,6 +383,13 @@ declare module '@tanstack/react-router' {
       path: '/account'
       fullPath: '/account'
       preLoaderRoute: typeof AccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/anonymous': {
+      id: '/anonymous'
+      path: '/anonymous'
+      fullPath: '/anonymous'
+      preLoaderRoute: typeof AnonymousRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/checkout': {
@@ -520,6 +540,7 @@ const rootRouteChildren: RootRouteChildren = {
   SlugRoute: SlugRoute,
   AboutRoute: AboutRoute,
   AccountRoute: AccountRoute,
+  AnonymousRoute: AnonymousRoute,
   CheckoutRoute: CheckoutRoute,
   CommunityRoute: CommunityRoute,
   ContactRoute: ContactRoute,

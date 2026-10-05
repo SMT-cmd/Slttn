@@ -81,7 +81,9 @@ function Login() {
     setBusy(true);
     try {
       if (mode === "up") {
-        const res = await authClient.signUp.email({ email, password, name });
+        const fullName = name.trim().replace(/\s+/g, " ");
+        if (fullName.length < 2) throw new Error("Enter your full name to create an account.");
+        const res = await authClient.signUp.email({ email, password, name: fullName });
         if (res.error) throw new Error(res.error.message || "Could not create the account.");
       } else {
         const res = await authClient.signIn.email({ email, password });
@@ -191,7 +193,7 @@ function Login() {
             {mode === "up" ? (
               <div className="space-y-1">
                 <Label htmlFor="name">Full name</Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" minLength={2} maxLength={80} required />
               </div>
             ) : null}
             <div className="space-y-1">

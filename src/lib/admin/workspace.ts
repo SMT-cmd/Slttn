@@ -1,6 +1,6 @@
 export const ADMIN_WORKSPACE_KEY = "slt.admin.workspace.v1";
 
-export type AdminWorkspaceTab = "overview" | "books" | "users" | "coupons" | "sales";
+export type AdminWorkspaceTab = "overview" | "books" | "users" | "coupons" | "sales" | "anonymous";
 export type AdminBooksDeskMode = "hub" | "list" | "drafts" | "create" | "edit";
 
 export type AdminBookWorkspaceDraft = {
@@ -75,7 +75,7 @@ export function clearAdminWorkspace() {
 }
 
 function isWorkspaceTab(value: unknown): value is AdminWorkspaceTab {
-  return value === "overview" || value === "books" || value === "users" || value === "coupons" || value === "sales";
+  return value === "overview" || value === "books" || value === "users" || value === "coupons" || value === "sales" || value === "anonymous";
 }
 
 function isBooksDeskMode(value: unknown): value is AdminBooksDeskMode {

@@ -66,6 +66,9 @@ export function Footer({ library }: { library?: boolean }) {
             <a href={marketingHref("/community", siteContext)} className="hover:underline">
               Community
             </a>
+            <a href={marketingHref("/anonymous", siteContext)} className="hover:underline">
+              Anonymous messages
+            </a>
             <a href={SITE.telegram} className="hover:underline">
               Telegram
             </a>
