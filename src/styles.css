@@ -256,3 +256,60 @@
     transform: none !important;
   }
 }
+
+
+/* Real page leaf: the front and reverse sides turn over the next page. */
+.reader-flip-stage {
+  perspective: 1500px;
+  perspective-origin: 50% 50%;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.reader-flip-under,
+.reader-flip-face {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.reader-flip-leaf {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+  box-shadow: 3px 0 12px rgb(0 0 0 / 0.12);
+}
+.reader-flip-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.reader-flip-front {
+  transform: rotateY(0deg);
+}
+.reader-flip-back {
+  transform: rotateY(180deg);
+  filter: brightness(0.96);
+}
+.reader-flip-next {
+  transform-origin: left center;
+  animation: reader-leaf-next 630ms cubic-bezier(.2,.7,.2,1) both;
+}
+.reader-flip-previous {
+  transform-origin: right center;
+  animation: reader-leaf-previous 630ms cubic-bezier(.2,.7,.2,1) both;
+}
+@keyframes reader-leaf-next {
+  from { transform: rotateY(0deg); }
+  to { transform: rotateY(-180deg); }
+}
+@keyframes reader-leaf-previous {
+  from { transform: rotateY(180deg); }
+  to { transform: rotateY(0deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reader-flip-leaf { animation: none !important; }
+}
