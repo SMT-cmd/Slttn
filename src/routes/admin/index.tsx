@@ -27,6 +27,7 @@ import {
   type AdminWorkspaceTab,
 } from "@/lib/admin/workspace";
 import { downloadAdminBookPdf } from "@/lib/admin/download-book-pdf";
+import { PdfBookUploader } from "@/components/admin/pdf-book-uploader";
 import { signOut } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import {
@@ -1707,6 +1708,23 @@ function CreateBookWizard({
               </label>
             </div>
 
+            
+            {createdBook && (
+              <PdfBookUploader
+                bookId={createdBook.id}
+                bookSlug={createdBook.slug || createdBook.title}
+                coverUrl={createdBook.cover_url}
+                existingPages={pageCount}
+                disabled={isBusy}
+                onImported={async (newPages, newCover) => {
+                  setPages(newPages);
+                  setCreatedBook((current) => current ? {
+                    ...current, pages: newPages, cover_url: newCover || current.cover_url,
+                  } : current);
+                  await onReload(createdBook.id);
+                }}
+              />
+            )}
             {pageCount === 0 ? (
               <p className="mt-4 text-sm text-muted-foreground">No pages yet. Upload one or many page images.</p>
             ) : (
@@ -2485,6 +2503,19 @@ function BookEditor({
               </label>
             </div>
 
+            
+            <PdfBookUploader
+              bookId={resolvedBook.id}
+              bookSlug={draft.slug || draft.title}
+              coverUrl={draft.cover_url}
+              existingPages={visiblePages.length}
+              disabled={isBusy}
+              onImported={async (newPages, newCover) => {
+                setPages(newPages);
+                if (newCover && !draft.cover_url) onDraftChange({ ...draft, cover_url: newCover });
+                await onReload(resolvedBook.id);
+              }}
+            />
             {visiblePages.length === 0 ? (
               <p className="mt-4 text-sm text-muted-foreground">
                 No pages yet. Upload page images for this book.
