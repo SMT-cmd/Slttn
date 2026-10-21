@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { RedirectToSignIn } from "@/lib/auth/gates";
@@ -36,7 +36,7 @@ export function Reader() {
   const [tos, setTos] = useState(false);
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [acceptingTerms, setAcceptingTerms] = useState(false);
-  const [turnDirection, setTurnDirection] = useState<"next" | "previous">("next");
+  const [turn, setTurn] = useState<{ from: number; to: number; direction: "next" | "previous" } | null>(null);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [preloadProgress, setPreloadProgress] = useState({ loaded: 0, total: 0 });
 
@@ -48,26 +48,20 @@ export function Reader() {
     readerPayload({ data: { slug } })
       .then(async (d) => {
         if (!d?.profile) throw new Error("Your reader profile is still being prepared. Please reopen the book.");
-        setPreloadProgress({ loaded: 0, total: d.pages.length });
-        // Decode every accessible page before presenting the reader. Page turns
-        // then swap already-decoded bitmaps instead of flashing a blank page
-        // while the next Cloudinary image downloads.
-        await Promise.all(
-          d.pages.map(
-            (bookPage) =>
-              new Promise<void>((resolve) => {
-                const image = new Image();
-                const finish = () => {
-                  if (!cancelled) setPreloadProgress((current) => ({ ...current, loaded: current.loaded + 1 }));
-                  resolve();
-                };
-                image.onload = () => { void image.decode().catch(() => undefined).finally(finish); };
-                image.onerror = finish;
-                image.src = bookPage.image_url;
-              }),
-          ),
-        );
+        // Decode only the resumed page before opening, not the entire book.
+        setPreloadProgress({ loaded: 0, total: 1 });
+        const resume = Math.min(Math.max(d.resumePageIndex ?? 0, 0), Math.max(d.pages.length - 1, 0));
+        const firstPage = d.pages[resume];
+        if (firstPage) {
+          await new Promise<void>((resolve) => {
+            const image = new Image();
+            image.onload = () => { void image.decode().catch(() => undefined).finally(resolve); };
+            image.onerror = () => resolve();
+            image.src = firstPage.image_url;
+          });
+        }
         if (cancelled) return;
+        setPreloadProgress({ loaded: 1, total: 1 });
         const maxPageIndex = Math.max(d.pages.length - 1, 0);
         const nextPage = Math.min(Math.max(d.resumePageIndex ?? 0, 0), maxPageIndex);
         setPage(nextPage);
@@ -81,15 +75,47 @@ export function Reader() {
     return () => { cancelled = true; };
   }, [isPending, user, slug]);
 
+  const turnPage = useCallback((direction: "next" | "previous") => {
+    if (!data || turn || tos) return;
+    const next = page + (direction === "next" ? 1 : -1);
+    if (next < 0 || next >= data.pages.length) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setPage(next);
+    } else {
+      setTurn({ from: page, to: next, direction });
+    }
+  }, [data, page, turn, tos]);
+
+  useEffect(() => {
+    if (!turn) return;
+    const timer = window.setTimeout(() => {
+      setPage(turn.to);
+      setTurn(null);
+    }, 630);
+    return () => window.clearTimeout(timer);
+  }, [turn]);
+
   useEffect(() => {
     if (!data) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight") { setTurnDirection("next"); setPage((p) => Math.min(p + 1, data.pages.length - 1)); }
-      if (e.key === "ArrowLeft") { setTurnDirection("previous"); setPage((p) => Math.max(p - 1, 0)); }
+    [page - 1, page + 1].forEach((index) => {
+      const url = data.pages[index]?.image_url;
+      if (url) {
+        const image = new Image();
+        image.src = url;
+        image.onload = () => { void image.decode().catch(() => undefined); };
+      }
+    });
+  }, [data, page]);
+
+  useEffect(() => {
+    if (!data) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "ArrowRight") turnPage("next");
+      if (event.key === "ArrowLeft") turnPage("previous");
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [data]);
+  }, [data, turnPage]);
 
   useEffect(() => {
     if (!data || !data.pages[page]) return;
@@ -213,12 +239,12 @@ export function Reader() {
         onTouchEnd={(event) => {
           if (touchStart === null) return;
           const distance = (event.changedTouches[0]?.clientX ?? touchStart) - touchStart;
-          if (distance < -55) { setTurnDirection("next"); setPage((p) => Math.min(data.pages.length - 1, p + 1)); }
-          if (distance > 55) { setTurnDirection("previous"); setPage((p) => Math.max(0, p - 1)); }
+          if (distance < -55) turnPage("next");
+          if (distance > 55) turnPage("previous");
           setTouchStart(null);
         }}>
         {current ? (
-          <article key={current.id} className={`page-turn page-turn-${turnDirection} relative z-10 w-full overflow-hidden rounded-md bg-paper shadow-[var(--shadow)]`}>
+          <article key={current.id} className="relative z-10 w-full overflow-hidden rounded-md bg-paper shadow-[var(--shadow)]">
             <img
               src={current.image_url}
               alt={`${data.book.title} page ${page + 1}`}
@@ -236,6 +262,29 @@ export function Reader() {
               <span>{data.book.author}</span>
               <span>Page {page + 1}</span>
             </div>
+            {turn && (
+              <div className="reader-flip-stage pointer-events-none absolute inset-0 z-30" aria-hidden="true">
+                <img src={data.pages[turn.to]?.image_url} alt="" className="reader-flip-under" draggable={false} />
+                <div className={"reader-flip-leaf reader-flip-" + turn.direction}>
+                  <img
+                    className="reader-flip-face reader-flip-front"
+                    src={data.pages[turn.direction === "next" ? turn.from : turn.to]?.image_url}
+                    alt=""
+                    draggable={false}
+                  />
+                  <img
+                    className="reader-flip-face reader-flip-back"
+                    src={data.pages[turn.direction === "next" ? turn.to : turn.from]?.image_url}
+                    alt=""
+                    draggable={false}
+                  />
+                </div>
+                <div className="reader-watermarks pointer-events-none absolute inset-0 z-40 overflow-hidden">
+                  <p className="reader-watermark reader-watermark-top">{data.watermark}</p>
+                  <p className="reader-watermark reader-watermark-bottom">{data.watermark}</p>
+                </div>
+              </div>
+            )}
             {showLock ? (
               <div className="absolute inset-x-4 bottom-4 rounded-md border border-white/15 bg-black/72 p-4 text-white shadow-lg backdrop-blur-sm">
                 <p className="flex items-center gap-2 font-medium">
@@ -269,16 +318,16 @@ export function Reader() {
         <Button
           variant="outline"
           className="border-white/20 bg-transparent text-navy-foreground"
-          disabled={page === 0}
-          onClick={() => { setTurnDirection("previous"); setPage((p) => Math.max(0, p - 1)); }}
+          disabled={page === 0 || Boolean(turn)}
+          onClick={() => turnPage("previous")}
         >
           <ChevronLeft className="size-4" /> Previous
         </Button>
         <Button
           variant="outline"
           className="border-white/20 bg-transparent text-navy-foreground"
-          disabled={page >= data.pages.length - 1}
-          onClick={() => { setTurnDirection("next"); setPage((p) => Math.min(data.pages.length - 1, p + 1)); }}
+          disabled={page >= data.pages.length - 1 || Boolean(turn)}
+          onClick={() => turnPage("next")}
         >
           Next <ChevronRight className="size-4" />
         </Button>
