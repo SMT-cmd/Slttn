@@ -31,19 +31,30 @@ function AdminLogin() {
     () => AUTH_PROVIDERS.find((provider) => provider.providerId === "google"),
     [],
   );
+  const derivProvider = useMemo(
+    () => AUTH_PROVIDERS.find((provider) => provider.providerId === "deriv"),
+    [],
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [redirectToAdmin, setRedirectToAdmin] = useState(false);
   const [googleEnabled, setGoogleEnabled] = useState(false);
+  const [derivEnabled, setDerivEnabled] = useState(false);
   const [accessState, setAccessState] = useState<AccessState>("idle");
   const [accessMessage, setAccessMessage] = useState("");
 
   useEffect(() => {
     authUiConfig()
-      .then((config) => setGoogleEnabled(config.googleEnabled))
-      .catch(() => setGoogleEnabled(false));
+      .then((config) => {
+        setGoogleEnabled(config.googleEnabled);
+        setDerivEnabled(config.derivEnabled);
+      })
+      .catch(() => {
+        setGoogleEnabled(false);
+        setDerivEnabled(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -272,6 +283,30 @@ function AdminLogin() {
                   {busy || accessState === "checking" ? "Checking access…" : "Open admin desk"}
                 </Button>
               </form>
+
+              {derivEnabled && derivProvider && authEnabled ? (
+                <div className="mt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full border-white/20 bg-transparent text-white hover:bg-white/10"
+                    disabled={busy || accessState === "checking"}
+                    onClick={() => {
+                      void signIn(derivProvider.providerId, {
+                        callbackURL: "/admin/login",
+                        errorCallbackURL: "/login",
+                      }).catch((error: unknown) => {
+                        toast.error(error instanceof Error ? error.message : "Deriv sign-in could not start.");
+                      });
+                    }}
+                  >
+                    Continue with Deriv
+                  </Button>
+                  <p className="mt-2 text-xs text-slate-400">
+                    An existing verified administrator identity is still required to access this desk.
+                  </p>
+                </div>
+              ) : null}
 
               {googleEnabled && googleProvider && authEnabled ? (
                 <div className="mt-6">
