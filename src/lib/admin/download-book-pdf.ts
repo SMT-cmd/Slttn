@@ -252,7 +252,15 @@ export async function downloadAdminBookPdf(bundle: {
   onProgress?: (message: string) => void;
 }) {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const folder = (bundle.slug || "book").replace(/[^\w.-]+/g, "-") || "book";
+  // Use the editable shelf title, not the internal slug or production filename.
+  // Preserve readable spacing: "Lot Size Mastery.pdf".
+  const filenameStem = (bundle.title || bundle.slug || "Book")
+    .normalize("NFKC")
+    .replace(/[\\/:*?"<>|\\p{Cc}\\p{Cf}]/gu, " ")
+    .replace(/\\s+/g, " ")
+    .replace(/^[ .-]+|[ .-]+$/g, "")
+    .slice(0, 120)
+    .trim() || "Book";
 
   const orderedPages = Array.isArray(bundle.pages) ? [...bundle.pages] : [];
   orderedPages.sort((a, b) => (a.page_number ?? 0) - (b.page_number ?? 0));
@@ -295,10 +303,14 @@ export async function downloadAdminBookPdf(bundle: {
     }
   }
 
-  if (jpegPages.length === 0) {
+  // Never silently deliver a truncated educational book when an image failed.
+  if (failures.length > 0) {
     throw new Error(
-      `Could not load any book images for PDF. ${failures.slice(0, 3).join(" · ")}`,
+      `PDF export stopped: ${failures.length} page(s) could not be loaded. ${failures.slice(0, 3).join(" · ")}. Retry after checking these images.`,
     );
+  }
+  if (jpegPages.length === 0) {
+    throw new Error("This book has no readable page images.");
   }
 
   bundle.onProgress?.(`Building PDF (${jpegPages.length} pages)…`);
@@ -311,7 +323,7 @@ export async function downloadAdminBookPdf(bundle: {
   try {
     const anchor = document.createElement("a");
     anchor.href = objectUrl;
-    anchor.download = `${folder}-admin.pdf`;
+    anchor.download = `${filenameStem}.pdf`;
     anchor.rel = "noopener";
     document.body.appendChild(anchor);
     anchor.click();
