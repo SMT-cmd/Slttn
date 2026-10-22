@@ -11,7 +11,7 @@ import { SITE } from "@/lib/site";
 import { libraryBookHref, libraryHomeHref, useSiteContext } from "@/lib/site-context";
 import { getBookPageHead } from "./$slug";
 import {
-  TURN_FINISH_MS, TURN_RETURN_MS, cornerCurl, leafAngle,
+  TURN_FINISH_MS, TURN_RETURN_MS, cornerCurl, finishTurnDuration, leafAngle,
   resolveTurnDirection, shouldCompleteTurn, turnProgressFromDrag,
   type TurnDirection,
 } from "@/lib/reader/page-turn";
@@ -36,6 +36,7 @@ type ReaderTurn = {
   phase: "dragging" | "finishing" | "returning";
   progress: number;
   gripY: number;
+  durationMs?: number;
 };
 
 type ReaderGesture = {
@@ -122,7 +123,7 @@ export function Reader() {
     // start and end frames, which made the old flip appear instantaneous.
     requestAnimationFrame(() => requestAnimationFrame(() => {
       if (turnRef.current === initial) {
-        setActiveTurn({ ...initial, phase: "finishing", progress: 1 });
+        setActiveTurn({ ...initial, phase: "finishing", progress: 1, durationMs: TURN_FINISH_MS });
       }
     }));
   }, [data, page, setActiveTurn, tos]);
@@ -133,9 +134,9 @@ export function Reader() {
     const timeout = window.setTimeout(() => {
       if (finishing) setPage(turn.to);
       setActiveTurn(null);
-    }, finishing ? TURN_FINISH_MS : TURN_RETURN_MS);
+    }, finishing ? (turn.durationMs ?? TURN_FINISH_MS) : TURN_RETURN_MS);
     return () => window.clearTimeout(timeout);
-  }, [turn?.phase, turn?.to, setActiveTurn]);
+  }, [turn?.phase, turn?.to, turn?.durationMs, setActiveTurn]);
 
   function onReaderPointerDown(event: ReactPointerEvent<HTMLElement>) {
     if (!data || tos || turnRef.current || gestureRef.current || !event.isPrimary) return;
@@ -220,7 +221,7 @@ export function Reader() {
         setActiveTurn({ from: page, to, direction, gripY: gesture.gripY, progress, phase: "dragging" });
         requestAnimationFrame(() => {
           if (turnRef.current?.phase === "dragging" && turnRef.current.to === to) {
-            setActiveTurn({ from: page, to, direction, gripY: gesture.gripY, progress: 1, phase: "finishing" });
+            setActiveTurn({ from: page, to, direction, gripY: gesture.gripY, progress: 1, phase: "finishing", durationMs: finishTurnDuration(progress) });
           }
         });
       }
@@ -409,7 +410,7 @@ export function Reader() {
                 transform: `rotateY(${leafAngle(turn.direction, turn.progress)}deg)`,
                 transition: turn.phase === "dragging"
                   ? "none"
-                  : `transform ${turn.phase === "finishing" ? TURN_FINISH_MS : TURN_RETURN_MS}ms ${turn.phase === "finishing" ? "cubic-bezier(.19,.72,.19,1)" : "cubic-bezier(.24,.74,.28,1)"}`,
+                  : `transform ${turn.phase === "finishing" ? (turn.durationMs ?? TURN_FINISH_MS) : TURN_RETURN_MS}ms ${turn.phase === "finishing" ? "cubic-bezier(.19,.72,.19,1)" : "cubic-bezier(.24,.74,.28,1)"}`,
                 "--curl-top": `${curl.top}px`,
                 "--curl-bottom": `${curl.bottom}px`,
                 "--fold-strength": `${Math.sin(Math.PI * turn.progress)}`,
