@@ -27,7 +27,7 @@ export const Route = createFileRoute("/api/portfolio-books")({
             }));
           return Response.json(
             { version: 1, books },
-            { headers: { "Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=600", "X-Content-Type-Options": "nosniff" } },
+            { headers: { "Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=600", "X-Content-Type-Options": "nosniff", "Access-Control-Allow-Origin": "*" } },
           );
         } catch (error) {
           console.error("[portfolio-books] Could not load public catalogue", error);
