@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { serializePortfolioBooks } from "./portfolio-feed.ts";
+import type { CatalogBook } from "./catalog";
 
-const row = (slug, published, sort_order) => ({
+const row = (slug: string, published: boolean, sort_order: number): CatalogBook => ({
   id:"private-database-id",slug,title:slug,subtitle:"",category:"Trading",size:"short",
   launch_mode:"prelaunch",cover_url:"/covers/example.png",blurb:"Public description",
   published,sort_order,created_at:"",updated_at:"",
