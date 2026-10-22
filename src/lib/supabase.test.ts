@@ -17,7 +17,7 @@ test("single() retains the id returned with PostgREST's vendor JSON content type
   let accept = "";
   let prefer = "";
   globalThis.fetch = async (_url, init) => {
-    const headers = new Headers(init.headers);
+    const headers = new Headers(init?.headers);
     accept = headers.get("accept") ?? "";
     prefer = headers.get("prefer") ?? "";
     return new Response(JSON.stringify({ id: "book-123", title: "Lot Size Mastery" }), {
@@ -63,6 +63,7 @@ test("ordinary application/json errors remain visible for server-side diagnosis"
   const { data, error } = await createServerSupabaseClient().from("books")
     .insert({ title: "Lot Size Mastery" }).select("id").single();
   assert.equal(data, null);
+  assert.ok(error);
   assert.match(error.message, /duplicate key value/);
 });
 
