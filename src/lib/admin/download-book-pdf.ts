@@ -256,8 +256,8 @@ export async function downloadAdminBookPdf(bundle: {
   // Preserve readable spacing: "Lot Size Mastery.pdf".
   const filenameStem = (bundle.title || bundle.slug || "Book")
     .normalize("NFKC")
-    .replace(/[\\/:*?"<>|\\p{Cc}\\p{Cf}]/gu, " ")
-    .replace(/\\s+/g, " ")
+    .replace(/[^\p{L}\p{N} ._-]/gu, " ")
+    .replace(/\s+/g, " ")
     .replace(/^[ .-]+|[ .-]+$/g, "")
     .slice(0, 120)
     .trim() || "Book";
