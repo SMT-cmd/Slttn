@@ -296,7 +296,7 @@
   inset: 0;
   transform-style: preserve-3d;
   will-change: transform;
-  filter: drop-shadow(0 4px 9px rgb(0 0 0 / .14));
+  /* Keep filter unset: filters flatten preserve-3d and hide the back face. */
 }
 .reader-flip-side {
   position: absolute;
@@ -306,7 +306,7 @@
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   background: #fff;
-  box-shadow: 0 0 12px rgb(0 0 0 / .11);
+  box-shadow: 0 5px 18px rgb(0 0 0 / .16);
   /* Animate the page's free corners; tips can curl more than a center grip. */
   transition: border-radius 110ms linear;
 }
