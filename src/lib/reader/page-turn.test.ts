@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   resolveTurnDirection, shouldCompleteTurn, turnProgressFromDrag,
-  leafAngle, cornerCurl, TURN_INTENT_PX,
+  leafAngle, cornerCurl, TURN_INTENT_PX, finishTurnDuration, TURN_FINISH_MS,
 } from "./page-turn.ts";
 
 test("a held center page chooses an edge, but a swipe chooses its own direction", () => {
@@ -37,4 +37,10 @@ test("grabbing the page tip produces a more pronounced curved corner", () => {
   assert.ok(top.top > middle.top);
   assert.ok(bottom.bottom > middle.bottom);
   assert.deepEqual(cornerCurl(0, 0), { top: 0, bottom: 0 });
+});
+
+test("button flips show the whole animation while near-complete drags settle promptly", () => {
+  assert.equal(finishTurnDuration(0), TURN_FINISH_MS);
+  assert.equal(finishTurnDuration(1), 300);
+  assert.equal(finishTurnDuration(0.75), 450);
 });
