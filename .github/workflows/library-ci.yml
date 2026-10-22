@@ -23,3 +23,4 @@ jobs:
       - run: npm run typecheck
       - run: node --experimental-strip-types --test scripts/admin-pdf.test.mjs scripts/admin-pdf-import.test.mjs
       - run: node --experimental-transform-types --test src/lib/supabase.test.ts
+      - run: node --experimental-strip-types --test src/lib/reader/page-turn.test.ts
