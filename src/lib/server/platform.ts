@@ -314,8 +314,8 @@ function normalizeProfile(record: ProfileRecord): Profile {
 
 function toPageRow(page: CatalogPage): BookPageRow {
   return {
-    id: page.id,
-    book_id: page.book_id,
+    id: String(page.id),
+    book_id: String(page.book_id),
     page_number: page.page_number,
     image_url: page.image_url,
     created_at: page.created_at,
@@ -324,7 +324,7 @@ function toPageRow(page: CatalogPage): BookPageRow {
 
 function toBookRow(book: CatalogBook, pageCount = 0, pages?: CatalogPage[]): BookRow {
   return {
-    id: book.id,
+    id: String(book.id),
     slug: book.slug,
     title: book.title,
     subtitle: book.subtitle,
