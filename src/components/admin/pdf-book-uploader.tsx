@@ -84,7 +84,8 @@ export function PdfBookUploader({ bookId, bookSlug, coverUrl, existingPages, dis
         },
       );
       let nextCover = coverUrl || undefined;
-      if (!nextCover && firstUrl) {
+      // Replace the default branding placeholder with page 1 of the imported book.
+      if (firstUrl && (!nextCover || /\/brand\/trading-library-powered\.png(?:\?.*)?$/i.test(nextCover))) {
         await adminSaveBookCover({ data: { id: bookId, coverUrl: firstUrl } });
         nextCover = firstUrl;
       }
