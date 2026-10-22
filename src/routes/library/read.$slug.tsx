@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { ChevronLeft, ChevronRight, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { RedirectToSignIn } from "@/lib/auth/gates";
@@ -10,6 +10,11 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { SITE } from "@/lib/site";
 import { libraryBookHref, libraryHomeHref, useSiteContext } from "@/lib/site-context";
 import { getBookPageHead } from "./$slug";
+import {
+  TURN_FINISH_MS, TURN_RETURN_MS, cornerCurl, finishTurnDuration, leafAngle,
+  resolveTurnDirection, shouldCompleteTurn, turnProgressFromDrag,
+  type TurnDirection,
+} from "@/lib/reader/page-turn";
 
 export const Route = createFileRoute("/library/read/$slug")({
   loader: ({ params }) => getBook({ data: { slug: params.slug } }),
@@ -24,6 +29,25 @@ export const Route = createFileRoute("/library/read/$slug")({
   component: Reader,
 });
 
+type ReaderTurn = {
+  from: number;
+  to: number;
+  direction: TurnDirection;
+  phase: "dragging" | "finishing" | "returning";
+  progress: number;
+  gripY: number;
+  durationMs?: number;
+};
+
+type ReaderGesture = {
+  pointerId: number;
+  startX: number;
+  startedAt: number;
+  width: number;
+  gripY: number;
+  initialDirection: TurnDirection;
+};
+
 export function Reader() {
   // Shared by /read/$slug and /library/read/$slug — must not bind to one Route id
   const params = useParams({ strict: false }) as { slug?: string };
@@ -36,8 +60,13 @@ export function Reader() {
   const [tos, setTos] = useState(false);
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [acceptingTerms, setAcceptingTerms] = useState(false);
-  const [turn, setTurn] = useState<{ from: number; to: number; direction: "next" | "previous" } | null>(null);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [turn, setTurn] = useState<ReaderTurn | null>(null);
+  const turnRef = useRef<ReaderTurn | null>(null);
+  const gestureRef = useRef<ReaderGesture | null>(null);
+  const setActiveTurn = useCallback((value: ReaderTurn | null) => {
+    turnRef.current = value;
+    setTurn(value);
+  }, []);
   const [preloadProgress, setPreloadProgress] = useState({ loaded: 0, total: 0 });
 
   useEffect(() => {
@@ -75,25 +104,137 @@ export function Reader() {
     return () => { cancelled = true; };
   }, [isPending, user, slug]);
 
-  const turnPage = useCallback((direction: "next" | "previous") => {
-    if (!data || turn || tos) return;
-    const next = page + (direction === "next" ? 1 : -1);
-    if (next < 0 || next >= data.pages.length) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setPage(next);
-    } else {
-      setTurn({ from: page, to: next, direction });
+  const reducedMotion = () =>
+    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const turnPage = useCallback((direction: TurnDirection) => {
+    if (!data || turnRef.current || gestureRef.current || tos) return;
+    const to = page + (direction === "next" ? 1 : -1);
+    if (to < 0 || to >= data.pages.length) return;
+    if (reducedMotion()) {
+      setPage(to);
+      return;
     }
-  }, [data, page, turn, tos]);
+    const initial: ReaderTurn = {
+      from: page, to, direction, phase: "dragging", progress: 0, gripY: 0.5,
+    };
+    setActiveTurn(initial);
+    // Paint the first face before animating; otherwise React may batch the
+    // start and end frames, which made the old flip appear instantaneous.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (turnRef.current === initial) {
+        setActiveTurn({ ...initial, phase: "finishing", progress: 1, durationMs: TURN_FINISH_MS });
+      }
+    }));
+  }, [data, page, setActiveTurn, tos]);
 
   useEffect(() => {
-    if (!turn) return;
-    const timer = window.setTimeout(() => {
-      setPage(turn.to);
-      setTurn(null);
-    }, 630);
-    return () => window.clearTimeout(timer);
-  }, [turn]);
+    if (!turn || turn.phase === "dragging") return;
+    const finishing = turn.phase === "finishing";
+    const timeout = window.setTimeout(() => {
+      if (finishing) setPage(turn.to);
+      setActiveTurn(null);
+    }, finishing ? (turn.durationMs ?? TURN_FINISH_MS) : TURN_RETURN_MS);
+    return () => window.clearTimeout(timeout);
+  }, [turn?.phase, turn?.to, turn?.durationMs, setActiveTurn]);
+
+  function onReaderPointerDown(event: ReactPointerEvent<HTMLElement>) {
+    if (!data || tos || turnRef.current || gestureRef.current || !event.isPrimary) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    const target = event.target as Element;
+    if (target.closest("a, button, input, textarea, select, [role='button']")) return;
+
+    const canNext = page < data.pages.length - 1;
+    const canPrevious = page > 0;
+    if (!canNext && !canPrevious) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const pointerX = event.clientX - rect.left;
+    const gripY = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height));
+    let initialDirection: TurnDirection = pointerX >= rect.width * 0.5 ? "next" : "previous";
+    if (initialDirection === "next" && !canNext) initialDirection = "previous";
+    if (initialDirection === "previous" && !canPrevious) initialDirection = "next";
+
+    gestureRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startedAt: performance.now(),
+      width: rect.width,
+      gripY,
+      initialDirection,
+    };
+    try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* capture may already be lost */ }
+    if (!reducedMotion()) {
+      const to = page + (initialDirection === "next" ? 1 : -1);
+      setActiveTurn({ from: page, to, direction: initialDirection, phase: "dragging", progress: 0.075, gripY });
+    }
+  }
+
+  function onReaderPointerMove(event: ReactPointerEvent<HTMLElement>) {
+    const gesture = gestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId || !data || reducedMotion()) return;
+    const deltaX = event.clientX - gesture.startX;
+    const direction = resolveTurnDirection(
+      deltaX, gesture.initialDirection,
+      page < data.pages.length - 1, page > 0,
+    );
+    if (!direction) {
+      if (turnRef.current?.progress !== 0) {
+        setActiveTurn({ ...turnRef.current!, progress: 0 });
+      }
+      return;
+    }
+    const next: ReaderTurn = {
+      from: page,
+      to: page + (direction === "next" ? 1 : -1),
+      direction,
+      phase: "dragging",
+      progress: Math.max(0.075, turnProgressFromDrag(deltaX, gesture.width)),
+      gripY: gesture.gripY,
+    };
+    setActiveTurn(next);
+  }
+
+  function onReaderPointerUp(event: ReactPointerEvent<HTMLElement>) {
+    const gesture = gestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    gestureRef.current = null;
+    try {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    } catch { /* capture already released */ }
+    if (!data) { setActiveTurn(null); return; }
+    const deltaX = event.clientX - gesture.startX;
+    const direction = resolveTurnDirection(
+      deltaX, gesture.initialDirection,
+      page < data.pages.length - 1, page > 0,
+    );
+    const complete = direction && shouldCompleteTurn(deltaX, gesture.width, performance.now() - gesture.startedAt);
+    if (complete && direction) {
+      const to = page + (direction === "next" ? 1 : -1);
+      if (reducedMotion()) {
+        setActiveTurn(null);
+        setPage(to);
+      } else {
+        const progress = Math.max(turnRef.current?.direction === direction ? turnRef.current.progress : 0, 0.075);
+        setActiveTurn({ from: page, to, direction, gripY: gesture.gripY, progress, phase: "dragging" });
+        requestAnimationFrame(() => {
+          if (turnRef.current?.phase === "dragging" && turnRef.current.to === to) {
+            setActiveTurn({ from: page, to, direction, gripY: gesture.gripY, progress: 1, phase: "finishing", durationMs: finishTurnDuration(progress) });
+          }
+        });
+      }
+    } else if (turnRef.current) {
+      setActiveTurn({ ...turnRef.current, phase: "returning", progress: 0 });
+    }
+  }
+
+  function onReaderPointerCancel(event: ReactPointerEvent<HTMLElement>) {
+    if (gestureRef.current?.pointerId !== event.pointerId) return;
+    gestureRef.current = null;
+    if (turnRef.current) setActiveTurn({ ...turnRef.current, phase: "returning", progress: 0 });
+  }
 
   useEffect(() => {
     if (!data) return;
@@ -234,17 +375,18 @@ export function Reader() {
         </p>
       </header>
 
-      <div className="relative mx-auto grid min-h-[calc(100dvh-8rem)] max-w-3xl place-items-center px-3 py-6"
-        onTouchStart={(event) => setTouchStart(event.changedTouches[0]?.clientX ?? null)}
-        onTouchEnd={(event) => {
-          if (touchStart === null) return;
-          const distance = (event.changedTouches[0]?.clientX ?? touchStart) - touchStart;
-          if (distance < -55) turnPage("next");
-          if (distance > 55) turnPage("previous");
-          setTouchStart(null);
-        }}>
+      <div className="relative mx-auto grid min-h-[calc(100dvh-8rem)] max-w-3xl place-items-center px-3 py-6">
         {current ? (
-          <article key={current.id} className="relative z-10 w-full overflow-hidden rounded-md bg-paper shadow-[var(--shadow)]">
+          <article
+            key={current.id}
+            className="reader-page relative z-10 w-full overflow-hidden rounded-md bg-paper shadow-[var(--shadow)]"
+            aria-label="Book page. Swipe left or right, or drag the page to turn."
+            onPointerDown={onReaderPointerDown}
+            onPointerMove={onReaderPointerMove}
+            onPointerUp={onReaderPointerUp}
+            onPointerCancel={onReaderPointerCancel}
+            onLostPointerCapture={onReaderPointerCancel}
+          >
             <img
               src={current.image_url}
               alt={`${data.book.title} page ${page + 1}`}
@@ -262,29 +404,40 @@ export function Reader() {
               <span>{data.book.author}</span>
               <span>Page {page + 1}</span>
             </div>
-            {turn && (
-              <div className="reader-flip-stage pointer-events-none absolute inset-0 z-30" aria-hidden="true">
-                <img src={data.pages[turn.to]?.image_url} alt="" className="reader-flip-under" draggable={false} />
-                <div className={"reader-flip-leaf reader-flip-" + turn.direction}>
-                  <img
-                    className="reader-flip-face reader-flip-front"
-                    src={data.pages[turn.direction === "next" ? turn.from : turn.to]?.image_url}
-                    alt=""
-                    draggable={false}
-                  />
-                  <img
-                    className="reader-flip-face reader-flip-back"
-                    src={data.pages[turn.direction === "next" ? turn.to : turn.from]?.image_url}
-                    alt=""
-                    draggable={false}
-                  />
+            {turn && (() => {
+              const curl = cornerCurl(turn.gripY, turn.progress);
+              const leafStyle = {
+                transform: `rotateY(${leafAngle(turn.direction, turn.progress)}deg)`,
+                transition: turn.phase === "dragging"
+                  ? "none"
+                  : `transform ${turn.phase === "finishing" ? (turn.durationMs ?? TURN_FINISH_MS) : TURN_RETURN_MS}ms ${turn.phase === "finishing" ? "cubic-bezier(.19,.72,.19,1)" : "cubic-bezier(.24,.74,.28,1)"}`,
+                "--curl-top": `${curl.top}px`,
+                "--curl-bottom": `${curl.bottom}px`,
+                "--fold-strength": `${Math.sin(Math.PI * turn.progress)}`,
+              } as CSSProperties;
+              return (
+                <div className="reader-flip-stage pointer-events-none absolute inset-0 z-30" aria-hidden="true">
+                  <img src={data.pages[turn.to]?.image_url} alt="" className="reader-flip-under" draggable={false} />
+                  <div className="reader-flip-under-shade" />
+                  <div className={`reader-flip-leaf reader-flip-${turn.direction}`} style={leafStyle}>
+                    <div className="reader-flip-side reader-flip-front">
+                      <img src={data.pages[turn.direction === "next" ? turn.from : turn.to]?.image_url} alt="" draggable={false} />
+                      <div className="reader-flip-ink-shadow" />
+                      <div className="reader-flip-crease" />
+                    </div>
+                    <div className="reader-flip-side reader-flip-back">
+                      <img src={data.pages[turn.direction === "next" ? turn.to : turn.from]?.image_url} alt="" draggable={false} />
+                      <div className="reader-flip-ink-shadow" />
+                      <div className="reader-flip-crease" />
+                    </div>
+                  </div>
+                  <div className="reader-watermarks pointer-events-none absolute inset-0 z-40 overflow-hidden">
+                    <p className="reader-watermark reader-watermark-top">{data.watermark}</p>
+                    <p className="reader-watermark reader-watermark-bottom">{data.watermark}</p>
+                  </div>
                 </div>
-                <div className="reader-watermarks pointer-events-none absolute inset-0 z-40 overflow-hidden">
-                  <p className="reader-watermark reader-watermark-top">{data.watermark}</p>
-                  <p className="reader-watermark reader-watermark-bottom">{data.watermark}</p>
-                </div>
-              </div>
-            )}
+              );
+            })()}
             {showLock ? (
               <div className="absolute inset-x-4 bottom-4 rounded-md border border-white/15 bg-black/72 p-4 text-white shadow-lg backdrop-blur-sm">
                 <p className="flex items-center gap-2 font-medium">
