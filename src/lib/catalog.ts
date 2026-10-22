@@ -66,7 +66,9 @@ export function defaultCoverFor(slug: string) {
 
 export function normalizeCatalogBook(row: CatalogBookRecord): CatalogBook {
   return {
-    id: row.id,
+    // Some upgraded catalogs retain integer primary keys; normalize them for
+    // the string IDs used by routes, validators, and uploader mutations.
+    id: String(row.id),
     slug: row.slug,
     title: row.title,
     subtitle: row.subtitle ?? "",
@@ -84,8 +86,8 @@ export function normalizeCatalogBook(row: CatalogBookRecord): CatalogBook {
 
 export function normalizeCatalogPage(row: CatalogPageRecord): CatalogPage {
   return {
-    id: row.id,
-    book_id: row.book_id,
+    id: String(row.id),
+    book_id: String(row.book_id),
     page_number: row.page_number,
     image_url: row.image_url,
     created_at: row.created_at,

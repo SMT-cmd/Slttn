@@ -314,8 +314,8 @@ function normalizeProfile(record: ProfileRecord): Profile {
 
 function toPageRow(page: CatalogPage): BookPageRow {
   return {
-    id: page.id,
-    book_id: page.book_id,
+    id: String(page.id),
+    book_id: String(page.book_id),
     page_number: page.page_number,
     image_url: page.image_url,
     created_at: page.created_at,
@@ -324,7 +324,7 @@ function toPageRow(page: CatalogPage): BookPageRow {
 
 function toBookRow(book: CatalogBook, pageCount = 0, pages?: CatalogPage[]): BookRow {
   return {
-    id: book.id,
+    id: String(book.id),
     slug: book.slug,
     title: book.title,
     subtitle: book.subtitle,
@@ -1645,6 +1645,17 @@ export const adminCreateBook = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const db = getSupabaseAdmin();
     await requireAdmin(db, context.userId);
+    const slug = slugify(data.slug || [data.title, data.subtitle].filter(Boolean).join(" "));
+    // Recover a draft created by an earlier request whose response was lost.
+    // Never insert a second copy or quietly reopen a public book.
+    const prior = await getCatalogBookBySlug(slug, true);
+    if (prior) {
+      if (!prior.published && prior.title.trim().toLowerCase() === data.title.trim().toLowerCase()) {
+        const previousPages = await getCatalogBookPages(prior.id);
+        return toBookRow(prior, previousPages.length, previousPages);
+      }
+      throw new Error("A book with that URL slug already exists. Open it from All books or choose another slug.");
+    }
     const sortRows = assertSupabase(
       await db.from("books").select("sort_order").order("sort_order", { ascending: false }).limit(1),
     ) as Array<{ sort_order: number | null }> | null;
@@ -1652,7 +1663,7 @@ export const adminCreateBook = createServerFn({ method: "POST" })
       await db
         .from("books")
         .insert({
-          slug: slugify(data.slug || [data.title, data.subtitle].filter(Boolean).join(" ")),
+          slug,
           title: data.title.trim(),
           subtitle: data.subtitle.trim(),
           category: data.category.trim(),
@@ -1666,7 +1677,11 @@ export const adminCreateBook = createServerFn({ method: "POST" })
         .select("id, slug, title, subtitle, category, size, launch_mode, cover_url, blurb, published, sort_order, created_at, updated_at")
         .limit(1)
         .single(),
-    ) as CatalogBook;
+    ) as CatalogBook | null;
+    if (!inserted?.id) {
+      console.error("[adminCreateBook] Insert returned no book id.");
+      throw new Error("The book could not be confirmed after saving. Check All books before trying again.");
+    }
     return toBookRow(inserted, 0, []);
   });
 
