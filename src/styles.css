@@ -258,58 +258,99 @@
 }
 
 
-/* Real page leaf: the front and reverse sides turn over the next page. */
+/* Trading Library reader: drag-led 3D leaf, graduated corner curling and shadow.
+   Pan-y leaves ordinary vertical scrolling available on small touchscreens. */
+.reader-page {
+  touch-action: pan-y;
+  cursor: grab;
+  overscroll-behavior-x: contain;
+  -webkit-tap-highlight-color: transparent;
+}
+.reader-page:active { cursor: grabbing; }
 .reader-flip-stage {
-  perspective: 1500px;
-  perspective-origin: 50% 50%;
+  perspective: 1700px;
+  perspective-origin: 50% 48%;
   overflow: hidden;
   border-radius: inherit;
+  isolation: isolate;
 }
 .reader-flip-under,
-.reader-flip-face {
+.reader-flip-side > img {
+  display: block;
   position: absolute;
   inset: 0;
-  display: block;
   width: 100%;
   height: 100%;
   object-fit: fill;
   user-select: none;
   -webkit-user-drag: none;
 }
+.reader-flip-under-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgb(0 0 0 / .09), transparent 21%, transparent 77%, rgb(0 0 0 / .1));
+  box-shadow: inset 0 0 28px rgb(0 0 0 / .13);
+}
 .reader-flip-leaf {
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
   will-change: transform;
-  box-shadow: 3px 0 12px rgb(0 0 0 / 0.12);
+  filter: drop-shadow(0 4px 9px rgb(0 0 0 / .14));
 }
-.reader-flip-face {
+.reader-flip-side {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  overflow: hidden;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  background: #fff;
+  box-shadow: 0 0 12px rgb(0 0 0 / .11);
+  /* Animate the page's free corners; tips can curl more than a center grip. */
+  transition: border-radius 110ms linear;
 }
-.reader-flip-front {
-  transform: rotateY(0deg);
+.reader-flip-front { transform: rotateY(0deg); }
+.reader-flip-back { transform: rotateY(180deg); filter: brightness(.97); }
+.reader-flip-next { transform-origin: left center; }
+.reader-flip-previous { transform-origin: right center; }
+.reader-flip-next .reader-flip-side {
+  border-radius: 0 var(--curl-top, 0px) var(--curl-bottom, 0px) 0;
 }
-.reader-flip-back {
-  transform: rotateY(180deg);
-  filter: brightness(0.96);
+.reader-flip-previous .reader-flip-side {
+  border-radius: var(--curl-top, 0px) 0 0 var(--curl-bottom, 0px);
 }
-.reader-flip-next {
-  transform-origin: left center;
-  animation: reader-leaf-next 630ms cubic-bezier(.2,.7,.2,1) both;
+.reader-flip-ink-shadow,
+.reader-flip-crease {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
 }
-.reader-flip-previous {
-  transform-origin: right center;
-  animation: reader-leaf-previous 630ms cubic-bezier(.2,.7,.2,1) both;
+.reader-flip-ink-shadow {
+  opacity: calc(.13 + var(--fold-strength, 0) * .38);
 }
-@keyframes reader-leaf-next {
-  from { transform: rotateY(0deg); }
-  to { transform: rotateY(-180deg); }
+.reader-flip-next .reader-flip-ink-shadow {
+  background: linear-gradient(to right, transparent 48%, rgb(14 28 55 / .05) 73%, rgb(4 23 48 / .30) 100%);
 }
-@keyframes reader-leaf-previous {
-  from { transform: rotateY(180deg); }
-  to { transform: rotateY(0deg); }
+.reader-flip-previous .reader-flip-ink-shadow {
+  background: linear-gradient(to left, transparent 48%, rgb(14 28 55 / .05) 73%, rgb(4 23 48 / .30) 100%);
+}
+.reader-flip-crease {
+  inset: auto;
+  top: 0;
+  bottom: 0;
+  width: min(14%, 64px);
+  opacity: calc(.12 + var(--fold-strength, 0) * .63);
+}
+.reader-flip-next .reader-flip-crease {
+  right: 0;
+  background: linear-gradient(to right, transparent, rgb(255 255 255 / .35) 45%, rgb(8 26 45 / .19));
+}
+.reader-flip-previous .reader-flip-crease {
+  left: 0;
+  background: linear-gradient(to left, transparent, rgb(255 255 255 / .35) 45%, rgb(8 26 45 / .19));
 }
 @media (prefers-reduced-motion: reduce) {
-  .reader-flip-leaf { animation: none !important; }
+  .reader-flip-leaf,
+  .reader-flip-side { transition: none !important; filter: none !important; }
 }
