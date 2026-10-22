@@ -2,8 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { listCatalogBooks } from "@/lib/catalog";
 import { serializePortfolioBooks } from "@/lib/portfolio-feed";
 
-const LIBRARY_ORIGIN = "https://library.slttradehub.trade";
-
 export const Route = createFileRoute("/api/portfolio-books")({
   server: {
     handlers: {
