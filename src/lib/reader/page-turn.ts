@@ -5,6 +5,11 @@ export const TURN_FINISH_MS = 900;
 export const TURN_RETURN_MS = 330;
 export const TURN_INTENT_PX = 12;
 
+/** A near-complete drag needs a short finish; a button turn shows the full arc. */
+export function finishTurnDuration(progress: number): number {
+  return Math.round(300 + (TURN_FINISH_MS - 300) * (1 - clampTurnProgress(progress)));
+}
+
 export function clampTurnProgress(value: number): number {
   return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
 }
@@ -41,7 +46,8 @@ export function turnProgressFromDrag(deltaX: number, width: number): number {
 /** Keep the visible side of the leaf towards the reader throughout the gesture. */
 export function leafAngle(direction: TurnDirection, progress: number): number {
   const p = clampTurnProgress(progress);
-  return direction === "next" ? -178 * p : -178 * (1 - p);
+  if (direction === "next") return p === 0 ? 0 : -178 * p;
+  return p === 1 ? 0 : -178 * (1 - p);
 }
 
 /** Edge grip changes the corner radius; center grips remain mostly straight. */
