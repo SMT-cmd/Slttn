@@ -44,6 +44,12 @@ export function PdfBookUploader({ bookId, bookSlug, coverUrl, existingPages, dis
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file || working) return;
+    // A full-PDF import must never silently append a second book to the first.
+    if (existingPages > 0) {
+      toast.error("This book already has pages. Import a complete PDF into a new book, or clear the old pages first.");
+      event.target.value = "";
+      return;
+    }
     setWorking(true);
     setProgress({ completed: 0, total: 0 });
     let savedCount = 0;
@@ -78,7 +84,8 @@ export function PdfBookUploader({ bookId, bookSlug, coverUrl, existingPages, dis
         },
       );
       let nextCover = coverUrl || undefined;
-      if (!nextCover && firstUrl) {
+      // Replace the default branding placeholder with page 1 of the imported book.
+      if (firstUrl && (!nextCover || /\/brand\/trading-library-powered\.png(?:\?.*)?$/i.test(nextCover))) {
         await adminSaveBookCover({ data: { id: bookId, coverUrl: firstUrl } });
         nextCover = firstUrl;
       }
@@ -99,13 +106,13 @@ export function PdfBookUploader({ bookId, bookSlug, coverUrl, existingPages, dis
       <label className="block font-semibold">Upload complete book (PDF)</label>
       <p className="mt-1 text-muted-foreground">
         Select one PDF. All pages, including the front and back covers, are extracted automatically and saved in order.
-        {existingPages ? " New PDF pages are appended after " + existingPages + " existing pages; nothing is deleted." : ""}
+        {existingPages ? " This book already has pages; full-book import is disabled to prevent accidental duplication." : ""}
       </p>
       <input
         aria-label="Upload complete book PDF"
         type="file"
         accept=".pdf,application/pdf"
-        disabled={disabled || working}
+        disabled={disabled || working || existingPages > 0}
         onChange={(event) => { void handleFile(event); }}
         className="mt-3 block w-full max-w-full"
       />
