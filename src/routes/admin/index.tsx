@@ -1377,11 +1377,20 @@ function CreateBookWizard({
           published: false,
         },
       });
+      if (!created?.id) {
+        throw new Error("The server did not confirm this draft. Check All books before trying again.");
+      }
       setCreatedBook(created);
       onCreated(created);
-      await onReload(created.id);
       setStep("cover");
-      toast.success("Draft created. Continue with the cover image.");
+      // A catalog refresh error must not roll the wizard back after a
+      // successful INSERT; that would invite another duplicate submission.
+      try {
+        await onReload(created.id);
+      } catch {
+        toast.message("Draft saved. Catalog refresh was interrupted; you can continue with the cover.");
+      }
+      toast.success("Draft saved. Continue with the cover image.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not create the book.");
     } finally {
