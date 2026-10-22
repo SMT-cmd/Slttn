@@ -250,7 +250,12 @@ class RestQueryBuilder<T> implements SupabaseQueryBuilder<T> {
 
     const text = await response.text();
     const contentType = response.headers.get("content-type") ?? "";
-    const payload = text && contentType.includes("application/json") ? (JSON.parse(text) as T) : null;
+    // PostgREST uses application/vnd.pgrst.object+json for .single() and
+    // .maybeSingle(). Treat vendor +json content types as JSON too; otherwise
+    // successful INSERT ... RETURNING responses were discarded as null.
+    const payload = text && /(?:^|\\/|\\+)json(?:\\s*;|\\s*$)/i.test(contentType)
+      ? (JSON.parse(text) as T)
+      : null;
 
     if (this.singleMode === "maybeSingle" && response.status === 406) {
       return { data: null, error: null };
