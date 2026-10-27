@@ -133,6 +133,7 @@ function Root() {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <meta name="impact-site-verification" content="133f4cc3-4336-4003-810a-2a27ce5e0850" />
         <HeadContent />
         {adsenseClient ? (
           <>
